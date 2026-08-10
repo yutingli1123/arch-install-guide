@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultConfig } from '../config'
+import { defaultConfig, parseConfig, serializeConfig, validate } from '../config'
 import { derive, partition } from '../derive'
 import { renderGuide, selectSteps } from '../render'
 import { sectionTitles, steps } from '../steps'
@@ -37,6 +37,34 @@ describe('derive', () => {
   it('picks microcode matching the cpu vendor', () => {
     expect(derive({ ...defaultConfig, cpu: 'amd' }).packages).toContain('amd-ucode')
     expect(derive({ ...defaultConfig, cpu: 'intel' }).packages).not.toContain('amd-ucode')
+  })
+})
+
+describe('configuration', () => {
+  it('round-trips supported choices through URL search parameters', () => {
+    const config: Config = {
+      ...defaultConfig,
+      disk: '/dev/sda',
+      cpu: 'amd',
+      subvolumeLayout: 'root-only',
+      timezone: 'Asia/Shanghai',
+      keymap: 'de-latin1',
+      hostname: 'workstation',
+      username: 'alice',
+    }
+
+    expect(parseConfig(serializeConfig(config))).toEqual(config)
+  })
+
+  it('ignores unsafe URL values and explains unavailable choices', () => {
+    const config = parseConfig(
+      '?disk=%2Fdev%2Fdisk%2Fby-id%2F..%2Fsda&timezone=..%2Fetc&user=root&layout=root-only',
+    )
+
+    expect(config.disk).toBe(defaultConfig.disk)
+    expect(config.timezone).toBe(defaultConfig.timezone)
+    expect(config.username).toBe(defaultConfig.username)
+    expect(validate(config)['snapper.root']).toBe('需要标准分离子卷布局')
   })
 })
 
