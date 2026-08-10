@@ -14,7 +14,7 @@ cat /sys/firmware/efi/fw_platform_size
 
 输出 \`64\` 表示 64 位 UEFI，可以继续。
 
-如果提示文件不存在，说明当前是 BIOS/CSM 模式启动的。本指南只覆盖 UEFI，需要进固件设置关掉 CSM 后重新启动安装介质。`,
+如果提示文件不存在，说明安装介质当前以 BIOS/CSM 模式启动。本指南仅适用于 UEFI；请在固件设置中关闭 CSM，然后重新启动安装介质。`,
     },
   },
   {
@@ -46,14 +46,14 @@ loadkeys ${cfg.keymap}
 ping -c 3 archlinux.org
 \`\`\`
 
-无线网络用 \`iwctl\` 连接。先查网卡名，再连接，其中 \`wlan0\` 和 \`SSID\` 换成实际值：
+无线网络使用 \`iwctl\` 连接。先查询无线网卡名称，再建立连接；请将 \`wlan0\` 和 \`SSID\` 替换为实际值：
 
 \`\`\`
 iwctl station list
 iwctl station wlan0 connect SSID
 \`\`\`
 
-连上之后再跑一次 \`ping\` 确认。后面每一步都需要网络。`,
+连接后再次执行 \`ping\` 以确认网络可用。后续步骤需要保持网络连接。`,
     },
   },
   {
@@ -61,13 +61,13 @@ iwctl station wlan0 connect SSID
     section: 'live',
     title: { zh: '校时' },
     body: {
-      zh: () => `安装介质会自动同步时间。确认一下：
+      zh: () => `安装介质会自动同步时间。检查同步状态：
 
 \`\`\`
 timedatectl
 \`\`\`
 
-\`System clock synchronized\` 应为 \`yes\`。时间不对会导致后面 pacman 校验签名失败。`,
+\`System clock synchronized\` 应为 \`yes\`。系统时间不准确可能导致后续 pacman 签名校验失败。`,
     },
   },
 ]

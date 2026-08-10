@@ -9,10 +9,10 @@ export const diskSteps: Step[] = [
       zh: ({ cfg }) => `列出所有块设备：
 
 \`\`\`
-lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS
+lsblk
 \`\`\`
 
-本指南按 \`${cfg.disk}\` 生成。**下一步会抹掉这块盘上的全部数据**，先对着容量和型号确认设备名没选错。如果实际设备名不同，回到配置里改，不要手动改命令——后面还有十几处引用同一个设备。`,
+本指南基于 \`${cfg.disk}\` 生成。**下一步会清除该磁盘上的全部数据**。请根据容量和型号确认设备名；如果实际设备名不同，请返回配置页面修改，不要直接修改命令，因为后续步骤还会多次引用该设备。`,
     },
   },
   {
@@ -20,7 +20,7 @@ lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS
     section: 'disk',
     title: { zh: '分区' },
     body: {
-      zh: ({ cfg, espDevice, rootDevice }) => `建 GPT 分区表，两个分区：
+      zh: ({ cfg, espDevice, rootDevice }) => `创建 GPT 分区表和两个分区：
 
 | 分区 | 大小 | 类型 | 用途 |
 | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS
 sgdisk ${cfg.disk} -o -n 1:0:+${cfg.espSize} -t 1:ef00 -n 2:0:0 -t 2:8300
 \`\`\`
 
-参数从左到右执行：\`-o\` 清空分区表，\`-n 编号:起点:终点\` 建分区（\`0\` 取默认值，终点为 \`0\` 即用满剩余空间），\`-t\` 设类型——\`ef00\` 是 EFI System，\`8300\` 是 Linux filesystem。核对结果：
+参数从左到右执行：\`-o\` 清空分区表，\`-n 编号:起点:终点\` 创建分区（\`0\` 表示采用默认值，终点为 \`0\` 表示使用全部剩余空间），\`-t\` 设置类型；\`ef00\` 是 EFI System，\`8300\` 是 Linux filesystem。核对结果：
 
 \`\`\`
 lsblk ${cfg.disk}
@@ -43,7 +43,7 @@ lsblk ${cfg.disk}
     section: 'disk',
     title: { zh: '格式化' },
     body: {
-      zh: ({ espDevice, rootDevice }) => `ESP 必须是 FAT32，固件只认这个：
+      zh: ({ espDevice, rootDevice }) => `将 ESP 格式化为 UEFI 固件普遍支持的 FAT32 文件系统：
 
 \`\`\`
 mkfs.fat -F 32 ${espDevice}
@@ -56,7 +56,7 @@ mkfs.btrfs -f ${rootDevice}
     section: 'disk',
     title: { zh: '创建子卷' },
     body: {
-      zh: ({ cfg, rootDevice }) => `先把 btrfs 顶层挂起来，建子卷，再卸掉：
+      zh: ({ cfg, rootDevice }) => `先挂载 btrfs 顶层，创建子卷，然后卸载：
 
 \`\`\`
 mount ${rootDevice} /mnt
@@ -70,7 +70,7 @@ umount /mnt
 | --- | --- |
 ${cfg.subvolumes.map((s) => `| \`${s.name}\` | \`${s.mountPoint}\` |`).join('\n')}
 
-\`@log\` 和 \`@pkg\` 独立出来，是为了让它们不被包含进 \`@\` 的快照。这一步现在不装 snapper 也照做，省得以后要加快照时重新布局。`,
+将 \`@log\` 和 \`@pkg\` 设置为独立子卷，可以避免它们被包含在 \`@\` 的快照中。虽然当前阶段不安装 snapper，仍预先采用此布局，以免后续启用快照时重新调整。`,
     },
   },
   {
@@ -86,19 +86,19 @@ ${cfg.subvolumes.map((s) => `| \`${s.name}\` | \`${s.mountPoint}\` |`).join('\n'
         rootSubvolume,
         nestedSubvolumes,
         mountOptions,
-      }) => `按挂载点从浅到深挂，最后挂 ESP：
+      }) => `按照挂载点的层级依次挂载，最后挂载 ESP：
 
 \`\`\`
 mount -o subvol=${rootSubvolume.name},${mountOptions} ${rootDevice} /mnt
 ${nestedSubvolumes
   .map((s) => `mount --mkdir -o subvol=${s.name},${mountOptions} ${rootDevice} /mnt${s.mountPoint}`)
   .join('\n')}
-mount --mkdir ${espDevice} /mnt${espMountPoint}
+mount --mkdir -o noatime ${espDevice} /mnt${espMountPoint}
 \`\`\`
 
-挂载选项 \`${mountOptions}\` 会被 \`genfstab\` 原样写进 fstab，所以现在挂错，装完的系统也是错的。
+这些挂载选项会由 \`genfstab\` 写入 fstab。btrfs 子卷使用 \`${mountOptions}\`；ESP 使用 \`noatime\`，以避免读取文件时更新访问时间而产生不必要的写入。
 
-ESP 挂在 \`${espMountPoint}\`：最终引导用的 UKI 会生成到这里，固件和 systemd-boot 只认 FAT。\`/boot\` 留在根文件系统上，只存 pacman 落的 vmlinuz 和 mkinitcpio 的中间产物。
+ESP 挂载在 \`${espMountPoint}\`：用于引导的 UKI 最终会生成到此处，固件和 systemd-boot 需要从 FAT 文件系统读取它。\`/boot\` 保留在根文件系统上，仅存放 pacman 安装的 vmlinuz 和 mkinitcpio 的中间产物。
 
 核对：
 

@@ -83,6 +83,32 @@ describe('renderGuide', () => {
   it('makes command blocks copyable', () => {
     expect(html.join('')).toContain('class="cmd-copy"')
   })
+
+  it('uses concise disk discovery and mounts the ESP with noatime', () => {
+    const rendered = html.join('')
+    expect(rendered).toContain('<pre><code>lsblk</code></pre>')
+    expect(rendered).not.toContain('lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS')
+    expect(rendered).toContain('mount --mkdir -o noatime /dev/nvme0n1p1 /mnt/efi')
+  })
+
+  it('does not write the default us keymap to vconsole.conf', () => {
+    expect(html.join('')).not.toContain("echo 'KEYMAP=us'")
+  })
+
+  it('writes a non-default keymap to vconsole.conf', () => {
+    const rendered = renderGuide({ ...defaultConfig, keymap: 'de-latin1' }, 'zh')
+      .flatMap((s) => s.steps)
+      .map((s) => s.html)
+      .join('')
+    expect(rendered).toContain('KEYMAP=de-latin1')
+    expect(rendered).toContain('/etc/vconsole.conf')
+  })
+
+  it('documents both UKI presets without mentioning fallback_image', () => {
+    const rendered = html.join('')
+    expect(rendered).toContain("PRESETS=('default' 'fallback')")
+    expect(rendered).not.toContain('fallback_image')
+  })
 })
 
 function segments(path: string): number {
