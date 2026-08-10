@@ -21,8 +21,9 @@ cat /sys/firmware/efi/fw_platform_size
     id: 'keymap',
     section: 'live',
     title: { zh: '键盘布局' },
+    when: (cfg) => cfg.keymap !== 'us',
     body: {
-      zh: ({ cfg }) => `安装介质默认使用 \`us\` 布局。列出全部可用布局：
+      zh: ({ cfg }) => `列出全部可用布局：
 
 \`\`\`
 localectl list-keymaps

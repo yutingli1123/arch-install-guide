@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defaultConfig } from '../config'
 import { derive, partition } from '../derive'
-import { renderGuide } from '../render'
+import { renderGuide, selectSteps } from '../render'
 import { sectionTitles, steps } from '../steps'
 import type { Config } from '../types'
 
@@ -53,7 +53,7 @@ describe('renderGuide', () => {
   const html = bodies.join('')
 
   it('renders every step to non-empty html', () => {
-    expect(bodies).toHaveLength(steps.length)
+    expect(bodies).toHaveLength(selectSteps(defaultConfig).length)
     for (const body of bodies) expect(body.trim().length).toBeGreaterThan(0)
   })
 
@@ -95,6 +95,10 @@ describe('renderGuide', () => {
   it('only writes vconsole.conf for a non-default keymap', () => {
     const nonDefault = renderHtml({ ...defaultConfig, keymap: 'de-latin1' })
     expect(html).not.toContain("echo 'KEYMAP=us'")
+    expect(html).not.toContain('localectl list-keymaps')
+    expect(html).not.toContain('loadkeys us')
+    expect(nonDefault).toContain('localectl list-keymaps')
+    expect(nonDefault).toContain('loadkeys de-latin1')
     expect(nonDefault).toContain('KEYMAP=de-latin1')
     expect(nonDefault).toContain('/etc/vconsole.conf')
   })

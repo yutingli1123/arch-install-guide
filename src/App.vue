@@ -36,17 +36,22 @@ const summary = computed(() => {
       </button>
     </div>
     <p class="meta">
-      {{ pick(ui.stepCount, locale)(total) }} · {{ pick(ui.verifiedAgainst, locale) }}
-      {{ VERIFIED_AGAINST }}
+      {{ pick(ui.stepCount, locale)(total) }}
     </p>
-    <ul class="summary">
-      <li v-for="item in summary" :key="item">{{ item }}</li>
-    </ul>
   </header>
 
   <GuideDoc :config="config" :locale="locale" />
 
-  <footer>{{ pick(ui.disclaimer, locale) }}</footer>
+  <footer>
+    <p class="footer-title">{{ pick(ui.configSummary, locale) }}</p>
+    <ul class="summary">
+      <li v-for="item in summary" :key="item">{{ item }}</li>
+    </ul>
+    <p>
+      {{ pick(ui.verifiedAgainst, locale) }} {{ VERIFIED_AGAINST }} ·
+      {{ pick(ui.disclaimer, locale) }}
+    </p>
+  </footer>
 </template>
 
 <style scoped>
@@ -130,6 +135,20 @@ footer {
   border-top: 1px solid var(--rule);
   color: var(--faint);
   font-size: 0.78rem;
+}
+
+.footer-title {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+footer .summary {
+  margin-top: 0.75rem;
+}
+
+footer > :last-child {
+  margin-bottom: 0;
 }
 
 @media print {

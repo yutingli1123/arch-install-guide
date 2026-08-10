@@ -10,7 +10,7 @@ export const ui = {
   copied: { zh: '已复制' },
   print: { zh: '保存为 PDF' },
   verifiedAgainst: { zh: '对照 Arch 状态验证于' },
-  configSummary: { zh: '本份指南对应的配置' },
+  configSummary: { zh: '本指南配置' },
   disclaimer: { zh: '本站与 Arch Linux 官方无关。' },
   stepCount: { zh: (total: number) => `共 ${total} 步` },
 } satisfies Record<string, Localized<unknown>>
