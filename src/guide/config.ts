@@ -11,10 +11,10 @@ export const defaultConfig: Config = {
   espSize: '1G',
   subvolumes: [
     { name: '@', mountPoint: '/' },
+    { name: '@boot', mountPoint: '/boot' },
     { name: '@home', mountPoint: '/home' },
     { name: '@log', mountPoint: '/var/log' },
     { name: '@pkg', mountPoint: '/var/cache/pacman/pkg' },
-    { name: '@boot', mountPoint: '/boot' },
   ],
   mountOptions: ['compress=zstd', 'noatime'],
   timezone: 'America/Toronto',

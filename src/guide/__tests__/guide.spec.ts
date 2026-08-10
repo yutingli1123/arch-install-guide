@@ -37,6 +37,8 @@ describe('derive', () => {
 
   it('mounts an independent boot subvolume for the UKI layout', () => {
     expect(defaultConfig.subvolumes).toContainEqual({ name: '@boot', mountPoint: '/boot' })
+    const points = derive(defaultConfig).nestedSubvolumes.map((s) => s.mountPoint)
+    expect(points.indexOf('/boot')).toBeLessThan(points.indexOf('/home'))
   })
 })
 
