@@ -14,6 +14,7 @@ export const defaultConfig: Config = {
     { name: '@home', mountPoint: '/home' },
     { name: '@log', mountPoint: '/var/log' },
     { name: '@pkg', mountPoint: '/var/cache/pacman/pkg' },
+    { name: '@boot', mountPoint: '/boot' },
   ],
   mountOptions: ['compress=zstd', 'noatime'],
   timezone: 'America/Toronto',

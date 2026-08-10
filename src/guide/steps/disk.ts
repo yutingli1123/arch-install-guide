@@ -70,7 +70,7 @@ umount /mnt
 | --- | --- |
 ${cfg.subvolumes.map((s) => `| \`${s.name}\` | \`${s.mountPoint}\` |`).join('\n')}
 
-将 \`@log\` 和 \`@pkg\` 设置为独立子卷，可以避免它们被包含在 \`@\` 的快照中。虽然当前阶段不安装 snapper，仍预先采用此布局，以免后续启用快照时重新调整。`,
+\`@log\`、\`@pkg\` 和 \`@boot\` 均不包含在 \`@\` 的快照中。虽然当前阶段不安装 snapper，仍预先采用此布局，以免后续启用快照时重新调整。`,
     },
   },
   {
@@ -98,7 +98,7 @@ mount --mkdir -o noatime ${espDevice} /mnt${espMountPoint}
 
 这些挂载选项会由 \`genfstab\` 写入 fstab。btrfs 子卷使用 \`${mountOptions}\`；ESP 使用 \`noatime\`，以避免读取文件时更新访问时间而产生不必要的写入。
 
-ESP 挂载在 \`${espMountPoint}\`：用于引导的 UKI 最终会生成到此处，固件和 systemd-boot 需要从 FAT 文件系统读取它。\`/boot\` 保留在根文件系统上，仅存放 pacman 安装的 vmlinuz 和 mkinitcpio 的中间产物。
+ESP 挂载在 \`${espMountPoint}\`：用于引导的 UKI 最终会生成到此处，固件和 systemd-boot 需要从 FAT 文件系统读取它。\`/boot\` 是根 btrfs 文件系统上的 \`@boot\` 子卷，仅存放 pacman 安装的 vmlinuz 和 mkinitcpio 的中间产物。
 
 核对：
 

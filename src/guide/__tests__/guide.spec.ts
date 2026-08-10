@@ -34,6 +34,10 @@ describe('derive', () => {
     expect(derive({ ...defaultConfig, cpu: 'amd' }).packages).toContain('amd-ucode')
     expect(derive({ ...defaultConfig, cpu: 'intel' }).packages).not.toContain('amd-ucode')
   })
+
+  it('mounts an independent boot subvolume for the UKI layout', () => {
+    expect(defaultConfig.subvolumes).toContainEqual({ name: '@boot', mountPoint: '/boot' })
+  })
 })
 
 describe('steps', () => {
@@ -89,6 +93,14 @@ describe('renderGuide', () => {
     expect(rendered).toContain('<pre><code>lsblk</code></pre>')
     expect(rendered).not.toContain('lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS')
     expect(rendered).toContain('mount --mkdir -o noatime /dev/nvme0n1p1 /mnt/efi')
+  })
+
+  it('creates and mounts the boot subvolume', () => {
+    const rendered = html.join('')
+    expect(rendered).toContain('btrfs subvolume create /mnt/@boot')
+    expect(rendered).toContain(
+      'mount --mkdir -o subvol=@boot,compress=zstd,noatime /dev/nvme0n1p2 /mnt/boot',
+    )
   })
 
   it('does not write the default us keymap to vconsole.conf', () => {
