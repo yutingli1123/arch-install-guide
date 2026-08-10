@@ -1,0 +1,98 @@
+:root {
+  --bg: #fdfdfc;
+  --fg: #23211e;
+  --muted: #7c766e;
+  --faint: #a8a29a;
+  --rule: #e4e1db;
+  --code-bg: #f4f2ee;
+  --accent: #1793d1;
+  --warn: #b4531a;
+  --sans: system-ui, sans-serif;
+  --mono: ui-monospace, 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --column: 44rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16181a;
+    --fg: #e2e4e6;
+    --muted: #91969b;
+    --faint: #6b7075;
+    --rule: #2b2f33;
+    --code-bg: #1d2023;
+    --accent: #4db3e8;
+    --warn: #e08a4a;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  /** Brand-colored hairline across the very top of the page. */
+  border-top: 3px solid var(--accent);
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  padding: 3.5rem 1.5rem 6rem;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.75;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/** Every top-level block shares the same centered measure. */
+body > * {
+  max-width: var(--column);
+  margin-inline: auto;
+}
+
+code,
+pre {
+  font-family: var(--mono);
+  font-variant-ligatures: none;
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 0.2em;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+@media print {
+  :root {
+    --bg: #fff;
+    --fg: #000;
+    --muted: #555;
+    --faint: #777;
+    --rule: #ccc;
+    --code-bg: #f6f5f3;
+    --accent: #000;
+  }
+
+  html {
+    border-top: none;
+  }
+
+  body {
+    padding: 0;
+    font-size: 10pt;
+    line-height: 1.6;
+  }
+
+  .no-print {
+    display: none;
+  }
+}

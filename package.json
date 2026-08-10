@@ -13,6 +13,7 @@
     "format": "oxfmt src/"
   },
   "dependencies": {
+    "markdown-it": "^15.0.0",
     "vue": "^3.5.40"
   },
   "devDependencies": {
