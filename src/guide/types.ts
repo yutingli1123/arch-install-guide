@@ -6,7 +6,25 @@ export type Localized<T> = { zh: T } & Partial<Record<Locale, T>>
 export type CpuVendor = 'intel' | 'amd'
 
 /** Kernel image form. Decides where the ESP is mounted and what gets signed. */
-export type KernelImage = 'split' | 'uki'
+export type SwapMode = 'none' | 'zram' | 'swapfile' | 'partition'
+export type SubvolumeLayout = 'root-only' | 'separated'
+export type SecureBootMode = 'none' | 'custom-db' | 'shim-mok'
+export type SnapperMode = 'none' | 'root' | 'root-home'
+export type Desktop = 'none' | 'gnome' | 'kde' | 'hyprland'
+
+export type Encryption =
+  | { mode: 'none' }
+  | {
+      mode: 'luks2'
+      unlock:
+        | { method: 'password' }
+        | {
+            method: 'tpm2'
+            pin: boolean
+            hashPcrs: number[]
+            signedPcrs: number[]
+          }
+    }
 
 export type Subvolume = {
   name: string
@@ -17,9 +35,9 @@ export type Subvolume = {
 export type Config = {
   disk: string
   cpu: CpuVendor
-  kernelImage: KernelImage
   espSize: string
-  subvolumes: Subvolume[]
+  swap: SwapMode
+  subvolumeLayout: SubvolumeLayout
   /** Extra btrfs mount options applied to every subvolume. */
   mountOptions: string[]
   timezone: string
@@ -27,6 +45,10 @@ export type Config = {
   keymap: string
   hostname: string
   username: string
+  encryption: Encryption
+  secureBoot: SecureBootMode
+  snapper: SnapperMode
+  desktop: Desktop
 }
 
 /**
@@ -42,6 +64,7 @@ export type Context = {
   /** ESP mount point inside the installed system. */
   espMountPoint: string
   rootSubvolume: Subvolume
+  subvolumes: Subvolume[]
   /** Subvolumes other than the root one, ordered by mount point depth. */
   nestedSubvolumes: Subvolume[]
   mountOptions: string

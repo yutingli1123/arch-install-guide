@@ -15,19 +15,28 @@ describe('partition', () => {
 })
 
 describe('derive', () => {
-  it('rejects a subvolume layout without a root', () => {
-    const cfg: Config = { ...defaultConfig, subvolumes: [{ name: '@home', mountPoint: '/home' }] }
-    expect(() => derive(cfg)).toThrow()
+  it('provides the two supported subvolume layouts', () => {
+    expect(derive({ ...defaultConfig, subvolumeLayout: 'root-only' }).subvolumes).toEqual([
+      { name: '@', mountPoint: '/' },
+    ])
+    expect(derive(defaultConfig).subvolumes.map((subvolume) => subvolume.name)).toEqual([
+      '@',
+      '@boot',
+      '@home',
+      '@log',
+      '@pkg',
+    ])
+  })
+
+  it('rejects snapshots with the root-only layout', () => {
+    expect(() =>
+      derive({ ...defaultConfig, subvolumeLayout: 'root-only', snapper: 'root' }),
+    ).toThrow('snapper requires the separated subvolume layout')
   })
 
   it('orders nested subvolumes so parents mount first', () => {
     const points = derive(defaultConfig).nestedSubvolumes.map((s) => s.mountPoint)
     expect(points).toEqual([...points].sort((a, b) => segments(a) - segments(b)))
-  })
-
-  it('puts the ESP where the bootloader can read the kernel', () => {
-    expect(derive({ ...defaultConfig, kernelImage: 'split' }).espMountPoint).toBe('/boot')
-    expect(derive({ ...defaultConfig, kernelImage: 'uki' }).espMountPoint).toBe('/efi')
   })
 
   it('picks microcode matching the cpu vendor', () => {
@@ -90,6 +99,15 @@ describe('renderGuide', () => {
     expect(html).toContain('btrfs subvolume create /mnt/@boot')
     expect(html).toContain(bootMount)
     expect(html.indexOf(bootMount)).toBeLessThan(html.indexOf(homeMount))
+  })
+
+  it('keeps boot inside the root subvolume in the root-only layout', () => {
+    const rootOnly = renderHtml({ ...defaultConfig, subvolumeLayout: 'root-only' })
+
+    expect(rootOnly).toContain('btrfs subvolume create /mnt/@')
+    expect(rootOnly).not.toContain('btrfs subvolume create /mnt/@boot')
+    expect(rootOnly).not.toContain('subvol=@boot')
+    expect(rootOnly).toContain('<code>/boot</code> 是根子卷内的普通目录')
   })
 
   it('only writes vconsole.conf for a non-default keymap', () => {

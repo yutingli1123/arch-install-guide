@@ -56,11 +56,11 @@ mkfs.btrfs -f ${rootDevice}
     section: 'disk',
     title: { zh: '创建子卷' },
     body: {
-      zh: ({ cfg, rootDevice }) => `先挂载 btrfs 顶层，创建子卷，然后卸载：
+      zh: ({ cfg, rootDevice, subvolumes }) => `先挂载 btrfs 顶层，创建子卷，然后卸载：
 
 \`\`\`
 mount ${rootDevice} /mnt
-${cfg.subvolumes.map((s) => `btrfs subvolume create /mnt/${s.name}`).join('\n')}
+${subvolumes.map((s) => `btrfs subvolume create /mnt/${s.name}`).join('\n')}
 umount /mnt
 \`\`\`
 
@@ -68,9 +68,9 @@ umount /mnt
 
 | 子卷 | 挂载点 |
 | --- | --- |
-${cfg.subvolumes.map((s) => `| \`${s.name}\` | \`${s.mountPoint}\` |`).join('\n')}
+${subvolumes.map((s) => `| \`${s.name}\` | \`${s.mountPoint}\` |`).join('\n')}
 
-\`@log\`、\`@pkg\` 和 \`@boot\` 均不包含在 \`@\` 的快照中。虽然当前阶段不安装 snapper，仍预先采用此布局，以免后续启用快照时重新调整。`,
+${cfg.subvolumeLayout === 'separated' ? '\`@log\`、\`@pkg\` 和 \`@boot\` 均不包含在 \`@\` 的快照中。此布局可以不配置快照，也可以配置 snapper。' : '此布局只创建根子卷，不支持配置 snapper 快照。'}`,
     },
   },
   {
@@ -84,6 +84,7 @@ ${cfg.subvolumes.map((s) => `| \`${s.name}\` | \`${s.mountPoint}\` |`).join('\n'
         espDevice,
         espMountPoint,
         rootSubvolume,
+        subvolumes,
         nestedSubvolumes,
         mountOptions,
       }) => `按照挂载点的层级依次挂载，最后挂载 ESP：
@@ -98,7 +99,7 @@ mount --mkdir -o noatime ${espDevice} /mnt${espMountPoint}
 
 这些挂载选项会由 \`genfstab\` 写入 fstab。btrfs 子卷使用 \`${mountOptions}\`；ESP 使用 \`noatime\`，以避免读取文件时更新访问时间而产生不必要的写入。
 
-ESP 挂载在 \`${espMountPoint}\`：用于引导的 UKI 最终会生成到此处，固件和 systemd-boot 需要从 FAT 文件系统读取它。\`/boot\` 是根 btrfs 文件系统上的 \`@boot\` 子卷，仅存放 pacman 安装的 vmlinuz 和 mkinitcpio 的中间产物。
+ESP 挂载在 \`${espMountPoint}\`：用于引导的 UKI 最终会生成到此处，固件和 systemd-boot 需要从 FAT 文件系统读取它。${cfg.subvolumeLayout === 'separated' ? '\`/boot\` 是根 btrfs 文件系统上的 \`@boot\` 子卷，仅存放 pacman 安装的 vmlinuz 和 mkinitcpio 的中间产物。' : '\`/boot\` 是根子卷内的普通目录。'}
 
 核对：
 
@@ -106,7 +107,7 @@ ESP 挂载在 \`${espMountPoint}\`：用于引导的 UKI 最终会生成到此�
 findmnt -R /mnt
 \`\`\`
 
-应当能看到 ${cfg.subvolumes.length} 个 btrfs 子卷加一个 ESP。`,
+应当能看到 ${subvolumes.length} 个 btrfs 子卷加一个 ESP。`,
     },
   },
 ]

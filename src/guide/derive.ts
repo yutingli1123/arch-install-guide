@@ -1,4 +1,4 @@
-import type { Config, Context, Subvolume } from './types'
+import type { Config, Context, Subvolume, SubvolumeLayout } from './types'
 
 /** Devices whose partitions carry a `p` before the partition number. */
 const PARTITION_SUFFIX = /^\/dev\/(nvme|mmcblk|loop|md)/
@@ -17,9 +17,24 @@ const BASE_PACKAGES = [
   'vim',
 ]
 
+const SUBVOLUME_LAYOUTS = {
+  'root-only': [{ name: '@', mountPoint: '/' }],
+  separated: [
+    { name: '@', mountPoint: '/' },
+    { name: '@boot', mountPoint: '/boot' },
+    { name: '@home', mountPoint: '/home' },
+    { name: '@log', mountPoint: '/var/log' },
+    { name: '@pkg', mountPoint: '/var/cache/pacman/pkg' },
+  ],
+} satisfies Record<SubvolumeLayout, [Subvolume, ...Subvolume[]]>
+
 export function derive(cfg: Config): Context {
-  const rootSubvolume = cfg.subvolumes.find((s) => s.mountPoint === '/')
-  if (!rootSubvolume) throw new Error('config.subvolumes must contain a subvolume mounted at /')
+  if (cfg.subvolumeLayout === 'root-only' && cfg.snapper !== 'none') {
+    throw new Error('snapper requires the separated subvolume layout')
+  }
+
+  const subvolumes = SUBVOLUME_LAYOUTS[cfg.subvolumeLayout]
+  const rootSubvolume = subvolumes[0]
 
   const microcode = `${cfg.cpu}-ucode`
 
@@ -27,10 +42,10 @@ export function derive(cfg: Config): Context {
     cfg,
     espDevice: partition(cfg.disk, 1),
     rootDevice: partition(cfg.disk, 2),
-    // systemd-boot reads kernel and initramfs off the ESP, so split images put it at /boot.
-    espMountPoint: cfg.kernelImage === 'split' ? '/boot' : '/efi',
+    espMountPoint: '/efi',
     rootSubvolume,
-    nestedSubvolumes: cfg.subvolumes
+    subvolumes,
+    nestedSubvolumes: subvolumes
       .filter((s) => s !== rootSubvolume)
       .sort((a, b) => depth(a) - depth(b)),
     mountOptions: cfg.mountOptions.join(','),

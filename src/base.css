@@ -7,6 +7,7 @@
   --code-bg: #f4f2ee;
   --accent: #1793d1;
   --warn: #b4531a;
+  --sans: system-ui, sans-serif;
   --mono: ui-monospace, 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
   --column: 44rem;
 }
@@ -42,12 +43,7 @@ body {
   padding: 3.5rem 1.5rem 6rem;
   background: var(--bg);
   color: var(--fg);
-  font-family:
-    system-ui,
-    -apple-system,
-    'Noto Sans SC',
-    'PingFang SC',
-    sans-serif;
+  font-family: var(--sans);
   font-size: 17px;
   line-height: 1.75;
   text-rendering: optimizeLegibility;

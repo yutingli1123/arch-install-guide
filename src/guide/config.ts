@@ -7,21 +7,19 @@ import type { Config } from './types'
 export const defaultConfig: Config = {
   disk: '/dev/nvme0n1',
   cpu: 'intel',
-  kernelImage: 'uki',
   espSize: '1G',
-  subvolumes: [
-    { name: '@', mountPoint: '/' },
-    { name: '@boot', mountPoint: '/boot' },
-    { name: '@home', mountPoint: '/home' },
-    { name: '@log', mountPoint: '/var/log' },
-    { name: '@pkg', mountPoint: '/var/cache/pacman/pkg' },
-  ],
+  swap: 'none',
+  subvolumeLayout: 'separated',
   mountOptions: ['compress=zstd', 'noatime'],
   timezone: 'America/Toronto',
   systemLocale: 'en_US.UTF-8',
   keymap: 'us',
   hostname: 'archlinux',
   username: 'user',
+  encryption: { mode: 'none' },
+  secureBoot: 'none',
+  snapper: 'none',
+  desktop: 'none',
 }
 
 /** Stamped into the rendered guide so a printed copy carries its own expiry. */
