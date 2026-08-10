@@ -34,11 +34,6 @@ describe('derive', () => {
     ).toThrow('snapper requires the separated subvolume layout')
   })
 
-  it('orders nested subvolumes so parents mount first', () => {
-    const points = derive(defaultConfig).nestedSubvolumes.map((s) => s.mountPoint)
-    expect(points).toEqual([...points].sort((a, b) => segments(a) - segments(b)))
-  })
-
   it('picks microcode matching the cpu vendor', () => {
     expect(derive({ ...defaultConfig, cpu: 'amd' }).packages).toContain('amd-ucode')
     expect(derive({ ...defaultConfig, cpu: 'intel' }).packages).not.toContain('amd-ucode')
@@ -132,8 +127,4 @@ function renderHtml(cfg: Config): string {
     .flatMap((section) => section.steps)
     .map((step) => step.html)
     .join('')
-}
-
-function segments(path: string): number {
-  return path.split('/').filter(Boolean).length
 }

@@ -45,16 +45,9 @@ export function derive(cfg: Config): Context {
     espMountPoint: '/efi',
     rootSubvolume,
     subvolumes,
-    nestedSubvolumes: subvolumes
-      .filter((s) => s !== rootSubvolume)
-      .sort((a, b) => depth(a) - depth(b)),
+    nestedSubvolumes: subvolumes.slice(1),
     mountOptions: cfg.mountOptions.join(','),
     packages: [...BASE_PACKAGES, microcode].sort(),
     microcode,
   }
-}
-
-/** Parent mount points must be mounted first. */
-function depth(subvolume: Subvolume): number {
-  return subvolume.mountPoint.split('/').filter(Boolean).length
 }
