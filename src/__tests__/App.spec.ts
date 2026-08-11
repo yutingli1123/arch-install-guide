@@ -25,7 +25,7 @@ describe('setup wizard', () => {
     const params = new URLSearchParams(window.location.search)
     expect([...params.entries()]).toEqual([['step', '1']])
     expect((wrapper.get('input[name="disk"]').element as HTMLInputElement).value).toBe('')
-    expect((wrapper.get('select[name="cpu"]').element as HTMLSelectElement).value).toBe('')
+    expect(wrapper.find('input[name="cpu"]:checked').exists()).toBe(false)
     expect(params.get('step')).toBe('1')
   })
 
@@ -43,20 +43,25 @@ describe('setup wizard', () => {
     await start(wrapper)
 
     await wrapper.get('input[name="disk"]').setValue('/dev/nvme0n1')
-    await wrapper.get('select[name="cpu"]').setValue('amd')
+    await selectChoice(wrapper, 'cpu', 'amd')
     await next(wrapper)
 
-    expect(wrapper.get('form').text()).toContain('单一根子卷只创建 @')
-    expect(wrapper.get('form').text()).toContain('两者都位于同一个 Btrfs 文件系统')
+    expect(wrapper.get('form').text()).toContain('只创建 @，结构简单，但不能配置 Snapper')
+    expect(wrapper.get('form').text()).toContain('在同一个 Btrfs 文件系统中')
     expect(wrapper.get('form').text()).toContain('当前不可用：对应安装步骤尚未提供')
-    await wrapper.get('select[name="subvolumeLayout"]').setValue('root-only')
-    const snapper = wrapper.get('select[name="snapper"]')
-    expect(snapper.find('option[value="root"]').attributes('disabled')).toBeDefined()
+    await selectChoice(wrapper, 'subvolumeLayout', 'root-only')
+    expect(
+      wrapper
+        .get('input[name="subvolumeLayout"][value="root-only"]')
+        .element.parentElement?.classList.contains('selected'),
+    ).toBe(true)
+    const snapper = wrapper.get('input[name="snapper"][value="root"]')
+    expect(snapper.attributes('disabled')).toBeDefined()
     expect(snapper.element.parentElement?.textContent).toContain('需要标准分离子卷布局')
-    await wrapper.get('select[name="swap"]').setValue('none')
-    await wrapper.get('select[name="encryption"]').setValue('none')
-    await wrapper.get('select[name="secureBoot"]').setValue('none')
-    await wrapper.get('select[name="snapper"]').setValue('none')
+    await selectChoice(wrapper, 'swap', 'none')
+    await selectChoice(wrapper, 'encryption', 'none')
+    await selectChoice(wrapper, 'secureBoot', 'none')
+    await selectChoice(wrapper, 'snapper', 'none')
     await next(wrapper)
 
     expect(wrapper.get('.wizard h1').text()).toBe('区域与语言')
@@ -75,7 +80,7 @@ describe('setup wizard', () => {
     await wrapper.get('input[name="username"]').setValue('root')
     expect((wrapper.get('input[name="username"]').element as HTMLInputElement).value).toBe('')
     await wrapper.get('input[name="username"]').setValue('alice')
-    await wrapper.get('select[name="desktop"]').setValue('none')
+    await selectChoice(wrapper, 'desktop', 'none')
     await next(wrapper)
 
     expect(wrapper.get('.wizard h1').text()).toBe('确认配置')
@@ -187,16 +192,20 @@ async function next(wrapper: VueWrapper) {
   await wrapper.get('form').trigger('submit')
 }
 
+async function selectChoice(wrapper: VueWrapper, name: string, value: string) {
+  await wrapper.get(`input[name="${name}"][value="${value}"]`).setValue(true)
+}
+
 async function openGuide(wrapper: VueWrapper) {
   await start(wrapper)
   await wrapper.get('input[name="disk"]').setValue('/dev/nvme0n1')
-  await wrapper.get('select[name="cpu"]').setValue('intel')
+  await selectChoice(wrapper, 'cpu', 'intel')
   await next(wrapper)
-  await wrapper.get('select[name="subvolumeLayout"]').setValue('separated')
-  await wrapper.get('select[name="swap"]').setValue('none')
-  await wrapper.get('select[name="encryption"]').setValue('none')
-  await wrapper.get('select[name="secureBoot"]').setValue('none')
-  await wrapper.get('select[name="snapper"]').setValue('none')
+  await selectChoice(wrapper, 'subvolumeLayout', 'separated')
+  await selectChoice(wrapper, 'swap', 'none')
+  await selectChoice(wrapper, 'encryption', 'none')
+  await selectChoice(wrapper, 'secureBoot', 'none')
+  await selectChoice(wrapper, 'snapper', 'none')
   await next(wrapper)
   await wrapper.get('select[name="timezone"]').setValue('America/Toronto')
   await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
@@ -205,7 +214,7 @@ async function openGuide(wrapper: VueWrapper) {
   await next(wrapper)
   await wrapper.get('input[name="hostname"]').setValue('archlinux')
   await wrapper.get('input[name="username"]').setValue('user')
-  await wrapper.get('select[name="desktop"]').setValue('none')
+  await selectChoice(wrapper, 'desktop', 'none')
   await next(wrapper)
   await next(wrapper)
 }

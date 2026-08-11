@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import ChoicePicker from '@/components/ChoicePicker.vue'
 import { KEYMAPS, SYSTEM_LOCALES, TIMEZONES, validate, type ConfigChoice } from '@/guide/config'
 import type { ConfigDraft, Locale } from '@/guide/types'
-import { choices, pick, ui } from '@/guide/ui'
+import { choiceDescriptions, choices, pick, ui } from '@/guide/ui'
 
 const props = defineProps<{
   locale: Locale
@@ -22,18 +23,104 @@ const titles = computed(() => [
 ])
 const unavailable = computed(() => validate(model.value))
 const reason = (choice: ConfigChoice) => unavailable.value[choice]
+const unavailableReason = (choice: ConfigChoice) => {
+  const message = reason(choice)
+  return message ? `${pick(ui.unavailable, props.locale)}：${message}` : undefined
+}
+
+const cpuOptions = computed(() => [
+  {
+    value: 'intel',
+    label: pick(choices.cpu.intel, props.locale),
+    description: pick(choiceDescriptions.cpu.intel, props.locale),
+  },
+  {
+    value: 'amd',
+    label: pick(choices.cpu.amd, props.locale),
+    description: pick(choiceDescriptions.cpu.amd, props.locale),
+  },
+])
+const subvolumeOptions = computed(() => [
+  {
+    value: 'root-only',
+    label: pick(choices.subvolumeLayout['root-only'], props.locale),
+    description: pick(choiceDescriptions.subvolumeLayout['root-only'], props.locale),
+  },
+  {
+    value: 'separated',
+    label: pick(choices.subvolumeLayout.separated, props.locale),
+    description: pick(choiceDescriptions.subvolumeLayout.separated, props.locale),
+  },
+])
+const swapOptions = computed(() => [
+  {
+    value: 'none',
+    label: pick(choices.swap.none, props.locale),
+    description: pick(choiceDescriptions.swap.none, props.locale),
+  },
+  ...(['zram', 'swapfile', 'partition'] as const).map((value) => ({
+    value,
+    label: pick(choices.swap[value], props.locale),
+    description: pick(choiceDescriptions.swap[value], props.locale),
+    disabledReason: unavailableReason(`swap.${value}`),
+  })),
+])
+const encryptionOptions = computed(() => [
+  {
+    value: 'none',
+    label: pick(choices.encryption.none, props.locale),
+    description: pick(choiceDescriptions.encryption.none, props.locale),
+  },
+  ...(['password', 'tpm2-pin'] as const).map((value) => ({
+    value,
+    label: pick(choices.encryption[value], props.locale),
+    description: pick(choiceDescriptions.encryption[value], props.locale),
+    disabledReason: unavailableReason(`encryption.${value}`),
+  })),
+])
+const secureBootOptions = computed(() => [
+  {
+    value: 'none',
+    label: pick(choices.secureBoot.none, props.locale),
+    description: pick(choiceDescriptions.secureBoot.none, props.locale),
+  },
+  ...(['custom-db', 'shim-mok'] as const).map((value) => ({
+    value,
+    label: pick(choices.secureBoot[value], props.locale),
+    description: pick(choiceDescriptions.secureBoot[value], props.locale),
+    disabledReason: unavailableReason(`secureBoot.${value}`),
+  })),
+])
+const snapperOptions = computed(() => [
+  {
+    value: 'none',
+    label: pick(choices.snapper.none, props.locale),
+    description: pick(choiceDescriptions.snapper.none, props.locale),
+  },
+  ...(['root', 'root-home'] as const).map((value) => ({
+    value,
+    label: pick(choices.snapper[value], props.locale),
+    description: pick(choiceDescriptions.snapper[value], props.locale),
+    disabledReason: unavailableReason(`snapper.${value}`),
+  })),
+])
+const desktopOptions = computed(() => [
+  {
+    value: 'none',
+    label: pick(choices.desktop.none, props.locale),
+    description: pick(choiceDescriptions.desktop.none, props.locale),
+  },
+  ...(['gnome', 'kde', 'hyprland'] as const).map((value) => ({
+    value,
+    label: pick(choices.desktop[value], props.locale),
+    description: pick(choiceDescriptions.desktop[value], props.locale),
+    disabledReason: unavailableReason(`desktop.${value}`),
+  })),
+])
 
 type TextField = 'disk' | 'hostname' | 'username'
-type SelectField =
-  | 'cpu'
-  | 'swap'
-  | 'subvolumeLayout'
-  | 'secureBoot'
-  | 'snapper'
-  | 'desktop'
-  | 'timezone'
-  | 'systemLocale'
-  | 'keymap'
+type ChoiceField = Exclude<keyof ConfigDraft, 'encryption'>
+type SelectField = 'timezone' | 'systemLocale' | 'keymap'
 
 function commitText(field: TextField, event: Event) {
   const input = event.currentTarget as HTMLInputElement
@@ -49,9 +136,12 @@ function commitSelect(field: SelectField, event: Event) {
   model.value = { ...model.value, [field]: select.value } as ConfigDraft
 }
 
-function commitEncryption(event: Event) {
-  const select = event.currentTarget as HTMLSelectElement
-  if (select.value === 'none') model.value = { ...model.value, encryption: { mode: 'none' } }
+function commitChoice(field: ChoiceField, value: string | undefined) {
+  if (value !== undefined) model.value = { ...model.value, [field]: value } as ConfigDraft
+}
+
+function commitEncryption(value: string | undefined) {
+  if (value === 'none') model.value = { ...model.value, encryption: { mode: 'none' } }
 }
 
 function advance(event: Event) {
@@ -103,136 +193,67 @@ function advance(event: Event) {
           />
         </label>
 
-        <label>
+        <div class="field">
           <span>{{ pick(ui.cpu, props.locale) }}</span>
-          <select
+          <ChoicePicker
             name="cpu"
-            required
-            :value="model.cpu ?? ''"
-            @change="commitSelect('cpu', $event)"
-          >
-            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
-            <option value="intel">{{ pick(choices.cpu.intel, props.locale) }}</option>
-            <option value="amd">{{ pick(choices.cpu.amd, props.locale) }}</option>
-          </select>
-          <small class="description">{{ pick(ui.cpuHint, props.locale) }}</small>
-        </label>
+            :model-value="model.cpu"
+            :options="cpuOptions"
+            @update:model-value="commitChoice('cpu', $event)"
+          />
+        </div>
       </fieldset>
 
       <fieldset v-else-if="step === 1">
-        <label>
+        <div class="field">
           <span>{{ pick(ui.subvolumes, props.locale) }}</span>
-          <select
+          <ChoicePicker
             name="subvolumeLayout"
-            required
-            :value="model.subvolumeLayout ?? ''"
-            @change="commitSelect('subvolumeLayout', $event)"
-          >
-            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
-            <option value="root-only">
-              {{ pick(choices.subvolumeLayout['root-only'], props.locale) }}
-            </option>
-            <option value="separated">
-              {{ pick(choices.subvolumeLayout.separated, props.locale) }}
-            </option>
-          </select>
-          <small class="description">{{ pick(ui.subvolumeLayoutHint, props.locale) }}</small>
-        </label>
+            :model-value="model.subvolumeLayout"
+            :options="subvolumeOptions"
+            @update:model-value="commitChoice('subvolumeLayout', $event)"
+          />
+        </div>
 
-        <label>
+        <div class="field">
           <span>{{ pick(ui.swap, props.locale) }}</span>
-          <select
+          <ChoicePicker
             name="swap"
-            required
-            :value="model.swap ?? ''"
-            @change="commitSelect('swap', $event)"
-          >
-            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
-            <option value="none">{{ pick(choices.swap.none, props.locale) }}</option>
-            <option value="zram" :disabled="Boolean(reason('swap.zram'))">
-              {{ pick(choices.swap.zram, props.locale) }}
-            </option>
-            <option value="swapfile" :disabled="Boolean(reason('swap.swapfile'))">
-              {{ pick(choices.swap.swapfile, props.locale) }}
-            </option>
-            <option value="partition" :disabled="Boolean(reason('swap.partition'))">
-              {{ pick(choices.swap.partition, props.locale) }}
-            </option>
-          </select>
-          <small class="description">{{ pick(ui.swapHint, props.locale) }}</small>
-          <small v-if="reason('swap.zram')" class="availability">
-            {{ pick(ui.unavailable, props.locale) }}：{{ reason('swap.zram') }}
-          </small>
-        </label>
+            :model-value="model.swap"
+            :options="swapOptions"
+            @update:model-value="commitChoice('swap', $event)"
+          />
+        </div>
 
-        <label>
+        <div class="field">
           <span>{{ pick(ui.encryption, props.locale) }}</span>
-          <select
+          <ChoicePicker
             name="encryption"
-            required
-            :value="model.encryption?.mode ?? ''"
-            @change="commitEncryption"
-          >
-            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
-            <option value="none">{{ pick(choices.encryption.none, props.locale) }}</option>
-            <option value="password" :disabled="Boolean(reason('encryption.password'))">
-              {{ pick(choices.encryption.password, props.locale) }}
-            </option>
-            <option value="tpm2-pin" :disabled="Boolean(reason('encryption.tpm2-pin'))">
-              {{ pick(choices.encryption['tpm2-pin'], props.locale) }}
-            </option>
-          </select>
-          <small class="description">{{ pick(ui.encryptionHint, props.locale) }}</small>
-          <small v-if="reason('encryption.password')" class="availability">
-            {{ pick(ui.unavailable, props.locale) }}：{{ reason('encryption.password') }}
-          </small>
-        </label>
+            :model-value="model.encryption?.mode"
+            :options="encryptionOptions"
+            @update:model-value="commitEncryption"
+          />
+        </div>
 
-        <label>
+        <div class="field">
           <span>{{ pick(ui.secureBoot, props.locale) }}</span>
-          <select
+          <ChoicePicker
             name="secureBoot"
-            required
-            :value="model.secureBoot ?? ''"
-            @change="commitSelect('secureBoot', $event)"
-          >
-            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
-            <option value="none">{{ pick(choices.secureBoot.none, props.locale) }}</option>
-            <option value="custom-db" :disabled="Boolean(reason('secureBoot.custom-db'))">
-              {{ pick(choices.secureBoot['custom-db'], props.locale) }}
-            </option>
-            <option value="shim-mok" :disabled="Boolean(reason('secureBoot.shim-mok'))">
-              {{ pick(choices.secureBoot['shim-mok'], props.locale) }}
-            </option>
-          </select>
-          <small class="description">{{ pick(ui.secureBootHint, props.locale) }}</small>
-          <small v-if="reason('secureBoot.custom-db')" class="availability">
-            {{ pick(ui.unavailable, props.locale) }}：{{ reason('secureBoot.custom-db') }}
-          </small>
-        </label>
+            :model-value="model.secureBoot"
+            :options="secureBootOptions"
+            @update:model-value="commitChoice('secureBoot', $event)"
+          />
+        </div>
 
-        <label>
+        <div class="field">
           <span>{{ pick(ui.snapper, props.locale) }}</span>
-          <select
+          <ChoicePicker
             name="snapper"
-            required
-            :value="model.snapper ?? ''"
-            @change="commitSelect('snapper', $event)"
-          >
-            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
-            <option value="none">{{ pick(choices.snapper.none, props.locale) }}</option>
-            <option value="root" :disabled="Boolean(reason('snapper.root'))">
-              {{ pick(choices.snapper.root, props.locale) }}
-            </option>
-            <option value="root-home" :disabled="Boolean(reason('snapper.root-home'))">
-              {{ pick(choices.snapper['root-home'], props.locale) }}
-            </option>
-          </select>
-          <small class="description">{{ pick(ui.snapperHint, props.locale) }}</small>
-          <small v-if="reason('snapper.root')" class="availability">
-            {{ pick(ui.unavailable, props.locale) }}：{{ reason('snapper.root') }}
-          </small>
-        </label>
+            :model-value="model.snapper"
+            :options="snapperOptions"
+            @update:model-value="commitChoice('snapper', $event)"
+          />
+        </div>
       </fieldset>
 
       <fieldset v-else-if="step === 2">
@@ -312,31 +333,15 @@ function advance(event: Event) {
           <small class="description">{{ pick(ui.usernameHint, props.locale) }}</small>
         </label>
 
-        <label>
+        <div class="field">
           <span>{{ pick(ui.desktop, props.locale) }}</span>
-          <select
+          <ChoicePicker
             name="desktop"
-            required
-            :value="model.desktop ?? ''"
-            @change="commitSelect('desktop', $event)"
-          >
-            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
-            <option value="none">{{ pick(choices.desktop.none, props.locale) }}</option>
-            <option value="gnome" :disabled="Boolean(reason('desktop.gnome'))">
-              {{ pick(choices.desktop.gnome, props.locale) }}
-            </option>
-            <option value="kde" :disabled="Boolean(reason('desktop.kde'))">
-              {{ pick(choices.desktop.kde, props.locale) }}
-            </option>
-            <option value="hyprland" :disabled="Boolean(reason('desktop.hyprland'))">
-              {{ pick(choices.desktop.hyprland, props.locale) }}
-            </option>
-          </select>
-          <small class="description">{{ pick(ui.desktopHint, props.locale) }}</small>
-          <small v-if="reason('desktop.gnome')" class="availability">
-            {{ pick(ui.unavailable, props.locale) }}：{{ reason('desktop.gnome') }}
-          </small>
-        </label>
+            :model-value="model.desktop"
+            :options="desktopOptions"
+            @update:model-value="commitChoice('desktop', $event)"
+          />
+        </div>
       </fieldset>
 
       <section v-else class="review">
@@ -475,7 +480,8 @@ fieldset.single {
   font-weight: 600;
 }
 
-label {
+label,
+.field {
   display: grid;
   align-content: start;
   gap: 0.3rem;

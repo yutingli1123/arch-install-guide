@@ -38,36 +38,17 @@ export const ui = {
   none: { zh: '无' },
   targetDisk: { zh: '目标磁盘' },
   cpu: { zh: 'CPU' },
-  cpuHint: { zh: '用于安装与处理器厂商匹配的微码包；Intel 对应 intel-ucode，AMD 对应 amd-ucode。' },
   swap: { zh: 'swap' },
-  swapHint: {
-    zh: '内存不足时使用的交换空间。无：不配置；zram：在内存中压缩；swapfile：使用文件；独立分区：使用专用磁盘分区。',
-  },
   subvolumes: { zh: '子卷布局' },
-  subvolumeLayoutHint: {
-    zh: '单一根子卷只创建 @，结构简单，但不能配置 Snapper。标准分离子卷会将 /boot、/home、日志和软件包缓存置于独立子卷，避免它们全部随根系统一起快照，并允许配置 Snapper。两者都位于同一个 Btrfs 文件系统。',
-  },
   encryption: { zh: '磁盘加密' },
-  encryptionHint: {
-    zh: 'LUKS2 用于保护磁盘上的系统数据。密码模式每次启动时手动解锁；TPM2 + PIN 由 TPM 验证启动状态，并要求输入 PIN。ESP 始终不加密。',
-  },
   unlock: { zh: '解锁方式' },
   password: { zh: '密码' },
   tpmPin: { zh: 'TPM PIN' },
   hashPcrs: { zh: 'PCR 哈希绑定' },
   signedPcrs: { zh: 'PCR 签名策略' },
   secureBoot: { zh: '安全启动' },
-  secureBootHint: {
-    zh: '验证启动文件是否由受信任证书签名。自定义 UEFI db 需要固件支持注册自定义证书；shim-signed + MOK 适用于只能使用微软签名 shim 的固件。',
-  },
   snapper: { zh: 'snapper' },
-  snapperHint: {
-    zh: '管理 Btrfs 快照。不配置：不创建快照配置；root：只管理根系统快照；root + home：分别管理根系统和 home 快照。需要标准分离子卷布局。',
-  },
   desktop: { zh: '桌面环境' },
-  desktopHint: {
-    zh: '选择安装后使用的图形桌面；选择“无”只安装命令行基础系统，之后仍可自行安装桌面。',
-  },
   timezone: { zh: '时区' },
   timezoneHint: { zh: '选择安装后系统使用的时区。' },
   systemLocale: { zh: '系统语言' },
@@ -141,5 +122,45 @@ export const choices = {
     it: { zh: 'Italiano' },
     jp106: { zh: '日本語' },
     ru: { zh: 'Русский' },
+  },
+} satisfies Record<string, Record<string, Localized<string>>>
+
+export const choiceDescriptions = {
+  cpu: {
+    intel: { zh: '安装 Intel 处理器所需的 intel-ucode 微码包。' },
+    amd: { zh: '安装 AMD 处理器所需的 amd-ucode 微码包。' },
+  },
+  swap: {
+    none: { zh: '不配置交换空间；内存耗尽时系统无法将不活跃页面换出。' },
+    zram: { zh: '在内存中创建压缩交换设备，不占用磁盘空间。' },
+    swapfile: { zh: '在 Btrfs 文件系统中使用专门配置的交换文件。' },
+    partition: { zh: '在目标磁盘上划分一个专用交换分区。' },
+  },
+  subvolumeLayout: {
+    'root-only': { zh: '只创建 @，结构简单，但不能配置 Snapper。' },
+    separated: {
+      zh: '在同一个 Btrfs 文件系统中，将 /boot、/home、日志和软件包缓存置于独立子卷，控制根快照包含的内容，并允许配置 Snapper。',
+    },
+  },
+  encryption: {
+    none: { zh: '不加密根文件系统；ESP 无论选择哪种模式都不会加密。' },
+    password: { zh: '使用 LUKS2 保护系统数据，每次启动时手动输入密码解锁。' },
+    'tpm2-pin': { zh: '使用 LUKS2，由 TPM2 验证启动状态，并要求输入 PIN。' },
+  },
+  secureBoot: {
+    none: { zh: '不验证启动文件的签名。' },
+    'custom-db': { zh: '将自定义证书注册到固件 UEFI db；要求固件支持 Setup Mode。' },
+    'shim-mok': { zh: '通过微软签名的 shim 和自行注册的 MOK 建立信任链。' },
+  },
+  snapper: {
+    none: { zh: '不创建 Snapper 配置。' },
+    root: { zh: '只为根系统创建和管理快照。' },
+    'root-home': { zh: '分别为根系统和 home 创建独立的快照配置。' },
+  },
+  desktop: {
+    none: { zh: '只安装命令行基础系统；之后仍可自行安装桌面。' },
+    gnome: { zh: '安装 GNOME 桌面环境。' },
+    kde: { zh: '安装 KDE Plasma 桌面环境。' },
+    hyprland: { zh: '安装 Hyprland Wayland 合成器。' },
   },
 } satisfies Record<string, Record<string, Localized<string>>>
