@@ -15,8 +15,9 @@ export const ui = {
   editConfig: { zh: '修改配置' },
   installationTarget: { zh: '安装目标' },
   diskTutorial: { zh: '确认目标磁盘' },
-  diskTutorialBody: {
-    zh: '在准备安装 Arch Linux 的电脑上启动安装介质，然后运行下面的命令。根据 SIZE 和 TYPE 找到目标整盘；TYPE 应为 disk。在固定的 /dev/ 前缀后填写设备名，例如 nvme0n1 或 sda，不要填写 nvme0n1p1、sda1 这样的分区名。',
+  diskTutorialBeforeCommand: { zh: '在准备安装 Arch Linux 的电脑上启动安装介质，然后运行' },
+  diskTutorialAfterCommand: {
+    zh: '。根据 SIZE 和 TYPE 找到目标整盘。在固定的 /dev/ 前缀后填写设备名，例如 nvme0n1 或 sda，不要填写 nvme0n1p1、sda1 这样的分区名。',
   },
   diskEraseWarning: { zh: '执行指南中的分区命令将清除目标磁盘上的所有数据，请确认设备名无误。' },
   storage: { zh: '存储' },
@@ -52,6 +53,8 @@ export const ui = {
   desktop: { zh: '桌面环境' },
   timezone: { zh: '时区' },
   timezoneHint: { zh: '选择安装后系统使用的时区。' },
+  detectedTimezone: { zh: (timezone: string) => `检测到当前时区：${timezone}` },
+  useDetectedTimezone: { zh: '使用此时区' },
   systemLocale: { zh: '系统语言' },
   systemLocaleHint: { zh: '选择系统服务、终端和登录界面默认使用的语言环境。' },
   keymap: { zh: '键盘布局' },

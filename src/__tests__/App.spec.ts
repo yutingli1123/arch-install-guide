@@ -20,6 +20,9 @@ describe('setup wizard', () => {
     expect(wrapper.get('.progress').text()).toBe('第 1 步，共 6 步')
     expect(wrapper.find('select[name="timezone"]').exists()).toBe(true)
     expect(wrapper.find('select[name="systemLocale"]').exists()).toBe(true)
+    expect(wrapper.get('.detected-timezone').text()).toContain(
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+    )
 
     const params = new URLSearchParams(window.location.search)
     expect([...params.entries()]).toEqual([['step', '1']])
@@ -34,6 +37,20 @@ describe('setup wizard', () => {
 
     expect(wrapper.get('.wizard h1').text()).toBe('区域与语言')
     expect([...new URLSearchParams(window.location.search).entries()]).toEqual([['step', '1']])
+  })
+
+  it('uses the detected system timezone only after confirmation', async () => {
+    const wrapper = mount(App)
+    await start(wrapper)
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+    expect(parseDraft(window.location.search).timezone).toBeUndefined()
+    await wrapper.get('[data-action="use-timezone"]').trigger('click')
+
+    expect((wrapper.get('select[name="timezone"]').element as HTMLSelectElement).value).toBe(
+      timezone,
+    )
+    expect(parseDraft(window.location.search).timezone).toBe(timezone)
   })
 
   it('uses completed progress steps as backward navigation', async () => {
@@ -88,7 +105,7 @@ describe('setup wizard', () => {
     await next(wrapper)
 
     expect(wrapper.get('.wizard h1').text()).toBe('安装目标')
-    expect(wrapper.get('.tutorial').text()).toContain('TYPE 应为 disk')
+    expect(wrapper.get('.tutorial').text()).toContain('根据 SIZE 和 TYPE 找到目标整盘')
     expect(wrapper.get('.tutorial code').text()).toBe('lsblk')
     expect(wrapper.get('.tutorial').text()).toContain('执行指南中的分区命令')
     expect(wrapper.get('.device-prefix').text()).toBe('/dev/')

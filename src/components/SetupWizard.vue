@@ -12,6 +12,8 @@ const props = defineProps<{
 const emit = defineEmits<{ finish: []; cancel: [] }>()
 const model = defineModel<ConfigDraft>({ required: true })
 const step = defineModel<number>('step', { required: true })
+const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+const canUseDetectedTimezone = TIMEZONES.includes(detectedTimezone)
 
 const titles = computed(() => [
   pick(ui.regionLanguage, props.locale),
@@ -145,6 +147,10 @@ function commitSelect(field: SelectField, event: Event) {
   model.value = { ...model.value, [field]: select.value } as ConfigDraft
 }
 
+function useDetectedTimezone() {
+  if (canUseDetectedTimezone) model.value = { ...model.value, timezone: detectedTimezone }
+}
+
 function commitChoice(field: ChoiceField, value: string | undefined) {
   if (value === undefined) return
   const next = { ...model.value, [field]: value } as ConfigDraft
@@ -201,8 +207,10 @@ function goToStep(index: number) {
       <fieldset v-if="step === 4">
         <aside class="tutorial">
           <h2>{{ pick(ui.diskTutorial, props.locale) }}</h2>
-          <p>{{ pick(ui.diskTutorialBody, props.locale) }}</p>
-          <pre><code>lsblk</code></pre>
+          <p>
+            {{ pick(ui.diskTutorialBeforeCommand, props.locale) }}<code>lsblk</code
+            >{{ pick(ui.diskTutorialAfterCommand, props.locale) }}
+          </p>
           <p class="warning">{{ pick(ui.diskEraseWarning, props.locale) }}</p>
         </aside>
 
@@ -303,6 +311,17 @@ function goToStep(index: number) {
             </option>
           </select>
           <small>{{ pick(ui.timezoneHint, props.locale) }}</small>
+          <div v-if="canUseDetectedTimezone" class="detected-timezone">
+            <span>{{ pick(ui.detectedTimezone, props.locale)(detectedTimezone) }}</span>
+            <button
+              v-if="model.timezone !== detectedTimezone"
+              data-action="use-timezone"
+              type="button"
+              @click="useDetectedTimezone"
+            >
+              {{ pick(ui.useDetectedTimezone, props.locale) }}
+            </button>
+          </div>
         </label>
         <label>
           <span>{{ pick(ui.systemLocale, props.locale) }}</span>
@@ -542,13 +561,12 @@ fieldset.single {
   font-size: 0.78rem;
 }
 
-.tutorial pre {
-  width: fit-content;
-  margin: 0.55rem 0 0;
-  padding: 0.3rem 0.45rem;
-  border-radius: 5px;
+.tutorial code {
+  padding: 0.08rem 0.28rem;
+  border-radius: 3px;
   background: var(--code-bg);
-  font-size: 0.72rem;
+  color: var(--fg);
+  font-family: var(--mono);
 }
 
 .tutorial .warning {
@@ -592,7 +610,7 @@ select:focus {
 .device-prefix {
   display: flex;
   align-items: center;
-  padding: 0.5rem 0 0.5rem 0.6rem;
+  padding: 0.5rem 0.6rem;
   border: 1px solid var(--rule);
   border-right: 0;
   border-radius: 5px 0 0 5px;
@@ -607,6 +625,25 @@ select:focus {
 
 .device-input:focus-within .device-prefix {
   border-color: var(--accent);
+}
+
+.detected-timezone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.detected-timezone button {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
 }
 
 small {
