@@ -14,6 +14,7 @@ const model = defineModel<ConfigDraft>({ required: true })
 const step = defineModel<number>('step', { required: true })
 const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 const canUseDetectedTimezone = TIMEZONES.includes(detectedTimezone)
+const sortedSystemLocales = [...SYSTEM_LOCALES].sort()
 
 const titles = computed(() => [
   pick(ui.regionLanguage, props.locale),
@@ -332,7 +333,7 @@ function goToStep(index: number) {
             @change="commitSelect('systemLocale', $event)"
           >
             <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
-            <option v-for="value in SYSTEM_LOCALES" :key="value" :value="value">
+            <option v-for="value in sortedSystemLocales" :key="value" :value="value">
               {{ pick(choices.systemLocale[value], props.locale) }} — {{ value }}
             </option>
           </select>
