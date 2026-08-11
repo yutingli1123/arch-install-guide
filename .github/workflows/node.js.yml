@@ -32,3 +32,19 @@ jobs:
     - run: pnpm ci
     - run: pnpm run build
     - run: pnpm test:unit -- --run
+
+  ci-summary:
+    runs-on: ubuntu-latest
+    needs: build
+    if: ${{ always() }}
+
+    steps:
+      - name: Verify all builds passed
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+          if [ "$BUILD_RESULT" != "success" ]; then
+            echo "One or more build jobs failed."
+            exit 1
+          fi
+          echo "All build jobs passed."
