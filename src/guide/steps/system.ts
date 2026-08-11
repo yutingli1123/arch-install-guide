@@ -33,9 +33,9 @@ hwclock --systohc
     section: 'system',
     title: { zh: '本地化' },
     body: {
-      zh: ({
-        cfg,
-      }) => `编辑 \`/etc/locale.gen\`，找到 \`${cfg.systemLocale} UTF-8\` 所在行并删除行首的 \`#\`：
+      zh: ({ cfg }) => `编辑 \`/etc/locale.gen\`，取消 \`en_US.UTF-8\`${
+        cfg.systemLocale === 'en_US.UTF-8' ? '' : ` 和 \`${cfg.systemLocale}\``
+      } 对应 UTF-8 locale 行的注释：
 
 \`\`\`
 vim /etc/locale.gen

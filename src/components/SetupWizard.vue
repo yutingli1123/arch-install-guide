@@ -420,8 +420,6 @@ function goToStep(index: number) {
         </button>
       </div>
     </form>
-
-    <p class="url-note">{{ pick(ui.urlSync, props.locale) }}</p>
   </main>
 </template>
 
@@ -431,8 +429,7 @@ function goToStep(index: number) {
 }
 
 .product,
-.progress,
-.url-note {
+.progress {
   color: var(--faint);
   font-size: 0.76rem;
 }
