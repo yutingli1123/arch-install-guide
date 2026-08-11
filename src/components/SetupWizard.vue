@@ -153,6 +153,10 @@ function advance(event: Event) {
   if (step.value === titles.value.length - 1) emit('finish')
   else step.value += 1
 }
+
+function goToStep(index: number) {
+  if (index < step.value) step.value = index
+}
 </script>
 
 <template>
@@ -170,8 +174,16 @@ function advance(event: Event) {
           :class="{ complete: index < step }"
           :aria-current="index === step ? 'step' : undefined"
         >
-          <span>{{ index + 1 }}</span>
-          {{ title }}
+          <button
+            class="step-link"
+            type="button"
+            :data-step="index"
+            :disabled="index >= step"
+            @click="goToStep(index)"
+          >
+            <span>{{ index + 1 }}</span>
+            {{ title }}
+          </button>
         </li>
       </ol>
     </header>
@@ -417,22 +429,64 @@ ol {
 }
 
 ol li {
-  display: grid;
-  gap: 0.3rem;
-  padding-top: 0.55rem;
-  border-top: 2px solid var(--rule);
   color: var(--faint);
   font-size: 0.72rem;
 }
 
-ol li span {
+.step-link {
+  all: unset;
+  position: relative;
+  display: grid;
+  box-sizing: border-box;
+  width: 100%;
+  gap: 0.3rem;
+  padding-top: 0.7rem;
+}
+
+.step-link::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: var(--rule);
+  content: '';
+  transition:
+    height 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.step-link:not(:disabled) {
+  cursor: pointer;
+}
+
+.step-link:not(:disabled):hover,
+.step-link:not(:disabled):focus-visible {
+  color: var(--accent);
+}
+
+.step-link:not(:disabled):hover::before,
+.step-link:not(:disabled):focus-visible::before {
+  height: 4px;
+}
+
+.step-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.step-link span {
   font-family: var(--mono);
 }
 
 ol li.complete,
 ol li[aria-current='step'] {
-  border-color: var(--accent);
   color: var(--fg);
+}
+
+ol li.complete .step-link::before,
+ol li[aria-current='step'] .step-link::before {
+  background: var(--accent);
 }
 
 form {

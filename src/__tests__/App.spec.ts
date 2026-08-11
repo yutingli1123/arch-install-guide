@@ -38,6 +38,21 @@ describe('setup wizard', () => {
     expect([...new URLSearchParams(window.location.search).entries()]).toEqual([['step', '1']])
   })
 
+  it('uses completed progress steps as backward navigation', async () => {
+    const wrapper = mount(App)
+    await start(wrapper)
+    expect(wrapper.get('.step-link[data-step="1"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.get('input[name="disk"]').setValue('/dev/nvme0n1')
+    await selectChoice(wrapper, 'cpu', 'intel')
+    await next(wrapper)
+    await wrapper.get('.step-link[data-step="0"]').trigger('click')
+
+    expect(wrapper.get('.wizard h1').text()).toBe('安装目标')
+    expect(new URLSearchParams(window.location.search).get('step')).toBe('1')
+    expect(new URLSearchParams(window.location.search).get('disk')).toBe('/dev/nvme0n1')
+  })
+
   it('walks through configuration, review, and the generated guide', async () => {
     const wrapper = mount(App)
     await start(wrapper)
