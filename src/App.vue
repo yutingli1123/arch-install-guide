@@ -1,32 +1,94 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import GuideDoc from './components/GuideDoc.vue'
-import { VERIFIED_AGAINST, defaultConfig } from './guide/config'
+import SetupWizard from './components/SetupWizard.vue'
+import { VERIFIED_AGAINST, completeConfig, parseDraft, serializeDraft } from './guide/config'
 import { selectSteps } from './guide/render'
-import type { Locale } from './guide/types'
-import { pick, ui } from './guide/ui'
+import type { ConfigDraft, Locale } from './guide/types'
+import { choices, pick, ui } from './guide/ui'
+
+function firstIncompleteStep(draft: ConfigDraft): number {
+  if (!draft.timezone || !draft.systemLocale) return 0
+  if (!draft.keymap) return 1
+  if (
+    !draft.subvolumeLayout ||
+    !draft.swap ||
+    !draft.encryption ||
+    !draft.secureBoot ||
+    (draft.subvolumeLayout === 'separated' && !draft.snapper)
+  )
+    return 2
+  if (!draft.hostname || !draft.username || !draft.desktop) return 3
+  if (!draft.disk || !draft.cpu) return 4
+  return 5
+}
 
 const locale = ref<Locale>('zh')
-const config = ref(defaultConfig)
+const initialParams = new URLSearchParams(window.location.search)
+const initialStep = Number(initialParams.get('step'))
+const draft = ref<ConfigDraft>(parseDraft(window.location.search))
+const config = computed(() => completeConfig(draft.value))
+const requestedGuide = initialParams.get('step') === 'guide'
+const screen = ref<'welcome' | 'configure' | 'guide'>(
+  requestedGuide && config.value
+    ? 'guide'
+    : requestedGuide || (Number.isInteger(initialStep) && initialStep >= 1 && initialStep <= 6)
+      ? 'configure'
+      : 'welcome',
+)
+const wizardStep = ref(
+  initialStep >= 1 && initialStep <= 6 ? initialStep - 1 : firstIncompleteStep(draft.value),
+)
+
+watch(
+  [draft, screen, wizardStep],
+  ([value, currentScreen, currentStep]) => {
+    const params =
+      currentScreen === 'welcome'
+        ? new URLSearchParams()
+        : new URLSearchParams(serializeDraft(value))
+
+    if (currentScreen === 'configure') params.set('step', String(currentStep + 1))
+    if (currentScreen === 'guide') params.set('step', 'guide')
+
+    const query = params.toString()
+    window.history.replaceState(
+      null,
+      '',
+      `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`,
+    )
+  },
+  { deep: true, immediate: true },
+)
 
 const printPage = () => window.print()
+const startConfiguration = () => {
+  wizardStep.value = 0
+  screen.value = 'configure'
+}
+const showGuide = () => {
+  if (config.value) screen.value = 'guide'
+  else wizardStep.value = firstIncompleteStep(draft.value)
+}
+const editConfiguration = () => {
+  wizardStep.value = 5
+  screen.value = 'configure'
+}
 
-const total = computed(() => selectSteps(config.value).length)
+const total = computed(() => (config.value ? selectSteps(config.value).length : 0))
 
 const summary = computed(() => {
   const cfg = config.value
+  if (!cfg) return []
   const disabled = pick(ui.disabled, locale.value)
   const none = pick(ui.none, locale.value)
   const items = [
     { label: pick(ui.targetDisk, locale.value), value: cfg.disk },
-    { label: pick(ui.cpu, locale.value), value: cfg.cpu },
-    { label: pick(ui.swap, locale.value), value: swapNames[cfg.swap] ?? cfg.swap },
+    { label: pick(ui.cpu, locale.value), value: pick(choices.cpu[cfg.cpu], locale.value) },
+    { label: pick(ui.swap, locale.value), value: pick(choices.swap[cfg.swap], locale.value) },
     {
       label: pick(ui.subvolumes, locale.value),
-      value:
-        cfg.subvolumeLayout === 'root-only'
-          ? pick(ui.rootOnlySubvolumes, locale.value)
-          : pick(ui.separatedSubvolumes, locale.value),
+      value: pick(choices.subvolumeLayout[cfg.subvolumeLayout], locale.value),
     },
     {
       label: pick(ui.encryption, locale.value),
@@ -34,10 +96,16 @@ const summary = computed(() => {
     },
     {
       label: pick(ui.secureBoot, locale.value),
-      value: secureBootNames[cfg.secureBoot] ?? cfg.secureBoot,
+      value: pick(choices.secureBoot[cfg.secureBoot], locale.value),
     },
-    { label: pick(ui.snapper, locale.value), value: snapperNames[cfg.snapper] ?? cfg.snapper },
-    { label: pick(ui.desktop, locale.value), value: desktopNames[cfg.desktop] ?? cfg.desktop },
+    {
+      label: pick(ui.snapper, locale.value),
+      value: pick(choices.snapper[cfg.snapper], locale.value),
+    },
+    {
+      label: pick(ui.desktop, locale.value),
+      value: pick(choices.desktop[cfg.desktop], locale.value),
+    },
     { label: pick(ui.timezone, locale.value), value: cfg.timezone },
     { label: pick(ui.systemLocale, locale.value), value: cfg.systemLocale },
     { label: pick(ui.keymap, locale.value), value: cfg.keymap },
@@ -73,47 +141,64 @@ const summary = computed(() => {
 
   return items
 })
-
-const swapNames = { none: '无', zram: 'zram', swapfile: 'swapfile', partition: '独立分区' }
-const secureBootNames = {
-  none: '关闭',
-  'custom-db': '自定义 UEFI db',
-  'shim-mok': 'shim-signed + MOK',
-}
-const snapperNames = { none: '不配置', root: 'root', 'root-home': 'root + home' }
-const desktopNames = { none: '无', gnome: 'GNOME', kde: 'KDE Plasma', hyprland: 'Hyprland' }
 </script>
 
 <template>
-  <header>
-    <div class="row">
-      <h1>{{ pick(ui.title, locale) }}</h1>
-      <button class="no-print" type="button" @click="printPage">
-        {{ pick(ui.print, locale) }}
-      </button>
-    </div>
-    <div class="config-summary">
-      <p class="summary-title">{{ pick(ui.configSummary, locale) }}</p>
-      <ul class="summary">
-        <li v-for="item in summary" :key="item.label">
-          <span>{{ item.label }}</span>
-          {{ item.value }}
-        </li>
-      </ul>
-    </div>
-    <p class="meta">
-      {{ pick(ui.stepCount, locale)(total) }}
-    </p>
-  </header>
+  <main v-if="screen === 'welcome'" class="welcome">
+    <h1>{{ pick(ui.title, locale) }}</h1>
+    <h2>{{ pick(ui.welcomeTitle, locale) }}</h2>
+    <p>{{ pick(ui.welcomeBody, locale) }}</p>
+    <button class="primary" data-action="start" type="button" @click="startConfiguration">
+      {{ pick(ui.start, locale) }}
+    </button>
+  </main>
 
-  <GuideDoc :config="config" :locale="locale" />
+  <SetupWizard
+    v-else-if="screen === 'configure'"
+    v-model="draft"
+    v-model:step="wizardStep"
+    :locale="locale"
+    :summary="summary"
+    @cancel="screen = 'welcome'"
+    @finish="showGuide"
+  />
 
-  <footer>
-    <p>
-      {{ pick(ui.verifiedAgainst, locale) }} {{ VERIFIED_AGAINST }} ·
-      {{ pick(ui.disclaimer, locale) }}
-    </p>
-  </footer>
+  <template v-else-if="config">
+    <header>
+      <div class="row">
+        <h1>{{ pick(ui.title, locale) }}</h1>
+        <div class="header-actions no-print">
+          <button data-action="edit" type="button" @click="editConfiguration">
+            {{ pick(ui.editConfig, locale) }}
+          </button>
+          <button type="button" @click="printPage">
+            {{ pick(ui.print, locale) }}
+          </button>
+        </div>
+      </div>
+      <div class="config-summary">
+        <p class="summary-title">{{ pick(ui.configSummary, locale) }}</p>
+        <ul class="summary">
+          <li v-for="item in summary" :key="item.label">
+            <span>{{ item.label }}</span>
+            {{ item.value }}
+          </li>
+        </ul>
+      </div>
+      <p class="meta">
+        {{ pick(ui.stepCount, locale)(total) }}
+      </p>
+    </header>
+
+    <GuideDoc :config="config" :locale="locale" />
+
+    <footer>
+      <p>
+        {{ pick(ui.verifiedAgainst, locale) }} {{ VERIFIED_AGAINST }} ·
+        {{ pick(ui.disclaimer, locale) }}
+      </p>
+    </footer>
+  </template>
 </template>
 
 <style scoped>
@@ -122,6 +207,39 @@ const desktopNames = { none: '无', gnome: 'GNOME', kde: 'KDE Plasma', hyprland:
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.welcome {
+  display: grid;
+  justify-items: start;
+  align-content: center;
+  min-height: 75vh;
+}
+
+.welcome h2 {
+  max-width: 32rem;
+  margin: 2rem 0 0;
+  font-size: 2.4rem;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+
+.welcome p {
+  max-width: 34rem;
+  margin: 1rem 0 0;
+  color: var(--muted);
+}
+
+.welcome .primary {
+  margin-top: 1.5rem;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: white;
 }
 
 h1 {

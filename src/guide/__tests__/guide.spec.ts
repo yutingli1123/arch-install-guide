@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultConfig } from '../config'
+import { completeConfig, parseDraft, serializeDraft, stageOneConfig, validate } from '../config'
 import { derive, partition } from '../derive'
 import { renderGuide, selectSteps } from '../render'
 import { sectionTitles, steps } from '../steps'
@@ -16,10 +16,10 @@ describe('partition', () => {
 
 describe('derive', () => {
   it('provides the two supported subvolume layouts', () => {
-    expect(derive({ ...defaultConfig, subvolumeLayout: 'root-only' }).subvolumes).toEqual([
+    expect(derive({ ...stageOneConfig, subvolumeLayout: 'root-only' }).subvolumes).toEqual([
       { name: '@', mountPoint: '/' },
     ])
-    expect(derive(defaultConfig).subvolumes.map((subvolume) => subvolume.name)).toEqual([
+    expect(derive(stageOneConfig).subvolumes.map((subvolume) => subvolume.name)).toEqual([
       '@',
       '@boot',
       '@home',
@@ -30,13 +30,83 @@ describe('derive', () => {
 
   it('rejects snapshots with the root-only layout', () => {
     expect(() =>
-      derive({ ...defaultConfig, subvolumeLayout: 'root-only', snapper: 'root' }),
+      derive({ ...stageOneConfig, subvolumeLayout: 'root-only', snapper: 'root' }),
     ).toThrow('snapper requires the separated subvolume layout')
   })
 
   it('picks microcode matching the cpu vendor', () => {
-    expect(derive({ ...defaultConfig, cpu: 'amd' }).packages).toContain('amd-ucode')
-    expect(derive({ ...defaultConfig, cpu: 'intel' }).packages).not.toContain('amd-ucode')
+    expect(derive({ ...stageOneConfig, cpu: 'amd' }).packages).toContain('amd-ucode')
+    expect(derive({ ...stageOneConfig, cpu: 'intel' }).packages).not.toContain('amd-ucode')
+  })
+})
+
+describe('configuration', () => {
+  it('round-trips supported choices through URL search parameters', () => {
+    const config: Config = {
+      ...stageOneConfig,
+      disk: '/dev/sda',
+      cpu: 'amd',
+      subvolumeLayout: 'root-only',
+      timezone: 'Asia/Shanghai',
+      keymap: 'de-latin1',
+      hostname: 'workstation',
+      username: 'alice',
+    }
+
+    expect(completeConfig(parseDraft(serializeDraft(config)))).toEqual(config)
+  })
+
+  it('keeps an untouched draft empty and serializes only explicit choices', () => {
+    expect(parseDraft('')).toEqual({})
+    expect(serializeDraft({})).toBe('')
+    expect(serializeDraft({ cpu: 'amd' })).toMatch(/^c=[A-Za-z0-9_-]+$/)
+    expect(serializeDraft({ cpu: 'amd' })).not.toContain('cpu')
+    expect(parseDraft(serializeDraft({ cpu: 'amd' }))).toEqual({ cpu: 'amd' })
+    expect(parseDraft('?config=v1.Y3B1PWFtZA')).toEqual({ cpu: 'amd' })
+    expect(completeConfig({})).toBeNull()
+  })
+
+  it('keeps a partially completed configuration token compact', () => {
+    const query = serializeDraft({
+      disk: '/dev/nvme0n1',
+      cpu: 'amd',
+      swap: 'none',
+      subvolumeLayout: 'root-only',
+      encryption: { mode: 'none' },
+      secureBoot: 'none',
+    })
+
+    expect(query.length).toBeLessThan(30)
+    expect(query).not.toContain('nvme')
+  })
+
+  it('derives snapper as disabled for the root-only layout', () => {
+    const { snapper: _snapper, ...draft } = stageOneConfig
+    const config = completeConfig({ ...draft, subvolumeLayout: 'root-only' })
+
+    expect(config?.snapper).toBe('none')
+    expect(serializeDraft({ subvolumeLayout: 'root-only' })).not.toContain('layout')
+    expect(parseDraft(serializeDraft({ subvolumeLayout: 'root-only', snapper: 'none' }))).toEqual({
+      subvolumeLayout: 'root-only',
+    })
+  })
+
+  it('ignores unsafe URL values and explains unavailable choices', () => {
+    const draft = parseDraft(
+      serializeDraft({
+        disk: '/dev/disk/by-id/../sda',
+        timezone: '../etc',
+        username: 'root',
+        subvolumeLayout: 'root-only',
+      }),
+    )
+
+    expect(draft.disk).toBeUndefined()
+    expect(draft.timezone).toBeUndefined()
+    expect(draft.username).toBeUndefined()
+    expect(validate(draft)['snapper.root']).toBe('需要标准分离子卷布局')
+    expect(parseDraft('?c=invalid!')).toEqual({})
+    expect(parseDraft('?cpu=amd&layout=root-only')).toEqual({})
   })
 })
 
@@ -52,12 +122,12 @@ describe('steps', () => {
 })
 
 describe('renderGuide', () => {
-  const sections = renderGuide(defaultConfig, 'zh')
+  const sections = renderGuide(stageOneConfig, 'zh')
   const bodies = sections.flatMap((section) => section.steps).map((step) => step.html)
   const html = bodies.join('')
 
   it('renders every step to non-empty html', () => {
-    expect(bodies).toHaveLength(selectSteps(defaultConfig).length)
+    expect(bodies).toHaveLength(selectSteps(stageOneConfig).length)
     for (const body of bodies) expect(body.trim().length).toBeGreaterThan(0)
   })
 
@@ -72,7 +142,7 @@ describe('renderGuide', () => {
   })
 
   it('carries the configured disk into the commands', () => {
-    const rendered = renderHtml({ ...defaultConfig, disk: '/dev/sda' })
+    const rendered = renderHtml({ ...stageOneConfig, disk: '/dev/sda' })
     expect(rendered).toContain('/dev/sda1')
     expect(rendered).not.toContain('nvme0n1')
   })
@@ -97,7 +167,7 @@ describe('renderGuide', () => {
   })
 
   it('keeps boot inside the root subvolume in the root-only layout', () => {
-    const rootOnly = renderHtml({ ...defaultConfig, subvolumeLayout: 'root-only' })
+    const rootOnly = renderHtml({ ...stageOneConfig, subvolumeLayout: 'root-only' })
 
     expect(rootOnly).toContain('btrfs subvolume create /mnt/@')
     expect(rootOnly).not.toContain('btrfs subvolume create /mnt/@boot')
@@ -106,7 +176,7 @@ describe('renderGuide', () => {
   })
 
   it('only writes vconsole.conf for a non-default keymap', () => {
-    const nonDefault = renderHtml({ ...defaultConfig, keymap: 'de-latin1' })
+    const nonDefault = renderHtml({ ...stageOneConfig, keymap: 'de-latin1' })
     expect(html).not.toContain("echo 'KEYMAP=us'")
     expect(html).not.toContain('localectl list-keymaps')
     expect(html).not.toContain('loadkeys us')

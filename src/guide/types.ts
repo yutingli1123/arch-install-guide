@@ -51,6 +51,9 @@ export type Config = {
   desktop: Desktop
 }
 
+/** User choices collected by the setup wizard; absent means not selected yet. */
+export type ConfigDraft = Partial<Omit<Config, 'espSize' | 'mountOptions'>>
+
 /**
  * Everything the steps read, resolved once from `Config`. Steps never recompute
  * device paths or package names, so a new config option is wired up here only.
