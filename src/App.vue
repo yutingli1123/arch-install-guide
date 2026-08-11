@@ -8,7 +8,8 @@ import type { ConfigDraft, Locale } from './guide/types'
 import { choices, pick, ui } from './guide/ui'
 
 function firstIncompleteStep(draft: ConfigDraft): number {
-  if (!draft.disk || !draft.cpu) return 0
+  if (!draft.timezone || !draft.systemLocale) return 0
+  if (!draft.keymap) return 1
   if (
     !draft.subvolumeLayout ||
     !draft.swap ||
@@ -16,10 +17,9 @@ function firstIncompleteStep(draft: ConfigDraft): number {
     !draft.secureBoot ||
     (draft.subvolumeLayout === 'separated' && !draft.snapper)
   )
-    return 1
-  if (!draft.timezone || !draft.systemLocale) return 2
-  if (!draft.keymap) return 3
-  if (!draft.hostname || !draft.username || !draft.desktop) return 4
+    return 2
+  if (!draft.hostname || !draft.username || !draft.desktop) return 3
+  if (!draft.disk || !draft.cpu) return 4
   return 5
 }
 

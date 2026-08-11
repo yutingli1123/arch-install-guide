@@ -16,18 +16,14 @@ describe('setup wizard', () => {
 
     await wrapper.get('[data-action="start"]').trigger('click')
 
-    expect(wrapper.get('.wizard h1').text()).toBe('安装目标')
+    expect(wrapper.get('.wizard h1').text()).toBe('区域与语言')
     expect(wrapper.get('.progress').text()).toBe('第 1 步，共 6 步')
-    expect(wrapper.get('.tutorial').text()).toContain('TYPE 应为 disk')
-    expect(wrapper.get('.tutorial code').text()).toBe('lsblk')
-    expect(wrapper.get('.tutorial').text()).toContain('清除所选磁盘上的全部数据')
-    expect(wrapper.get('input[name="disk"]').element).toBeInstanceOf(HTMLInputElement)
-    expect(wrapper.get('.device-prefix').text()).toBe('/dev/')
+    expect(wrapper.find('select[name="timezone"]').exists()).toBe(true)
+    expect(wrapper.find('select[name="systemLocale"]').exists()).toBe(true)
 
     const params = new URLSearchParams(window.location.search)
     expect([...params.entries()]).toEqual([['step', '1']])
-    expect((wrapper.get('input[name="disk"]').element as HTMLInputElement).value).toBe('')
-    expect(wrapper.find('input[name="cpu"]:checked').exists()).toBe(false)
+    expect((wrapper.get('select[name="timezone"]').element as HTMLSelectElement).value).toBe('')
     expect(params.get('step')).toBe('1')
   })
 
@@ -36,7 +32,7 @@ describe('setup wizard', () => {
     await start(wrapper)
     await next(wrapper)
 
-    expect(wrapper.get('.wizard h1').text()).toBe('安装目标')
+    expect(wrapper.get('.wizard h1').text()).toBe('区域与语言')
     expect([...new URLSearchParams(window.location.search).entries()]).toEqual([['step', '1']])
   })
 
@@ -45,22 +41,27 @@ describe('setup wizard', () => {
     await start(wrapper)
     expect(wrapper.get('.step-link[data-step="1"]').attributes('disabled')).toBeDefined()
 
-    await wrapper.get('input[name="disk"]').setValue('nvme0n1')
-    await selectChoice(wrapper, 'cpu', 'intel')
+    await wrapper.get('select[name="timezone"]').setValue('America/Toronto')
+    await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
     await next(wrapper)
     await wrapper.get('.step-link[data-step="0"]').trigger('click')
 
-    expect(wrapper.get('.wizard h1').text()).toBe('安装目标')
+    expect(wrapper.get('.wizard h1').text()).toBe('区域与语言')
     expect(new URLSearchParams(window.location.search).get('step')).toBe('1')
-    expect(parseDraft(window.location.search).disk).toBe('/dev/nvme0n1')
+    expect(parseDraft(window.location.search).timezone).toBe('America/Toronto')
   })
 
   it('walks through configuration, review, and the generated guide', async () => {
     const wrapper = mount(App)
     await start(wrapper)
 
-    await wrapper.get('input[name="disk"]').setValue('nvme0n1')
-    await selectChoice(wrapper, 'cpu', 'amd')
+    expect(wrapper.get('.wizard h1').text()).toBe('区域与语言')
+    await wrapper.get('select[name="timezone"]').setValue('Asia/Shanghai')
+    await wrapper.get('select[name="systemLocale"]').setValue('zh_CN.UTF-8')
+    await next(wrapper)
+
+    expect(wrapper.get('.wizard h1').text()).toBe('键盘布局')
+    await wrapper.get('select[name="keymap"]').setValue('de-latin1')
     await next(wrapper)
 
     expect(wrapper.get('form').text()).toContain('只创建 @，结构简单，但不能配置 Snapper')
@@ -79,23 +80,20 @@ describe('setup wizard', () => {
     await selectChoice(wrapper, 'secureBoot', 'none')
     await next(wrapper)
 
-    expect(wrapper.get('.wizard h1').text()).toBe('区域与语言')
-    expect(wrapper.find('select[name="timezone"]').exists()).toBe(true)
-    expect(wrapper.find('select[name="systemLocale"]').exists()).toBe(true)
-    await wrapper.get('select[name="timezone"]').setValue('Asia/Shanghai')
-    await wrapper.get('select[name="systemLocale"]').setValue('zh_CN.UTF-8')
-    await next(wrapper)
-
-    expect(wrapper.get('.wizard h1').text()).toBe('键盘布局')
-    expect(wrapper.find('select[name="keymap"]').exists()).toBe(true)
-    await wrapper.get('select[name="keymap"]').setValue('de-latin1')
-    await next(wrapper)
-
     await wrapper.get('input[name="hostname"]').setValue('workstation')
     await wrapper.get('input[name="username"]').setValue('root')
     expect((wrapper.get('input[name="username"]').element as HTMLInputElement).value).toBe('')
     await wrapper.get('input[name="username"]').setValue('alice')
     await selectChoice(wrapper, 'desktop', 'none')
+    await next(wrapper)
+
+    expect(wrapper.get('.wizard h1').text()).toBe('安装目标')
+    expect(wrapper.get('.tutorial').text()).toContain('TYPE 应为 disk')
+    expect(wrapper.get('.tutorial code').text()).toBe('lsblk')
+    expect(wrapper.get('.tutorial').text()).toContain('执行指南中的分区命令')
+    expect(wrapper.get('.device-prefix').text()).toBe('/dev/')
+    await wrapper.get('input[name="disk"]').setValue('nvme0n1')
+    await selectChoice(wrapper, 'cpu', 'amd')
     await next(wrapper)
 
     expect(wrapper.get('.wizard h1').text()).toBe('确认配置')
@@ -138,7 +136,7 @@ describe('setup wizard', () => {
     window.history.replaceState(
       null,
       '',
-      `/?${serializeDraft({ disk: '/dev/sda', cpu: 'amd', hostname: 'workstation', username: 'alice' })}&step=5`,
+      `/?${serializeDraft({ hostname: 'workstation', username: 'alice' })}&step=4`,
     )
     const wrapper = mount(App)
 
@@ -147,7 +145,7 @@ describe('setup wizard', () => {
       'workstation',
     )
     expect((wrapper.get('input[name="username"]').element as HTMLInputElement).value).toBe('alice')
-    expect(new URLSearchParams(window.location.search).get('step')).toBe('5')
+    expect(new URLSearchParams(window.location.search).get('step')).toBe('4')
   })
 
   it('opens a completed shared configuration directly as the guide', () => {
@@ -173,7 +171,7 @@ describe('setup wizard', () => {
     const wrapper = mount(App)
 
     expect(wrapper.find('.guide').exists()).toBe(false)
-    expect(wrapper.get('.wizard h1').text()).toBe('安装目标')
+    expect(wrapper.get('.wizard h1').text()).toBe('区域与语言')
     expect(parseDraft(window.location.search).cpu).toBe('amd')
     expect(new URLSearchParams(window.location.search).get('step')).toBe('1')
   })
@@ -221,8 +219,10 @@ async function selectChoice(wrapper: VueWrapper, name: string, value: string) {
 
 async function openGuide(wrapper: VueWrapper) {
   await start(wrapper)
-  await wrapper.get('input[name="disk"]').setValue('nvme0n1')
-  await selectChoice(wrapper, 'cpu', 'intel')
+  await wrapper.get('select[name="timezone"]').setValue('America/Toronto')
+  await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
+  await next(wrapper)
+  await wrapper.get('select[name="keymap"]').setValue('us')
   await next(wrapper)
   await selectChoice(wrapper, 'subvolumeLayout', 'separated')
   await selectChoice(wrapper, 'swap', 'none')
@@ -230,14 +230,12 @@ async function openGuide(wrapper: VueWrapper) {
   await selectChoice(wrapper, 'secureBoot', 'none')
   await selectChoice(wrapper, 'snapper', 'none')
   await next(wrapper)
-  await wrapper.get('select[name="timezone"]').setValue('America/Toronto')
-  await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
-  await next(wrapper)
-  await wrapper.get('select[name="keymap"]').setValue('us')
-  await next(wrapper)
   await wrapper.get('input[name="hostname"]').setValue('archlinux')
   await wrapper.get('input[name="username"]').setValue('user')
   await selectChoice(wrapper, 'desktop', 'none')
+  await next(wrapper)
+  await wrapper.get('input[name="disk"]').setValue('nvme0n1')
+  await selectChoice(wrapper, 'cpu', 'intel')
   await next(wrapper)
   await next(wrapper)
 }

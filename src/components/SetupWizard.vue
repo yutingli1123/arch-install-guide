@@ -14,11 +14,11 @@ const model = defineModel<ConfigDraft>({ required: true })
 const step = defineModel<number>('step', { required: true })
 
 const titles = computed(() => [
-  pick(ui.installationTarget, props.locale),
-  pick(ui.storage, props.locale),
   pick(ui.regionLanguage, props.locale),
   pick(ui.keymap, props.locale),
+  pick(ui.storage, props.locale),
   pick(ui.baseSystem, props.locale),
+  pick(ui.installationTarget, props.locale),
   pick(ui.review, props.locale),
 ])
 const unavailable = computed(() => validate(model.value))
@@ -198,7 +198,7 @@ function goToStep(index: number) {
     </header>
 
     <form @submit.prevent="advance">
-      <fieldset v-if="step === 0">
+      <fieldset v-if="step === 4">
         <aside class="tutorial">
           <h2>{{ pick(ui.diskTutorial, props.locale) }}</h2>
           <p>{{ pick(ui.diskTutorialBody, props.locale) }}</p>
@@ -232,7 +232,7 @@ function goToStep(index: number) {
         </div>
       </fieldset>
 
-      <fieldset v-else-if="step === 1">
+      <fieldset v-if="step === 2">
         <div class="field">
           <span>{{ pick(ui.subvolumes, props.locale) }}</span>
           <ChoicePicker
@@ -288,7 +288,7 @@ function goToStep(index: number) {
         </div>
       </fieldset>
 
-      <fieldset v-else-if="step === 2">
+      <fieldset v-if="step === 0">
         <label>
           <span>{{ pick(ui.timezone, props.locale) }}</span>
           <select
@@ -321,7 +321,7 @@ function goToStep(index: number) {
         </label>
       </fieldset>
 
-      <fieldset v-else-if="step === 3" class="single">
+      <fieldset v-if="step === 1" class="single">
         <label>
           <span>{{ pick(ui.keymap, props.locale) }}</span>
           <select
@@ -339,7 +339,7 @@ function goToStep(index: number) {
         </label>
       </fieldset>
 
-      <fieldset v-else-if="step === 4">
+      <fieldset v-if="step === 3">
         <label>
           <span>{{ pick(ui.hostname, props.locale) }}</span>
           <input
@@ -376,7 +376,7 @@ function goToStep(index: number) {
         </div>
       </fieldset>
 
-      <section v-else class="review">
+      <section v-if="step === 5" class="review">
         <ul>
           <li v-for="item in props.summary" :key="item.label">
             <span>{{ item.label }}</span>
@@ -543,10 +543,12 @@ fieldset.single {
 }
 
 .tutorial pre {
-  margin: 0.7rem 0 0;
-  padding: 0.6rem 0.75rem;
+  width: fit-content;
+  margin: 0.55rem 0 0;
+  padding: 0.3rem 0.45rem;
   border-radius: 5px;
   background: var(--code-bg);
+  font-size: 0.72rem;
 }
 
 .tutorial .warning {
