@@ -20,6 +20,12 @@ describe('setup wizard', () => {
     expect(wrapper.get('.progress').text()).toBe('第 1 步，共 6 步')
     expect(wrapper.find('select[name="timezone"]').exists()).toBe(true)
     expect(wrapper.find('select[name="systemLocale"]').exists()).toBe(true)
+    expect(wrapper.find('option[value="pt_BR.UTF-8"]').exists()).toBe(true)
+    const localeValues = wrapper
+      .findAll('select[name="systemLocale"] option:not([disabled])')
+      .map((option) => option.attributes('value'))
+    expect(localeValues).toEqual([...localeValues].sort())
+    expect(wrapper.text()).not.toContain('配置和当前步骤会自动保存到网址')
     expect(wrapper.get('.detected-timezone').text()).toContain(
       Intl.DateTimeFormat().resolvedOptions().timeZone,
     )

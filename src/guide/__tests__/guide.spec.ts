@@ -48,6 +48,7 @@ describe('configuration', () => {
       cpu: 'amd',
       subvolumeLayout: 'root-only',
       timezone: 'Asia/Shanghai',
+      systemLocale: 'pt_BR.UTF-8',
       keymap: 'de-latin1',
       hostname: 'workstation',
       username: 'alice',
@@ -184,6 +185,15 @@ describe('renderGuide', () => {
     expect(nonDefault).toContain('loadkeys de-latin1')
     expect(nonDefault).toContain('KEYMAP=de-latin1')
     expect(nonDefault).toContain('/etc/vconsole.conf')
+  })
+
+  it('always enables the en_US fallback locale without duplicating the codeset label', () => {
+    const chinese = renderHtml({ ...stageOneConfig, systemLocale: 'zh_CN.UTF-8' })
+
+    expect(chinese).toContain('<code>en_US.UTF-8</code> 和 <code>zh_CN.UTF-8</code>')
+    expect(chinese).not.toContain('zh_CN.UTF-8 UTF-8')
+    expect(html).toContain('取消 <code>en_US.UTF-8</code> 对应 UTF-8 locale 行的注释')
+    expect(html).not.toContain('en_US.UTF-8 UTF-8')
   })
 
   it('documents both UKI presets without mentioning fallback_image', () => {
