@@ -55,13 +55,11 @@ describe('setup wizard', () => {
         .get('input[name="subvolumeLayout"][value="root-only"]')
         .element.parentElement?.classList.contains('selected'),
     ).toBe(true)
-    const snapper = wrapper.get('input[name="snapper"][value="root"]')
-    expect(snapper.attributes('disabled')).toBeDefined()
-    expect(snapper.element.parentElement?.textContent).toContain('需要标准分离子卷布局')
+    expect(wrapper.find('input[name="snapper"]').exists()).toBe(false)
+    expect(wrapper.get('.constraint-message').text()).toBe('单一根子卷不推荐 Snapper')
     await selectChoice(wrapper, 'swap', 'none')
     await selectChoice(wrapper, 'encryption', 'none')
     await selectChoice(wrapper, 'secureBoot', 'none')
-    await selectChoice(wrapper, 'snapper', 'none')
     await next(wrapper)
 
     expect(wrapper.get('.wizard h1').text()).toBe('区域与语言')
@@ -94,6 +92,7 @@ describe('setup wizard', () => {
     const params = new URLSearchParams(window.location.search)
     expect(params.get('cpu')).toBe('amd')
     expect(params.get('layout')).toBe('root-only')
+    expect(params.has('snapper')).toBe(false)
     expect(params.get('user')).toBe('alice')
     expect(params.get('timezone')).toBe('Asia/Shanghai')
     expect(params.get('locale')).toBe('zh_CN.UTF-8')

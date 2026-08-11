@@ -14,7 +14,7 @@ function firstIncompleteStep(draft: ConfigDraft): number {
     !draft.swap ||
     !draft.encryption ||
     !draft.secureBoot ||
-    !draft.snapper
+    (draft.subvolumeLayout === 'separated' && !draft.snapper)
   )
     return 1
   if (!draft.timezone || !draft.systemLocale) return 2

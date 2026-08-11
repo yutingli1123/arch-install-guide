@@ -48,6 +48,7 @@ export const ui = {
   signedPcrs: { zh: 'PCR 签名策略' },
   secureBoot: { zh: '安全启动' },
   snapper: { zh: 'snapper' },
+  snapperUnsupportedRootOnly: { zh: '单一根子卷不推荐 Snapper' },
   desktop: { zh: '桌面环境' },
   timezone: { zh: '时区' },
   timezoneHint: { zh: '选择安装后系统使用的时区。' },

@@ -134,6 +134,7 @@ export function parseDraft(search: string): ConfigDraft {
   if (keymap) draft.keymap = keymap
   if (hostname) draft.hostname = hostname
   if (username) draft.username = username
+  if (draft.subvolumeLayout === 'root-only') delete draft.snapper
   return draft
 }
 
@@ -170,7 +171,7 @@ export function completeConfig(draft: ConfigDraft): Config | null {
     draft.username === undefined ||
     draft.encryption === undefined ||
     draft.secureBoot === undefined ||
-    draft.snapper === undefined ||
+    (draft.subvolumeLayout === 'separated' && draft.snapper === undefined) ||
     draft.desktop === undefined
   ) {
     return null
@@ -190,7 +191,7 @@ export function completeConfig(draft: ConfigDraft): Config | null {
     username: draft.username,
     encryption: draft.encryption,
     secureBoot: draft.secureBoot,
-    snapper: draft.snapper,
+    snapper: draft.subvolumeLayout === 'root-only' ? 'none' : draft.snapper!,
     desktop: draft.desktop,
   }
 }

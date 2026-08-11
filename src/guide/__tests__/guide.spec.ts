@@ -63,6 +63,17 @@ describe('configuration', () => {
     expect(completeConfig({})).toBeNull()
   })
 
+  it('derives snapper as disabled for the root-only layout', () => {
+    const { snapper: _snapper, ...draft } = stageOneConfig
+    const config = completeConfig({ ...draft, subvolumeLayout: 'root-only' })
+
+    expect(config?.snapper).toBe('none')
+    expect(serializeDraft({ subvolumeLayout: 'root-only' })).toBe('layout=root-only')
+    expect(parseDraft('?layout=root-only&snapper=none')).toEqual({
+      subvolumeLayout: 'root-only',
+    })
+  })
+
   it('ignores unsafe URL values and explains unavailable choices', () => {
     const draft = parseDraft(
       '?disk=%2Fdev%2Fdisk%2Fby-id%2F..%2Fsda&timezone=..%2Fetc&user=root&layout=root-only',

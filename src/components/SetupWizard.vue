@@ -137,7 +137,10 @@ function commitSelect(field: SelectField, event: Event) {
 }
 
 function commitChoice(field: ChoiceField, value: string | undefined) {
-  if (value !== undefined) model.value = { ...model.value, [field]: value } as ConfigDraft
+  if (value === undefined) return
+  const next = { ...model.value, [field]: value } as ConfigDraft
+  if (field === 'subvolumeLayout' && value === 'root-only') delete next.snapper
+  model.value = next
 }
 
 function commitEncryption(value: string | undefined) {
@@ -245,14 +248,18 @@ function advance(event: Event) {
           />
         </div>
 
-        <div class="field">
+        <div class="field" :class="{ 'disabled-field': model.subvolumeLayout === 'root-only' }">
           <span>{{ pick(ui.snapper, props.locale) }}</span>
           <ChoicePicker
+            v-if="model.subvolumeLayout !== 'root-only'"
             name="snapper"
             :model-value="model.snapper"
             :options="snapperOptions"
             @update:model-value="commitChoice('snapper', $event)"
           />
+          <p v-else class="constraint-message">
+            {{ pick(ui.snapperUnsupportedRootOnly, props.locale) }}
+          </p>
         </div>
       </fieldset>
 
@@ -516,6 +523,20 @@ small {
 
 small.description {
   color: var(--muted);
+}
+
+.disabled-field {
+  color: var(--faint);
+}
+
+.constraint-message {
+  margin: 0;
+  padding: 0.65rem;
+  border: 1px dashed var(--rule);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--faint);
+  font-size: 0.72rem;
 }
 
 .review ul {
