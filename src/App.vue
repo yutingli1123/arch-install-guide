@@ -2,27 +2,64 @@
 import { computed, ref, watch } from 'vue'
 import GuideDoc from './components/GuideDoc.vue'
 import SetupWizard from './components/SetupWizard.vue'
-import { VERIFIED_AGAINST, parseConfig, serializeConfig } from './guide/config'
+import { VERIFIED_AGAINST, completeConfig, parseDraft, serializeDraft } from './guide/config'
 import { selectSteps } from './guide/render'
-import type { Locale } from './guide/types'
+import type { ConfigDraft, Locale } from './guide/types'
 import { choices, pick, ui } from './guide/ui'
 
+function firstIncompleteStep(draft: ConfigDraft): number {
+  if (!draft.disk || !draft.cpu) return 0
+  if (
+    !draft.subvolumeLayout ||
+    !draft.swap ||
+    !draft.encryption ||
+    !draft.secureBoot ||
+    !draft.snapper
+  )
+    return 1
+  if (!draft.timezone) return 2
+  if (!draft.systemLocale) return 3
+  if (!draft.keymap) return 4
+  if (!draft.hostname || !draft.username || !draft.desktop) return 5
+  return 6
+}
+
 const locale = ref<Locale>('zh')
-const config = ref(parseConfig(window.location.search))
-const screen = ref<'welcome' | 'configure' | 'guide'>('welcome')
-const wizardStep = ref(0)
+const initialParams = new URLSearchParams(window.location.search)
+const initialStep = Number(initialParams.get('step'))
+const draft = ref<ConfigDraft>(parseDraft(window.location.search))
+const config = computed(() => completeConfig(draft.value))
+const requestedGuide = initialParams.get('step') === 'guide'
+const screen = ref<'welcome' | 'configure' | 'guide'>(
+  requestedGuide && config.value
+    ? 'guide'
+    : requestedGuide || (Number.isInteger(initialStep) && initialStep >= 1 && initialStep <= 7)
+      ? 'configure'
+      : 'welcome',
+)
+const wizardStep = ref(
+  initialStep >= 1 && initialStep <= 7 ? initialStep - 1 : firstIncompleteStep(draft.value),
+)
 
 watch(
-  config,
-  (value) => {
-    const query = serializeConfig(value)
+  [draft, screen, wizardStep],
+  ([value, currentScreen, currentStep]) => {
+    const params =
+      currentScreen === 'welcome'
+        ? new URLSearchParams()
+        : new URLSearchParams(serializeDraft(value))
+
+    if (currentScreen === 'configure') params.set('step', String(currentStep + 1))
+    if (currentScreen === 'guide') params.set('step', 'guide')
+
+    const query = params.toString()
     window.history.replaceState(
       null,
       '',
       `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`,
     )
   },
-  { deep: true },
+  { deep: true, immediate: true },
 )
 
 const printPage = () => window.print()
@@ -30,16 +67,20 @@ const startConfiguration = () => {
   wizardStep.value = 0
   screen.value = 'configure'
 }
-const showGuide = () => (screen.value = 'guide')
+const showGuide = () => {
+  if (config.value) screen.value = 'guide'
+  else wizardStep.value = firstIncompleteStep(draft.value)
+}
 const editConfiguration = () => {
-  wizardStep.value = 3
+  wizardStep.value = 6
   screen.value = 'configure'
 }
 
-const total = computed(() => selectSteps(config.value).length)
+const total = computed(() => (config.value ? selectSteps(config.value).length : 0))
 
 const summary = computed(() => {
   const cfg = config.value
+  if (!cfg) return []
   const disabled = pick(ui.disabled, locale.value)
   const none = pick(ui.none, locale.value)
   const items = [
@@ -115,7 +156,7 @@ const summary = computed(() => {
 
   <SetupWizard
     v-else-if="screen === 'configure'"
-    v-model="config"
+    v-model="draft"
     v-model:step="wizardStep"
     :locale="locale"
     :summary="summary"
@@ -123,7 +164,7 @@ const summary = computed(() => {
     @finish="showGuide"
   />
 
-  <template v-else>
+  <template v-else-if="config">
     <header>
       <div class="row">
         <h1>{{ pick(ui.title, locale) }}</h1>

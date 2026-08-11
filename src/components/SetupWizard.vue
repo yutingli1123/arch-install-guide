@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { validate, type ConfigChoice } from '@/guide/config'
-import type { Config, Locale } from '@/guide/types'
+import { KEYMAPS, SYSTEM_LOCALES, TIMEZONES, validate, type ConfigChoice } from '@/guide/config'
+import type { ConfigDraft, Locale } from '@/guide/types'
 import { choices, pick, ui } from '@/guide/ui'
 
 const props = defineProps<{
@@ -9,25 +9,37 @@ const props = defineProps<{
   summary: { label: string; value: string }[]
 }>()
 const emit = defineEmits<{ finish: []; cancel: [] }>()
-const model = defineModel<Config>({ required: true })
+const model = defineModel<ConfigDraft>({ required: true })
 const step = defineModel<number>('step', { required: true })
 
 const titles = computed(() => [
   pick(ui.installationTarget, props.locale),
   pick(ui.storage, props.locale),
+  pick(ui.timezone, props.locale),
+  pick(ui.systemLocale, props.locale),
+  pick(ui.keymap, props.locale),
   pick(ui.baseSystem, props.locale),
   pick(ui.review, props.locale),
 ])
 const unavailable = computed(() => validate(model.value))
 const reason = (choice: ConfigChoice) => unavailable.value[choice]
 
-type TextField = 'disk' | 'timezone' | 'systemLocale' | 'keymap' | 'hostname' | 'username'
-type SelectField = 'cpu' | 'swap' | 'subvolumeLayout' | 'secureBoot' | 'snapper' | 'desktop'
+type TextField = 'disk' | 'hostname' | 'username'
+type SelectField =
+  | 'cpu'
+  | 'swap'
+  | 'subvolumeLayout'
+  | 'secureBoot'
+  | 'snapper'
+  | 'desktop'
+  | 'timezone'
+  | 'systemLocale'
+  | 'keymap'
 
 function commitText(field: TextField, event: Event) {
   const input = event.currentTarget as HTMLInputElement
   if (!input.reportValidity()) {
-    input.value = model.value[field]
+    input.value = model.value[field] ?? ''
     return
   }
   model.value = { ...model.value, [field]: input.value }
@@ -35,10 +47,17 @@ function commitText(field: TextField, event: Event) {
 
 function commitSelect(field: SelectField, event: Event) {
   const select = event.currentTarget as HTMLSelectElement
-  model.value = { ...model.value, [field]: select.value } as Config
+  model.value = { ...model.value, [field]: select.value } as ConfigDraft
 }
 
-function advance() {
+function commitEncryption(event: Event) {
+  const select = event.currentTarget as HTMLSelectElement
+  if (select.value === 'none') model.value = { ...model.value, encryption: { mode: 'none' } }
+}
+
+function advance(event: Event) {
+  const form = event.currentTarget as HTMLFormElement
+  if (!form.reportValidity()) return
   if (step.value === titles.value.length - 1) emit('finish')
   else step.value += 1
 }
@@ -52,7 +71,7 @@ function advance() {
         {{ pick(ui.wizardProgress, props.locale)(step + 1, titles.length) }}
       </p>
       <h1>{{ titles[step] }}</h1>
-      <ol aria-label="配置进度">
+      <ol aria-label="配置进度" :style="{ gridTemplateColumns: `repeat(${titles.length}, 1fr)` }">
         <li
           v-for="(title, index) in titles"
           :key="title"
@@ -67,23 +86,37 @@ function advance() {
 
     <form @submit.prevent="advance">
       <fieldset v-if="step === 0">
+        <aside class="tutorial">
+          <h2>{{ pick(ui.diskTutorial, props.locale) }}</h2>
+          <p>{{ pick(ui.diskTutorialBody, props.locale) }}</p>
+          <pre><code>lsblk</code></pre>
+          <p class="warning">{{ pick(ui.diskEraseWarning, props.locale) }}</p>
+        </aside>
+
         <label>
           <span>{{ pick(ui.targetDisk, props.locale) }}</span>
           <input
             name="disk"
             required
             pattern="/dev/(nvme[0-9]+n[0-9]+|mmcblk[0-9]+|loop[0-9]+|md[0-9]+|(sd|vd|xvd|hd)[a-z]+)"
-            :value="model.disk"
+            :value="model.disk ?? ''"
             @change="commitText('disk', $event)"
           />
         </label>
 
         <label>
           <span>{{ pick(ui.cpu, props.locale) }}</span>
-          <select name="cpu" :value="model.cpu" @change="commitSelect('cpu', $event)">
+          <select
+            name="cpu"
+            required
+            :value="model.cpu ?? ''"
+            @change="commitSelect('cpu', $event)"
+          >
+            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
             <option value="intel">{{ pick(choices.cpu.intel, props.locale) }}</option>
             <option value="amd">{{ pick(choices.cpu.amd, props.locale) }}</option>
           </select>
+          <small class="description">{{ pick(ui.cpuHint, props.locale) }}</small>
         </label>
       </fieldset>
 
@@ -92,9 +125,11 @@ function advance() {
           <span>{{ pick(ui.subvolumes, props.locale) }}</span>
           <select
             name="subvolumeLayout"
-            :value="model.subvolumeLayout"
+            required
+            :value="model.subvolumeLayout ?? ''"
             @change="commitSelect('subvolumeLayout', $event)"
           >
+            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
             <option value="root-only">
               {{ pick(choices.subvolumeLayout['root-only'], props.locale) }}
             </option>
@@ -102,11 +137,18 @@ function advance() {
               {{ pick(choices.subvolumeLayout.separated, props.locale) }}
             </option>
           </select>
+          <small class="description">{{ pick(ui.subvolumeLayoutHint, props.locale) }}</small>
         </label>
 
         <label>
           <span>{{ pick(ui.swap, props.locale) }}</span>
-          <select name="swap" :value="model.swap" @change="commitSelect('swap', $event)">
+          <select
+            name="swap"
+            required
+            :value="model.swap ?? ''"
+            @change="commitSelect('swap', $event)"
+          >
+            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
             <option value="none">{{ pick(choices.swap.none, props.locale) }}</option>
             <option value="zram" :disabled="Boolean(reason('swap.zram'))">
               {{ pick(choices.swap.zram, props.locale) }}
@@ -118,12 +160,21 @@ function advance() {
               {{ pick(choices.swap.partition, props.locale) }}
             </option>
           </select>
-          <small>{{ reason('swap.zram') }}</small>
+          <small class="description">{{ pick(ui.swapHint, props.locale) }}</small>
+          <small v-if="reason('swap.zram')" class="availability">
+            {{ pick(ui.unavailable, props.locale) }}：{{ reason('swap.zram') }}
+          </small>
         </label>
 
         <label>
           <span>{{ pick(ui.encryption, props.locale) }}</span>
-          <select name="encryption" value="none">
+          <select
+            name="encryption"
+            required
+            :value="model.encryption?.mode ?? ''"
+            @change="commitEncryption"
+          >
+            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
             <option value="none">{{ pick(choices.encryption.none, props.locale) }}</option>
             <option value="password" :disabled="Boolean(reason('encryption.password'))">
               {{ pick(choices.encryption.password, props.locale) }}
@@ -132,16 +183,21 @@ function advance() {
               {{ pick(choices.encryption['tpm2-pin'], props.locale) }}
             </option>
           </select>
-          <small>{{ reason('encryption.password') }}</small>
+          <small class="description">{{ pick(ui.encryptionHint, props.locale) }}</small>
+          <small v-if="reason('encryption.password')" class="availability">
+            {{ pick(ui.unavailable, props.locale) }}：{{ reason('encryption.password') }}
+          </small>
         </label>
 
         <label>
           <span>{{ pick(ui.secureBoot, props.locale) }}</span>
           <select
             name="secureBoot"
-            :value="model.secureBoot"
+            required
+            :value="model.secureBoot ?? ''"
             @change="commitSelect('secureBoot', $event)"
           >
+            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
             <option value="none">{{ pick(choices.secureBoot.none, props.locale) }}</option>
             <option value="custom-db" :disabled="Boolean(reason('secureBoot.custom-db'))">
               {{ pick(choices.secureBoot['custom-db'], props.locale) }}
@@ -150,12 +206,21 @@ function advance() {
               {{ pick(choices.secureBoot['shim-mok'], props.locale) }}
             </option>
           </select>
-          <small>{{ reason('secureBoot.custom-db') }}</small>
+          <small class="description">{{ pick(ui.secureBootHint, props.locale) }}</small>
+          <small v-if="reason('secureBoot.custom-db')" class="availability">
+            {{ pick(ui.unavailable, props.locale) }}：{{ reason('secureBoot.custom-db') }}
+          </small>
         </label>
 
         <label>
           <span>{{ pick(ui.snapper, props.locale) }}</span>
-          <select name="snapper" :value="model.snapper" @change="commitSelect('snapper', $event)">
+          <select
+            name="snapper"
+            required
+            :value="model.snapper ?? ''"
+            @change="commitSelect('snapper', $event)"
+          >
+            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
             <option value="none">{{ pick(choices.snapper.none, props.locale) }}</option>
             <option value="root" :disabled="Boolean(reason('snapper.root'))">
               {{ pick(choices.snapper.root, props.locale) }}
@@ -164,53 +229,78 @@ function advance() {
               {{ pick(choices.snapper['root-home'], props.locale) }}
             </option>
           </select>
-          <small>{{ reason('snapper.root') }}</small>
+          <small class="description">{{ pick(ui.snapperHint, props.locale) }}</small>
+          <small v-if="reason('snapper.root')" class="availability">
+            {{ pick(ui.unavailable, props.locale) }}：{{ reason('snapper.root') }}
+          </small>
         </label>
       </fieldset>
 
-      <fieldset v-else-if="step === 2">
+      <fieldset v-else-if="step === 2" class="single">
         <label>
           <span>{{ pick(ui.timezone, props.locale) }}</span>
-          <input
+          <select
             name="timezone"
             required
-            pattern="[A-Za-z0-9._+\-]+(/[A-Za-z0-9._+\-]+)*"
-            :value="model.timezone"
-            @change="commitText('timezone', $event)"
-          />
+            :value="model.timezone ?? ''"
+            @change="commitSelect('timezone', $event)"
+          >
+            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
+            <option v-for="timezone in TIMEZONES" :key="timezone" :value="timezone">
+              {{ timezone }}
+            </option>
+          </select>
+          <small>{{ pick(ui.timezoneHint, props.locale) }}</small>
         </label>
+      </fieldset>
 
+      <fieldset v-else-if="step === 3" class="single">
         <label>
           <span>{{ pick(ui.systemLocale, props.locale) }}</span>
-          <input
+          <select
             name="systemLocale"
             required
-            pattern="[A-Za-z0-9_.@\-]+"
-            :value="model.systemLocale"
-            @change="commitText('systemLocale', $event)"
-          />
+            :value="model.systemLocale ?? ''"
+            @change="commitSelect('systemLocale', $event)"
+          >
+            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
+            <option v-for="value in SYSTEM_LOCALES" :key="value" :value="value">
+              {{ pick(choices.systemLocale[value], props.locale) }} — {{ value }}
+            </option>
+          </select>
+          <small>{{ pick(ui.systemLocaleHint, props.locale) }}</small>
         </label>
+      </fieldset>
 
+      <fieldset v-else-if="step === 4" class="single">
         <label>
           <span>{{ pick(ui.keymap, props.locale) }}</span>
-          <input
+          <select
             name="keymap"
             required
-            pattern="[A-Za-z0-9_\-]+"
-            :value="model.keymap"
-            @change="commitText('keymap', $event)"
-          />
+            :value="model.keymap ?? ''"
+            @change="commitSelect('keymap', $event)"
+          >
+            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
+            <option v-for="value in KEYMAPS" :key="value" :value="value">
+              {{ pick(choices.keymap[value], props.locale) }} — {{ value }}
+            </option>
+          </select>
+          <small>{{ pick(ui.keymapHint, props.locale) }}</small>
         </label>
+      </fieldset>
 
+      <fieldset v-else-if="step === 5">
         <label>
           <span>{{ pick(ui.hostname, props.locale) }}</span>
           <input
             name="hostname"
             required
             pattern="[A-Za-z0-9][A-Za-z0-9.\-]*[A-Za-z0-9]|[A-Za-z0-9]"
-            :value="model.hostname"
+            :value="model.hostname ?? ''"
             @change="commitText('hostname', $event)"
           />
+          <small class="description">{{ pick(ui.hostnameHint, props.locale) }}</small>
         </label>
 
         <label>
@@ -220,14 +310,21 @@ function advance() {
             required
             maxlength="32"
             pattern="(?!root$)[a-z_][a-z0-9_\-]*"
-            :value="model.username"
+            :value="model.username ?? ''"
             @change="commitText('username', $event)"
           />
+          <small class="description">{{ pick(ui.usernameHint, props.locale) }}</small>
         </label>
 
         <label>
           <span>{{ pick(ui.desktop, props.locale) }}</span>
-          <select name="desktop" :value="model.desktop" @change="commitSelect('desktop', $event)">
+          <select
+            name="desktop"
+            required
+            :value="model.desktop ?? ''"
+            @change="commitSelect('desktop', $event)"
+          >
+            <option value="" disabled>{{ pick(ui.selectPlaceholder, props.locale) }}</option>
             <option value="none">{{ pick(choices.desktop.none, props.locale) }}</option>
             <option value="gnome" :disabled="Boolean(reason('desktop.gnome'))">
               {{ pick(choices.desktop.gnome, props.locale) }}
@@ -239,7 +336,10 @@ function advance() {
               {{ pick(choices.desktop.hyprland, props.locale) }}
             </option>
           </select>
-          <small>{{ reason('desktop.gnome') }}</small>
+          <small class="description">{{ pick(ui.desktopHint, props.locale) }}</small>
+          <small v-if="reason('desktop.gnome')" class="availability">
+            {{ pick(ui.unavailable, props.locale) }}：{{ reason('desktop.gnome') }}
+          </small>
         </label>
       </fieldset>
 
@@ -302,7 +402,6 @@ h1 {
 
 ol {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
   gap: 0.5rem;
   margin: 1.75rem 0 0;
   padding: 0;
@@ -346,6 +445,40 @@ fieldset {
   border: 0;
 }
 
+fieldset.single {
+  grid-template-columns: 1fr;
+}
+
+.tutorial {
+  grid-column: 1 / -1;
+  padding: 0.9rem 1rem;
+  border-left: 3px solid var(--accent);
+  background: var(--bg);
+}
+
+.tutorial h2 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.tutorial p {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.tutorial pre {
+  margin: 0.7rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 5px;
+  background: var(--code-bg);
+}
+
+.tutorial .warning {
+  color: var(--warn);
+  font-weight: 600;
+}
+
 label {
   display: grid;
   align-content: start;
@@ -377,6 +510,10 @@ small {
   color: var(--faint);
   font-size: 0.7rem;
   line-height: 1.4;
+}
+
+small.description {
+  color: var(--muted);
 }
 
 .review ul {
