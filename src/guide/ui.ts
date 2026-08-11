@@ -20,6 +20,7 @@ export const ui = {
   },
   diskEraseWarning: { zh: '安装指南会清除所选磁盘上的全部数据。请在继续前再次核对设备名。' },
   storage: { zh: '存储' },
+  regionLanguage: { zh: '区域与语言' },
   baseSystem: { zh: '基础系统' },
   review: { zh: '确认配置' },
   backToWelcome: { zh: '返回欢迎页' },

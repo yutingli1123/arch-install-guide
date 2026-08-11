@@ -16,7 +16,7 @@ describe('setup wizard', () => {
     await wrapper.get('[data-action="start"]').trigger('click')
 
     expect(wrapper.get('.wizard h1').text()).toBe('安装目标')
-    expect(wrapper.get('.progress').text()).toBe('第 1 步，共 7 步')
+    expect(wrapper.get('.progress').text()).toBe('第 1 步，共 6 步')
     expect(wrapper.get('.tutorial').text()).toContain('TYPE 应为 disk')
     expect(wrapper.get('.tutorial code').text()).toBe('lsblk')
     expect(wrapper.get('.tutorial').text()).toContain('清除所选磁盘上的全部数据')
@@ -59,13 +59,10 @@ describe('setup wizard', () => {
     await wrapper.get('select[name="snapper"]').setValue('none')
     await next(wrapper)
 
-    expect(wrapper.get('.wizard h1').text()).toBe('时区')
+    expect(wrapper.get('.wizard h1').text()).toBe('区域与语言')
     expect(wrapper.find('select[name="timezone"]').exists()).toBe(true)
-    await wrapper.get('select[name="timezone"]').setValue('Asia/Shanghai')
-    await next(wrapper)
-
-    expect(wrapper.get('.wizard h1').text()).toBe('系统语言')
     expect(wrapper.find('select[name="systemLocale"]').exists()).toBe(true)
+    await wrapper.get('select[name="timezone"]').setValue('Asia/Shanghai')
     await wrapper.get('select[name="systemLocale"]').setValue('zh_CN.UTF-8')
     await next(wrapper)
 
@@ -96,7 +93,7 @@ describe('setup wizard', () => {
     expect(params.get('timezone')).toBe('Asia/Shanghai')
     expect(params.get('locale')).toBe('zh_CN.UTF-8')
     expect(params.get('keymap')).toBe('de-latin1')
-    expect(params.get('step')).toBe('7')
+    expect(params.get('step')).toBe('6')
 
     await next(wrapper)
 
@@ -109,14 +106,14 @@ describe('setup wizard', () => {
 
     await wrapper.get('[data-action="edit"]').trigger('click')
     expect(wrapper.get('.wizard h1').text()).toBe('确认配置')
-    expect(new URLSearchParams(window.location.search).get('step')).toBe('7')
+    expect(new URLSearchParams(window.location.search).get('step')).toBe('6')
   })
 
   it('restores shared configuration at its saved wizard step', () => {
     window.history.replaceState(
       null,
       '',
-      '/?disk=%2Fdev%2Fsda&cpu=amd&hostname=workstation&user=alice&step=6',
+      '/?disk=%2Fdev%2Fsda&cpu=amd&hostname=workstation&user=alice&step=5',
     )
     const wrapper = mount(App)
 
@@ -125,7 +122,7 @@ describe('setup wizard', () => {
       'workstation',
     )
     expect((wrapper.get('input[name="username"]').element as HTMLInputElement).value).toBe('alice')
-    expect(new URLSearchParams(window.location.search).get('step')).toBe('6')
+    expect(new URLSearchParams(window.location.search).get('step')).toBe('5')
   })
 
   it('opens a completed shared configuration directly as the guide', () => {
@@ -202,7 +199,6 @@ async function openGuide(wrapper: VueWrapper) {
   await wrapper.get('select[name="snapper"]').setValue('none')
   await next(wrapper)
   await wrapper.get('select[name="timezone"]').setValue('America/Toronto')
-  await next(wrapper)
   await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
   await next(wrapper)
   await wrapper.get('select[name="keymap"]').setValue('us')

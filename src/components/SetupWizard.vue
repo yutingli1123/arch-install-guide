@@ -15,8 +15,7 @@ const step = defineModel<number>('step', { required: true })
 const titles = computed(() => [
   pick(ui.installationTarget, props.locale),
   pick(ui.storage, props.locale),
-  pick(ui.timezone, props.locale),
-  pick(ui.systemLocale, props.locale),
+  pick(ui.regionLanguage, props.locale),
   pick(ui.keymap, props.locale),
   pick(ui.baseSystem, props.locale),
   pick(ui.review, props.locale),
@@ -236,7 +235,7 @@ function advance(event: Event) {
         </label>
       </fieldset>
 
-      <fieldset v-else-if="step === 2" class="single">
+      <fieldset v-else-if="step === 2">
         <label>
           <span>{{ pick(ui.timezone, props.locale) }}</span>
           <select
@@ -252,9 +251,6 @@ function advance(event: Event) {
           </select>
           <small>{{ pick(ui.timezoneHint, props.locale) }}</small>
         </label>
-      </fieldset>
-
-      <fieldset v-else-if="step === 3" class="single">
         <label>
           <span>{{ pick(ui.systemLocale, props.locale) }}</span>
           <select
@@ -272,7 +268,7 @@ function advance(event: Event) {
         </label>
       </fieldset>
 
-      <fieldset v-else-if="step === 4" class="single">
+      <fieldset v-else-if="step === 3" class="single">
         <label>
           <span>{{ pick(ui.keymap, props.locale) }}</span>
           <select
@@ -290,7 +286,7 @@ function advance(event: Event) {
         </label>
       </fieldset>
 
-      <fieldset v-else-if="step === 5">
+      <fieldset v-else-if="step === 4">
         <label>
           <span>{{ pick(ui.hostname, props.locale) }}</span>
           <input

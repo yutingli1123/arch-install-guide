@@ -17,11 +17,10 @@ function firstIncompleteStep(draft: ConfigDraft): number {
     !draft.snapper
   )
     return 1
-  if (!draft.timezone) return 2
-  if (!draft.systemLocale) return 3
-  if (!draft.keymap) return 4
-  if (!draft.hostname || !draft.username || !draft.desktop) return 5
-  return 6
+  if (!draft.timezone || !draft.systemLocale) return 2
+  if (!draft.keymap) return 3
+  if (!draft.hostname || !draft.username || !draft.desktop) return 4
+  return 5
 }
 
 const locale = ref<Locale>('zh')
@@ -33,12 +32,12 @@ const requestedGuide = initialParams.get('step') === 'guide'
 const screen = ref<'welcome' | 'configure' | 'guide'>(
   requestedGuide && config.value
     ? 'guide'
-    : requestedGuide || (Number.isInteger(initialStep) && initialStep >= 1 && initialStep <= 7)
+    : requestedGuide || (Number.isInteger(initialStep) && initialStep >= 1 && initialStep <= 6)
       ? 'configure'
       : 'welcome',
 )
 const wizardStep = ref(
-  initialStep >= 1 && initialStep <= 7 ? initialStep - 1 : firstIncompleteStep(draft.value),
+  initialStep >= 1 && initialStep <= 6 ? initialStep - 1 : firstIncompleteStep(draft.value),
 )
 
 watch(
@@ -72,7 +71,7 @@ const showGuide = () => {
   else wizardStep.value = firstIncompleteStep(draft.value)
 }
 const editConfiguration = () => {
-  wizardStep.value = 6
+  wizardStep.value = 5
   screen.value = 'configure'
 }
 
