@@ -16,7 +16,7 @@ export const ui = {
   installationTarget: { zh: '安装目标' },
   diskTutorial: { zh: '确认目标磁盘' },
   diskTutorialBody: {
-    zh: '在准备安装 Arch Linux 的电脑上启动安装介质，然后运行下面的命令。根据 SIZE 和 TYPE 找到目标整盘；TYPE 应为 disk。请填写整盘设备名，例如 /dev/nvme0n1 或 /dev/sda，不要填写 /dev/nvme0n1p1、/dev/sda1 这样的分区名。',
+    zh: '在准备安装 Arch Linux 的电脑上启动安装介质，然后运行下面的命令。根据 SIZE 和 TYPE 找到目标整盘；TYPE 应为 disk。在固定的 /dev/ 前缀后填写设备名，例如 nvme0n1 或 sda，不要填写 nvme0n1p1、sda1 这样的分区名。',
   },
   diskEraseWarning: { zh: '安装指南会清除所选磁盘上的全部数据。请在继续前再次核对设备名。' },
   storage: { zh: '存储' },

@@ -59,8 +59,25 @@ describe('configuration', () => {
   it('keeps an untouched draft empty and serializes only explicit choices', () => {
     expect(parseDraft('')).toEqual({})
     expect(serializeDraft({})).toBe('')
-    expect(serializeDraft({ cpu: 'amd' })).toBe('cpu=amd')
+    expect(serializeDraft({ cpu: 'amd' })).toMatch(/^c=[A-Za-z0-9_-]+$/)
+    expect(serializeDraft({ cpu: 'amd' })).not.toContain('cpu')
+    expect(parseDraft(serializeDraft({ cpu: 'amd' }))).toEqual({ cpu: 'amd' })
+    expect(parseDraft('?config=v1.Y3B1PWFtZA')).toEqual({ cpu: 'amd' })
     expect(completeConfig({})).toBeNull()
+  })
+
+  it('keeps a partially completed configuration token compact', () => {
+    const query = serializeDraft({
+      disk: '/dev/nvme0n1',
+      cpu: 'amd',
+      swap: 'none',
+      subvolumeLayout: 'root-only',
+      encryption: { mode: 'none' },
+      secureBoot: 'none',
+    })
+
+    expect(query.length).toBeLessThan(30)
+    expect(query).not.toContain('nvme')
   })
 
   it('derives snapper as disabled for the root-only layout', () => {
@@ -68,21 +85,28 @@ describe('configuration', () => {
     const config = completeConfig({ ...draft, subvolumeLayout: 'root-only' })
 
     expect(config?.snapper).toBe('none')
-    expect(serializeDraft({ subvolumeLayout: 'root-only' })).toBe('layout=root-only')
-    expect(parseDraft('?layout=root-only&snapper=none')).toEqual({
+    expect(serializeDraft({ subvolumeLayout: 'root-only' })).not.toContain('layout')
+    expect(parseDraft(serializeDraft({ subvolumeLayout: 'root-only', snapper: 'none' }))).toEqual({
       subvolumeLayout: 'root-only',
     })
   })
 
   it('ignores unsafe URL values and explains unavailable choices', () => {
     const draft = parseDraft(
-      '?disk=%2Fdev%2Fdisk%2Fby-id%2F..%2Fsda&timezone=..%2Fetc&user=root&layout=root-only',
+      serializeDraft({
+        disk: '/dev/disk/by-id/../sda',
+        timezone: '../etc',
+        username: 'root',
+        subvolumeLayout: 'root-only',
+      }),
     )
 
     expect(draft.disk).toBeUndefined()
     expect(draft.timezone).toBeUndefined()
     expect(draft.username).toBeUndefined()
     expect(validate(draft)['snapper.root']).toBe('需要标准分离子卷布局')
+    expect(parseDraft('?c=invalid!')).toEqual({})
+    expect(parseDraft('?cpu=amd&layout=root-only')).toEqual({})
   })
 })
 

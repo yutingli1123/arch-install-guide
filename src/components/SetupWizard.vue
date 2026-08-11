@@ -118,7 +118,7 @@ const desktopOptions = computed(() => [
   })),
 ])
 
-type TextField = 'disk' | 'hostname' | 'username'
+type TextField = 'hostname' | 'username'
 type ChoiceField = Exclude<keyof ConfigDraft, 'encryption'>
 type SelectField = 'timezone' | 'systemLocale' | 'keymap'
 
@@ -129,6 +129,15 @@ function commitText(field: TextField, event: Event) {
     return
   }
   model.value = { ...model.value, [field]: input.value }
+}
+
+function commitDisk(event: Event) {
+  const input = event.currentTarget as HTMLInputElement
+  if (!input.reportValidity()) {
+    input.value = model.value.disk?.replace(/^\/dev\//, '') ?? ''
+    return
+  }
+  model.value = { ...model.value, disk: `/dev/${input.value}` }
 }
 
 function commitSelect(field: SelectField, event: Event) {
@@ -199,13 +208,17 @@ function goToStep(index: number) {
 
         <label>
           <span>{{ pick(ui.targetDisk, props.locale) }}</span>
-          <input
-            name="disk"
-            required
-            pattern="/dev/(nvme[0-9]+n[0-9]+|mmcblk[0-9]+|loop[0-9]+|md[0-9]+|(sd|vd|xvd|hd)[a-z]+)"
-            :value="model.disk ?? ''"
-            @change="commitText('disk', $event)"
-          />
+          <span class="device-input">
+            <span class="device-prefix">/dev/</span>
+            <input
+              name="disk"
+              required
+              pattern="nvme[0-9]+n[0-9]+|mmcblk[0-9]+|loop[0-9]+|md[0-9]+|(sd|vd|xvd|hd)[a-z]+"
+              placeholder="nvme0n1"
+              :value="model.disk?.replace(/^\/dev\//, '') ?? ''"
+              @change="commitDisk"
+            />
+          </span>
         </label>
 
         <div class="field">
@@ -567,6 +580,31 @@ input:focus,
 select:focus {
   border-color: var(--accent);
   outline: 2px solid color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.device-input {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.device-prefix {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0 0.5rem 0.6rem;
+  border: 1px solid var(--rule);
+  border-right: 0;
+  border-radius: 5px 0 0 5px;
+  background: var(--bg);
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+.device-input input {
+  border-radius: 0 5px 5px 0;
+}
+
+.device-input:focus-within .device-prefix {
+  border-color: var(--accent);
 }
 
 small {

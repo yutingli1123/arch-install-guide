@@ -105,8 +105,17 @@ const SAFE = {
 
 /** Reads only options whose guide steps are implemented. Unknown or unsafe values are ignored. */
 export function parseDraft(search: string): ConfigDraft {
-  const params = new URLSearchParams(search)
+  const outer = new URLSearchParams(search)
+  const compact = outer.get('c')
+  const legacy = outer.get('config')
+  const params =
+    compact !== null
+      ? decodeCompactConfig(compact)
+      : legacy !== null
+        ? decodeLegacyConfig(legacy)
+        : new URLSearchParams()
   const draft: ConfigDraft = {}
+  if (!params) return draft
   const disk = safeValue(params.get('disk'), SAFE.disk)
   const cpu = listedValue(params.get('cpu'), ['intel', 'amd'] as const)
   const swap = listedValue(params.get('swap'), ['none'] as const)
@@ -140,20 +149,11 @@ export function parseDraft(search: string): ConfigDraft {
 
 /** Writes only choices the user has actually made. */
 export function serializeDraft(draft: ConfigDraft): string {
+  const encoded = encodeCompactConfig(draft)
+  if (!encoded) return ''
+
   const params = new URLSearchParams()
-  if (draft.disk !== undefined) params.set('disk', draft.disk)
-  if (draft.cpu !== undefined) params.set('cpu', draft.cpu)
-  if (draft.swap !== undefined) params.set('swap', draft.swap)
-  if (draft.subvolumeLayout !== undefined) params.set('layout', draft.subvolumeLayout)
-  if (draft.encryption !== undefined) params.set('encryption', draft.encryption.mode)
-  if (draft.secureBoot !== undefined) params.set('secureBoot', draft.secureBoot)
-  if (draft.snapper !== undefined) params.set('snapper', draft.snapper)
-  if (draft.desktop !== undefined) params.set('desktop', draft.desktop)
-  if (draft.timezone !== undefined) params.set('timezone', draft.timezone)
-  if (draft.systemLocale !== undefined) params.set('locale', draft.systemLocale)
-  if (draft.keymap !== undefined) params.set('keymap', draft.keymap)
-  if (draft.hostname !== undefined) params.set('hostname', draft.hostname)
-  if (draft.username !== undefined) params.set('user', draft.username)
+  params.set('c', encoded)
   return params.toString()
 }
 
@@ -209,4 +209,130 @@ function listedValue<const T extends string>(
   values: readonly T[],
 ): T | undefined {
   return value && values.includes(value as T) ? (value as T) : undefined
+}
+
+function encodeBase64Url(bytes: Uint8Array): string {
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+function decodeBase64Url(value: string): Uint8Array | null {
+  try {
+    const encoded = value.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '=')
+    const binary = atob(padded)
+    return Uint8Array.from(binary, (character) => character.charCodeAt(0))
+  } catch {
+    return null
+  }
+}
+
+/** Enum order is part of the v1 URL format. Append only; never reorder existing entries. */
+const COMPACT_ENUMS = {
+  cpu: ['intel', 'amd'],
+  swap: ['none', 'zram', 'swapfile', 'partition'],
+  layout: ['root-only', 'separated'],
+  encryption: ['none', 'luks2'],
+  secureBoot: ['none', 'custom-db', 'shim-mok'],
+  snapper: ['none', 'root', 'root-home'],
+  desktop: ['none', 'gnome', 'kde', 'hyprland'],
+  locale: SYSTEM_LOCALES,
+  keymap: KEYMAPS,
+} as const
+
+function encodeCompactConfig(draft: ConfigDraft): string | null {
+  // Byte 0 is the format version; bytes 1-2 are the field-presence bitmap.
+  let mask = 0
+  const bytes = [1, 0, 0]
+  const include = (bit: number, write: () => void) => {
+    mask |= 1 << bit
+    write()
+  }
+  const writeText = (value: string) => {
+    const encoded = new TextEncoder().encode(value)
+    if (encoded.length > 255) throw new RangeError('compact config string is too long')
+    bytes.push(encoded.length, ...encoded)
+  }
+  const writeEnum = (value: string, values: readonly string[]) => {
+    const index = values.indexOf(value)
+    if (index < 0) throw new RangeError('compact config enum is unknown')
+    bytes.push(index)
+  }
+
+  if (draft.disk !== undefined) include(0, () => writeText(draft.disk!.replace(/^\/dev\//, '')))
+  if (draft.cpu !== undefined) include(1, () => writeEnum(draft.cpu!, COMPACT_ENUMS.cpu))
+  if (draft.swap !== undefined) include(2, () => writeEnum(draft.swap!, COMPACT_ENUMS.swap))
+  if (draft.subvolumeLayout !== undefined)
+    include(3, () => writeEnum(draft.subvolumeLayout!, COMPACT_ENUMS.layout))
+  if (draft.encryption !== undefined)
+    include(4, () => writeEnum(draft.encryption!.mode, COMPACT_ENUMS.encryption))
+  if (draft.secureBoot !== undefined)
+    include(5, () => writeEnum(draft.secureBoot!, COMPACT_ENUMS.secureBoot))
+  if (draft.snapper !== undefined)
+    include(6, () => writeEnum(draft.snapper!, COMPACT_ENUMS.snapper))
+  if (draft.desktop !== undefined)
+    include(7, () => writeEnum(draft.desktop!, COMPACT_ENUMS.desktop))
+  if (draft.timezone !== undefined) include(8, () => writeText(draft.timezone!))
+  if (draft.systemLocale !== undefined)
+    include(9, () => writeEnum(draft.systemLocale!, COMPACT_ENUMS.locale))
+  if (draft.keymap !== undefined) include(10, () => writeEnum(draft.keymap!, COMPACT_ENUMS.keymap))
+  if (draft.hostname !== undefined) include(11, () => writeText(draft.hostname!))
+  if (draft.username !== undefined) include(12, () => writeText(draft.username!))
+  if (mask === 0) return null
+
+  bytes[1] = mask & 0xff
+  bytes[2] = mask >> 8
+  return encodeBase64Url(Uint8Array.from(bytes))
+}
+
+function decodeCompactConfig(value: string): URLSearchParams | null {
+  const bytes = decodeBase64Url(value)
+  if (!bytes || bytes.length < 3 || bytes[0] !== 1) return null
+  const mask = bytes[1]! | (bytes[2]! << 8)
+  if ((mask & ~0x1fff) !== 0) return null
+
+  let cursor = 3
+  const params = new URLSearchParams()
+  const readText = () => {
+    const length = bytes[cursor++]
+    if (length === undefined || cursor + length > bytes.length) return null
+    const text = new TextDecoder().decode(bytes.slice(cursor, cursor + length))
+    cursor += length
+    return text
+  }
+  const readEnum = (values: readonly string[]) => {
+    const index = bytes[cursor++]
+    return index === undefined ? null : (values[index] ?? null)
+  }
+  const read = (bit: number, key: string, reader: () => string | null, prefix = '') => {
+    if ((mask & (1 << bit)) === 0) return true
+    const result = reader()
+    if (result === null) return false
+    params.set(key, `${prefix}${result}`)
+    return true
+  }
+
+  const valid =
+    read(0, 'disk', readText, '/dev/') &&
+    read(1, 'cpu', () => readEnum(COMPACT_ENUMS.cpu)) &&
+    read(2, 'swap', () => readEnum(COMPACT_ENUMS.swap)) &&
+    read(3, 'layout', () => readEnum(COMPACT_ENUMS.layout)) &&
+    read(4, 'encryption', () => readEnum(COMPACT_ENUMS.encryption)) &&
+    read(5, 'secureBoot', () => readEnum(COMPACT_ENUMS.secureBoot)) &&
+    read(6, 'snapper', () => readEnum(COMPACT_ENUMS.snapper)) &&
+    read(7, 'desktop', () => readEnum(COMPACT_ENUMS.desktop)) &&
+    read(8, 'timezone', readText) &&
+    read(9, 'locale', () => readEnum(COMPACT_ENUMS.locale)) &&
+    read(10, 'keymap', () => readEnum(COMPACT_ENUMS.keymap)) &&
+    read(11, 'hostname', readText) &&
+    read(12, 'user', readText)
+
+  return valid && cursor === bytes.length ? params : null
+}
+
+function decodeLegacyConfig(value: string): URLSearchParams | null {
+  if (!value.startsWith('v1.')) return null
+  const bytes = decodeBase64Url(value.slice(3))
+  return bytes ? new URLSearchParams(new TextDecoder().decode(bytes)) : null
 }

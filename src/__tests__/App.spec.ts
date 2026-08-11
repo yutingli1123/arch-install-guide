@@ -1,6 +1,7 @@
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it } from 'vitest'
 import App from '../App.vue'
+import { parseDraft, serializeDraft, stageOneConfig } from '../guide/config'
 
 describe('setup wizard', () => {
   beforeEach(() => window.history.replaceState(null, '', '/'))
@@ -21,6 +22,7 @@ describe('setup wizard', () => {
     expect(wrapper.get('.tutorial code').text()).toBe('lsblk')
     expect(wrapper.get('.tutorial').text()).toContain('清除所选磁盘上的全部数据')
     expect(wrapper.get('input[name="disk"]').element).toBeInstanceOf(HTMLInputElement)
+    expect(wrapper.get('.device-prefix').text()).toBe('/dev/')
 
     const params = new URLSearchParams(window.location.search)
     expect([...params.entries()]).toEqual([['step', '1']])
@@ -43,21 +45,21 @@ describe('setup wizard', () => {
     await start(wrapper)
     expect(wrapper.get('.step-link[data-step="1"]').attributes('disabled')).toBeDefined()
 
-    await wrapper.get('input[name="disk"]').setValue('/dev/nvme0n1')
+    await wrapper.get('input[name="disk"]').setValue('nvme0n1')
     await selectChoice(wrapper, 'cpu', 'intel')
     await next(wrapper)
     await wrapper.get('.step-link[data-step="0"]').trigger('click')
 
     expect(wrapper.get('.wizard h1').text()).toBe('安装目标')
     expect(new URLSearchParams(window.location.search).get('step')).toBe('1')
-    expect(new URLSearchParams(window.location.search).get('disk')).toBe('/dev/nvme0n1')
+    expect(parseDraft(window.location.search).disk).toBe('/dev/nvme0n1')
   })
 
   it('walks through configuration, review, and the generated guide', async () => {
     const wrapper = mount(App)
     await start(wrapper)
 
-    await wrapper.get('input[name="disk"]').setValue('/dev/nvme0n1')
+    await wrapper.get('input[name="disk"]').setValue('nvme0n1')
     await selectChoice(wrapper, 'cpu', 'amd')
     await next(wrapper)
 
@@ -105,13 +107,17 @@ describe('setup wizard', () => {
     expect(wrapper.get('.review').text()).toContain('用户名alice')
 
     const params = new URLSearchParams(window.location.search)
-    expect(params.get('cpu')).toBe('amd')
-    expect(params.get('layout')).toBe('root-only')
-    expect(params.has('snapper')).toBe(false)
-    expect(params.get('user')).toBe('alice')
-    expect(params.get('timezone')).toBe('Asia/Shanghai')
-    expect(params.get('locale')).toBe('zh_CN.UTF-8')
-    expect(params.get('keymap')).toBe('de-latin1')
+    const saved = parseDraft(window.location.search)
+    expect(params.get('c')).toMatch(/^[A-Za-z0-9_-]+$/)
+    expect(params.has('config')).toBe(false)
+    expect(params.has('cpu')).toBe(false)
+    expect(saved.cpu).toBe('amd')
+    expect(saved.subvolumeLayout).toBe('root-only')
+    expect(saved.snapper).toBeUndefined()
+    expect(saved.username).toBe('alice')
+    expect(saved.timezone).toBe('Asia/Shanghai')
+    expect(saved.systemLocale).toBe('zh_CN.UTF-8')
+    expect(saved.keymap).toBe('de-latin1')
     expect(params.get('step')).toBe('6')
 
     await next(wrapper)
@@ -132,7 +138,7 @@ describe('setup wizard', () => {
     window.history.replaceState(
       null,
       '',
-      '/?disk=%2Fdev%2Fsda&cpu=amd&hostname=workstation&user=alice&step=5',
+      `/?${serializeDraft({ disk: '/dev/sda', cpu: 'amd', hostname: 'workstation', username: 'alice' })}&step=5`,
     )
     const wrapper = mount(App)
 
@@ -145,11 +151,14 @@ describe('setup wizard', () => {
   })
 
   it('opens a completed shared configuration directly as the guide', () => {
-    window.history.replaceState(
-      null,
-      '',
-      '/?disk=%2Fdev%2Fsda&cpu=amd&swap=none&layout=separated&encryption=none&secureBoot=none&snapper=none&desktop=none&timezone=America%2FToronto&locale=en_US.UTF-8&keymap=us&hostname=workstation&user=alice&step=guide',
-    )
+    const query = serializeDraft({
+      ...stageOneConfig,
+      disk: '/dev/sda',
+      cpu: 'amd',
+      hostname: 'workstation',
+      username: 'alice',
+    })
+    window.history.replaceState(null, '', `/?${query}&step=guide`)
     const wrapper = mount(App)
 
     expect(wrapper.find('.welcome').exists()).toBe(false)
@@ -160,12 +169,12 @@ describe('setup wizard', () => {
   })
 
   it('does not generate a guide from an incomplete shared configuration', () => {
-    window.history.replaceState(null, '', '/?cpu=amd&step=guide')
+    window.history.replaceState(null, '', `/?${serializeDraft({ cpu: 'amd' })}&step=guide`)
     const wrapper = mount(App)
 
     expect(wrapper.find('.guide').exists()).toBe(false)
     expect(wrapper.get('.wizard h1').text()).toBe('安装目标')
-    expect(new URLSearchParams(window.location.search).get('cpu')).toBe('amd')
+    expect(parseDraft(window.location.search).cpu).toBe('amd')
     expect(new URLSearchParams(window.location.search).get('step')).toBe('1')
   })
 })
@@ -212,7 +221,7 @@ async function selectChoice(wrapper: VueWrapper, name: string, value: string) {
 
 async function openGuide(wrapper: VueWrapper) {
   await start(wrapper)
-  await wrapper.get('input[name="disk"]').setValue('/dev/nvme0n1')
+  await wrapper.get('input[name="disk"]').setValue('nvme0n1')
   await selectChoice(wrapper, 'cpu', 'intel')
   await next(wrapper)
   await selectChoice(wrapper, 'subvolumeLayout', 'separated')
