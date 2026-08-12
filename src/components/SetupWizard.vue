@@ -23,6 +23,11 @@ const step = defineModel<number>('step', { required: true })
 const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 const canUseDetectedTimezone = TIMEZONES.includes(detectedTimezone)
 const sortedSystemLocales = [...SYSTEM_LOCALES].sort()
+const isCjkSystemLocale = computed(() =>
+  ['zh_CN.UTF-8', 'zh_TW.UTF-8', 'ja_JP.UTF-8', 'ko_KR.UTF-8'].includes(
+    model.value.systemLocale ?? '',
+  ),
+)
 
 const titles = computed(() => [
   pick(ui.regionLanguage, props.locale),
@@ -437,6 +442,9 @@ function goToStep(index: number) {
             </option>
           </select>
           <small>{{ pick(ui.systemLocaleHint, props.locale) }}</small>
+          <p v-if="isCjkSystemLocale" class="locale-warning" role="alert">
+            {{ pick(ui.cjkTtyWarning, props.locale) }}
+          </p>
         </label>
       </fieldset>
 
@@ -785,6 +793,16 @@ small.description {
   background: var(--bg);
   color: var(--faint);
   font-size: 0.72rem;
+}
+
+.locale-warning {
+  margin: 0.25rem 0 0;
+  padding: 0.65rem;
+  border-left: 3px solid var(--warn);
+  background: var(--bg);
+  color: var(--warn);
+  font-size: 0.72rem;
+  line-height: 1.5;
 }
 
 .review ul {

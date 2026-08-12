@@ -60,6 +60,9 @@ export const ui = {
   useDetectedTimezone: { zh: '使用此时区' },
   systemLocale: { zh: '系统语言' },
   systemLocaleHint: { zh: '选择系统服务、终端和登录界面默认使用的语言环境。' },
+  cjkTtyWarning: {
+    zh: 'TTY 无法显示 CJK 字符，会显示为方框。仅当你明确计划安装并使用图形界面时，才推荐选择 CJK 系统语言；纯命令行系统请选择非 CJK locale。',
+  },
   keymap: { zh: '键盘布局' },
   keymapHint: { zh: '选择安装环境和虚拟控制台使用的键盘布局。' },
   hostname: { zh: '主机名' },

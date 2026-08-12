@@ -59,6 +59,22 @@ describe('setup wizard', () => {
     expect(parseDraft(window.location.search).timezone).toBe(timezone)
   })
 
+  it('warns that TTY cannot display CJK system locales', async () => {
+    const wrapper = mount(App)
+    await start(wrapper)
+
+    expect(wrapper.find('.locale-warning').exists()).toBe(false)
+    await wrapper.get('select[name="systemLocale"]').setValue('zh_CN.UTF-8')
+    expect(wrapper.get('.locale-warning').text()).toContain('TTY 无法显示 CJK 字符，会显示为方框')
+    expect(wrapper.get('.locale-warning').text()).toContain('明确计划安装并使用图形界面')
+
+    await wrapper.get('select[name="systemLocale"]').setValue('ja_JP.UTF-8')
+    expect(wrapper.find('.locale-warning').exists()).toBe(true)
+
+    await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
+    expect(wrapper.find('.locale-warning').exists()).toBe(false)
+  })
+
   it('uses completed progress steps as backward navigation', async () => {
     const wrapper = mount(App)
     await start(wrapper)
