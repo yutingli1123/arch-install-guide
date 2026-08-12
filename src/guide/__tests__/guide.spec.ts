@@ -284,6 +284,7 @@ describe('renderGuide', () => {
     expect(flagship).toContain('findmnt --mountpoint /.snapshots')
     expect(flagship).toContain('findmnt --mountpoint /home/.snapshots')
     expect(flagship).not.toContain('findmnt /.snapshots /home/.snapshots')
+    expect(flagship).not.toContain('install -d -m 700 /etc/kernel')
     expect(flagship).toContain('[PCRSignature:initrd]')
     expect(flagship).toContain('shim-signed.git')
     expect(flagship).toContain('--tpm2-pcrs=7+14')

@@ -76,7 +76,6 @@ findmnt --mountpoint /.snapshots${cfg.snapper === 'root-home' ? '\nfindmnt --mou
       zh: () => `创建由 ukify 在每次构建 UKI 时使用的 PCR 签名密钥：
 
 \`\`\`
-install -d -m 700 /etc/kernel
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /etc/kernel/pcr-initrd.key.pem
 openssl pkey -in /etc/kernel/pcr-initrd.key.pem -pubout -out /etc/kernel/pcr-initrd.pub.pem
 chmod 600 /etc/kernel/pcr-initrd.key.pem
