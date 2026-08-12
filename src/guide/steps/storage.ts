@@ -35,7 +35,7 @@ HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block 
 \`\`\`
 umount /.snapshots
 rmdir /.snapshots
-snapper -c root create-config /
+snapper --no-dbus -c root create-config /
 btrfs subvolume delete /.snapshots
 mkdir /.snapshots
 mount /.snapshots
@@ -44,7 +44,7 @@ ${
   cfg.snapper === 'root-home'
     ? `umount /home/.snapshots
 rmdir /home/.snapshots
-snapper -c home create-config /home
+snapper --no-dbus -c home create-config /home
 btrfs subvolume delete /home/.snapshots
 mkdir /home/.snapshots
 mount /home/.snapshots
@@ -54,10 +54,12 @@ chmod 750 /home/.snapshots
 }systemctl enable snapper-timeline.timer snapper-cleanup.timer
 \`\`\`
 
+安装时的 chroot 没有运行 system D-Bus，因此使用 \`--no-dbus\` 让 Snapper 直接完成配置。
+
 核对配置和独立挂载点：
 
 \`\`\`
-snapper list-configs
+snapper --no-dbus list-configs
 findmnt /.snapshots${cfg.snapper === 'root-home' ? ' /home/.snapshots' : ''}
 \`\`\``,
     },

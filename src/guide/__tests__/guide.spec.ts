@@ -278,7 +278,9 @@ describe('renderGuide', () => {
     })
 
     expect(flagship).toContain('btrfs subvolume create /mnt/@home_snapshots')
-    expect(flagship).toContain('snapper -c home create-config /home')
+    expect(flagship).toContain('snapper --no-dbus -c root create-config /')
+    expect(flagship).toContain('snapper --no-dbus -c home create-config /home')
+    expect(flagship).toContain('snapper --no-dbus list-configs')
     expect(flagship).toContain('[PCRSignature:initrd]')
     expect(flagship).toContain('shim-signed.git')
     expect(flagship).toContain('--tpm2-pcrs=7+14')
