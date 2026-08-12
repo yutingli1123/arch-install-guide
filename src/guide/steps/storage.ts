@@ -7,7 +7,7 @@ export const storageSteps: Step[] = [
     title: { zh: '启用 systemd initramfs 解锁' },
     when: (cfg) => cfg.encryption.mode === 'luks2',
     body: {
-      zh: ({ cfg }) => `编辑 mkinitcpio 配置：
+      zh: () => `编辑 mkinitcpio 配置：
 
 \`\`\`
 vim /etc/mkinitcpio.conf
@@ -16,10 +16,10 @@ vim /etc/mkinitcpio.conf
 将 \`HOOKS\` 行改为：
 
 \`\`\`
-HOOKS=(base systemd autodetect microcode modconf kms keyboard${cfg.keymap === 'us' ? '' : ' sd-vconsole'} block sd-encrypt filesystems fsck)
+HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block sd-encrypt filesystems fsck)
 \`\`\`
 
-\`systemd\` 与 \`sd-encrypt\` 负责在挂载根文件系统前打开 LUKS2；非默认键盘布局同时加入 \`sd-vconsole\`。`,
+\`systemd\` 与 \`sd-encrypt\` 负责在挂载根文件系统前打开 LUKS2；\`sd-vconsole\` 负责应用虚拟控制台的键盘与字体设置。`,
     },
   },
   {
