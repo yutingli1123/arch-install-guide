@@ -81,10 +81,10 @@ openssl pkey -in /etc/kernel/pcr-initrd.key.pem -pubout -out /etc/kernel/pcr-ini
 chmod 600 /etc/kernel/pcr-initrd.key.pem
 \`\`\`
 
-创建 \`/etc/systemd/ukify.conf\`：
+创建 mkinitcpio 传给 ukify 的配置文件 \`/etc/kernel/uki.conf\`：
 
 \`\`\`
-vim /etc/systemd/ukify.conf
+vim /etc/kernel/uki.conf
 \`\`\`
 
 写入：
@@ -95,7 +95,7 @@ PCRPrivateKey=/etc/kernel/pcr-initrd.key.pem
 PCRPublicKey=/etc/kernel/pcr-initrd.pub.pem
 \`\`\`
 
-ukify 会在每次内核更新重建 UKI 时重新计算 PCR 11、签名策略，并将公钥和签名嵌入镜像。`,
+mkinitcpio 的 \`--ukify\` 模式会自动读取 \`/etc/kernel/uki.conf\`。ukify 会在每次内核更新重建 UKI 时重新计算 PCR 11、签名策略，并将公钥和签名嵌入镜像。`,
     },
   },
 ]
