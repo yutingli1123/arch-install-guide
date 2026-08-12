@@ -330,7 +330,7 @@ function goToStep(index: number) {
           />
         </div>
 
-        <div class="field">
+        <div class="field encryption-field">
           <span>{{ pick(ui.encryption, props.locale) }}</span>
           <ChoicePicker
             name="encryption"
@@ -338,34 +338,33 @@ function goToStep(index: number) {
             :options="encryptionOptions"
             @update:model-value="commitEncryption"
           />
-        </div>
-
-        <div
-          v-if="model.encryption?.mode === 'luks2' && model.encryption.unlock.method === 'tpm2'"
-          class="field nested-field"
-        >
-          <span>{{ pick(ui.tpmPolicy, props.locale) }}</span>
-          <ChoicePicker
-            name="tpm2Preset"
-            :model-value="tpm2Preset(model.encryption)"
-            :options="tpmPresetOptions"
-            @update:model-value="commitTpm2Preset"
-          />
-          <label class="check-option">
-            <input
-              name="tpmPin"
-              type="checkbox"
-              :checked="model.encryption.unlock.pin"
-              @change="commitTpmPin"
+          <div
+            v-if="model.encryption?.mode === 'luks2' && model.encryption.unlock.method === 'tpm2'"
+            class="field nested-field"
+          >
+            <span>{{ pick(ui.tpmPolicy, props.locale) }}</span>
+            <ChoicePicker
+              name="tpm2Preset"
+              :model-value="tpm2Preset(model.encryption)"
+              :options="tpmPresetOptions"
+              @update:model-value="commitTpm2Preset"
             />
-            <span>{{ pick(ui.requireTpmPin, props.locale) }}</span>
-          </label>
-          <p v-if="tpm2Preset(model.encryption) === 'minimal'" class="constraint-message">
-            {{ pick(ui.pcr7Warning, props.locale) }}
-          </p>
+            <label class="check-option">
+              <input
+                name="tpmPin"
+                type="checkbox"
+                :checked="model.encryption.unlock.pin"
+                @change="commitTpmPin"
+              />
+              <span>{{ pick(ui.requireTpmPin, props.locale) }}</span>
+            </label>
+            <p v-if="tpm2Preset(model.encryption) === 'minimal'" class="constraint-message">
+              {{ pick(ui.pcr7Warning, props.locale) }}
+            </p>
+          </div>
         </div>
 
-        <div class="field">
+        <div class="field secure-boot-field">
           <span>{{ pick(ui.secureBoot, props.locale) }}</span>
           <ChoicePicker
             name="secureBoot"
@@ -752,7 +751,7 @@ small.description {
 }
 
 .nested-field {
-  grid-column: 1 / -1;
+  margin-top: 0.5rem;
   padding: 0.8rem;
   border: 1px solid var(--rule);
   border-radius: 5px;

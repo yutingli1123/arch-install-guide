@@ -33,6 +33,7 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  scrollbar-gutter: stable;
   /** Brand-colored hairline across the very top of the page. */
   border-top: 3px solid var(--accent);
   background: var(--bg);

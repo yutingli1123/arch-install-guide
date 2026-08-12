@@ -92,6 +92,12 @@ describe('setup wizard', () => {
     await selectChoice(wrapper, 'encryption', 'tpm2')
     expect(wrapper.get('.nested-field').text()).toContain('最小（PCR 7）')
     expect(wrapper.get('.nested-field').text()).toContain('不区分具体 UKI')
+    expect(
+      wrapper.get('.encryption-field').element.contains(wrapper.get('.nested-field').element),
+    ).toBe(true)
+    expect(wrapper.get('.encryption-field').element.nextElementSibling).toBe(
+      wrapper.get('.secure-boot-field').element,
+    )
 
     await selectChoice(wrapper, 'tpm2Preset', 'shim-mok')
     let saved = parseDraft(window.location.search)
