@@ -44,6 +44,9 @@ export const ui = {
   unlock: { zh: '解锁方式' },
   password: { zh: '密码' },
   tpmPin: { zh: 'TPM PIN' },
+  tpmPolicy: { zh: 'TPM2 绑定策略' },
+  requireTpmPin: { zh: '启动时要求输入 TPM PIN' },
+  pcr7Warning: { zh: '仅绑定 PCR 7 不区分具体 UKI；关闭安全启动时只记录“安全启动关闭”。' },
   hashPcrs: { zh: 'PCR 哈希绑定' },
   signedPcrs: { zh: 'PCR 签名策略' },
   secureBoot: { zh: '安全启动' },
@@ -84,7 +87,12 @@ export const choices = {
   encryption: {
     none: { zh: '关闭' },
     password: { zh: 'LUKS2（密码）' },
-    'tpm2-pin': { zh: 'LUKS2（TPM2 + PIN）' },
+    tpm2: { zh: 'LUKS2（TPM2）' },
+  },
+  tpm2Preset: {
+    minimal: { zh: '最小（PCR 7）' },
+    'custom-db': { zh: '推荐（自定义 db）' },
+    'shim-mok': { zh: '推荐（shim/MOK）' },
   },
   secureBoot: {
     none: { zh: '关闭' },
@@ -200,7 +208,12 @@ export const choiceDescriptions = {
   encryption: {
     none: { zh: '不加密根文件系统；ESP 无论选择哪种模式都不会加密。' },
     password: { zh: '使用 LUKS2 保护系统数据，每次启动时手动输入密码解锁。' },
-    'tpm2-pin': { zh: '使用 LUKS2，由 TPM2 验证启动状态，并要求输入 PIN。' },
+    tpm2: { zh: '使用 LUKS2，由 TPM2 验证启动状态；可另行要求输入 PIN。' },
+  },
+  tpm2Preset: {
+    minimal: { zh: '哈希绑定 PCR 7；内核更新不需重新注册，但不能区分由同一密钥签名的镜像。' },
+    'custom-db': { zh: '绑定 PCR 7，并用签名策略绑定 PCR 11；同时选择自定义 UEFI db。' },
+    'shim-mok': { zh: '绑定 PCR 7+14，并用签名策略绑定 PCR 11；同时选择 shim-signed + MOK。' },
   },
   secureBoot: {
     none: { zh: '不验证启动文件的签名。' },

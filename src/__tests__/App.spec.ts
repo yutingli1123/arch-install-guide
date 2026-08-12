@@ -74,6 +74,42 @@ describe('setup wizard', () => {
     expect(parseDraft(window.location.search).timezone).toBe('America/Toronto')
   })
 
+  it('keeps TPM2 presets and their required secure boot path consistent', async () => {
+    const wrapper = mount(App)
+    await start(wrapper)
+    await wrapper.get('select[name="timezone"]').setValue('America/Toronto')
+    await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
+    await next(wrapper)
+    await wrapper.get('select[name="keymap"]').setValue('us')
+    await next(wrapper)
+
+    expect(
+      wrapper.get('input[name="encryption"][value="password"]').attributes('disabled'),
+    ).toBeUndefined()
+    expect(
+      wrapper.get('input[name="secureBoot"][value="shim-mok"]').attributes('disabled'),
+    ).toBeUndefined()
+    await selectChoice(wrapper, 'encryption', 'tpm2')
+    expect(wrapper.get('.nested-field').text()).toContain('最小（PCR 7）')
+    expect(wrapper.get('.nested-field').text()).toContain('不区分具体 UKI')
+
+    await selectChoice(wrapper, 'tpm2Preset', 'shim-mok')
+    let saved = parseDraft(window.location.search)
+    expect(saved.secureBoot).toBe('shim-mok')
+    expect(saved.encryption).toEqual({
+      mode: 'luks2',
+      unlock: { method: 'tpm2', pin: true, hashPcrs: [7, 14], signedPcrs: [11] },
+    })
+
+    await selectChoice(wrapper, 'secureBoot', 'none')
+    saved = parseDraft(window.location.search)
+    expect(saved.secureBoot).toBe('none')
+    expect(saved.encryption).toEqual({
+      mode: 'luks2',
+      unlock: { method: 'tpm2', pin: true, hashPcrs: [7], signedPcrs: [] },
+    })
+  })
+
   it('walks through configuration, review, and the generated guide', async () => {
     const wrapper = mount(App)
     await start(wrapper)

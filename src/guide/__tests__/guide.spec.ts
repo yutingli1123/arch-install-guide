@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { completeConfig, parseDraft, serializeDraft, stageOneConfig, validate } from '../config'
+import {
+  completeConfig,
+  makeTpm2Encryption,
+  parseDraft,
+  serializeDraft,
+  stageOneConfig,
+  validate,
+} from '../config'
 import { derive, partition } from '../derive'
 import { renderGuide, selectSteps } from '../render'
 import { sectionTitles, steps } from '../steps'
@@ -37,6 +44,32 @@ describe('derive', () => {
   it('picks microcode matching the cpu vendor', () => {
     expect(derive({ ...stageOneConfig, cpu: 'amd' }).packages).toContain('amd-ucode')
     expect(derive({ ...stageOneConfig, cpu: 'intel' }).packages).not.toContain('amd-ucode')
+  })
+
+  it('derives encrypted storage and snapshot mount points from the final configuration', () => {
+    const context = derive({
+      ...stageOneConfig,
+      encryption: { mode: 'luks2', unlock: { method: 'password' } },
+      snapper: 'root-home',
+    })
+
+    expect(context.rootDevice).toBe('/dev/nvme0n1p2')
+    expect(context.rootFsDevice).toBe('/dev/mapper/cryptroot')
+    expect(context.packages).toEqual(expect.arrayContaining(['cryptsetup', 'snapper']))
+    expect(context.subvolumes.slice(-2)).toEqual([
+      { name: '@snapshots', mountPoint: '/.snapshots' },
+      { name: '@home_snapshots', mountPoint: '/home/.snapshots' },
+    ])
+  })
+
+  it('rejects PCR policies paired with the wrong secure boot path', () => {
+    expect(() =>
+      derive({
+        ...stageOneConfig,
+        encryption: makeTpm2Encryption('shim-mok'),
+        secureBoot: 'custom-db',
+      }),
+    ).toThrow('PCR 14 requires shim/MOK secure boot')
   })
 })
 
@@ -108,6 +141,28 @@ describe('configuration', () => {
     expect(validate(draft)['snapper.root']).toBe('需要标准分离子卷布局')
     expect(parseDraft('?c=invalid!')).toEqual({})
     expect(parseDraft('?cpu=amd&layout=root-only')).toEqual({})
+  })
+
+  it('round-trips the complete flagship storage path without flattening its TPM policy', () => {
+    const flagship: Config = {
+      ...stageOneConfig,
+      encryption: makeTpm2Encryption('shim-mok', true),
+      secureBoot: 'shim-mok',
+      snapper: 'root-home',
+    }
+
+    expect(completeConfig(parseDraft(serializeDraft(flagship)))).toEqual(flagship)
+    expect(serializeDraft(flagship)).toMatch(/^c=[A-Za-z0-9_-]+$/)
+  })
+
+  it('does not complete a recommended TPM policy with a mismatched secure boot mode', () => {
+    expect(
+      completeConfig({
+        ...stageOneConfig,
+        encryption: makeTpm2Encryption('custom-db'),
+        secureBoot: 'shim-mok',
+      }),
+    ).toBeNull()
   })
 })
 
@@ -199,6 +254,43 @@ describe('renderGuide', () => {
   it('documents both UKI presets without mentioning fallback_image', () => {
     expect(html).toContain("PRESETS=('default' 'fallback')")
     expect(html).not.toContain('fallback_image')
+  })
+
+  it('renders the password-encrypted path against the opened LUKS mapping', () => {
+    const encrypted = renderHtml({
+      ...stageOneConfig,
+      encryption: { mode: 'luks2', unlock: { method: 'password' } },
+    })
+
+    expect(encrypted.indexOf('sgdisk')).toBeLessThan(encrypted.indexOf('cryptsetup luksFormat'))
+    expect(encrypted).toContain('mkfs.btrfs -f /dev/mapper/cryptroot')
+    expect(encrypted).toContain('rd.luks.name=$(blkid -s UUID -o value /dev/nvme0n1p2)=cryptroot')
+    expect(encrypted).toContain('block sd-encrypt filesystems fsck')
+    expect(encrypted).not.toContain('systemd-cryptenroll --tpm2-device=auto')
+  })
+
+  it('renders the flagship TPM, shim, PCR policy, Snapper, and update verification chain', () => {
+    const flagship = renderHtml({
+      ...stageOneConfig,
+      encryption: makeTpm2Encryption('shim-mok'),
+      secureBoot: 'shim-mok',
+      snapper: 'root-home',
+    })
+
+    expect(flagship).toContain('btrfs subvolume create /mnt/@home_snapshots')
+    expect(flagship).toContain('snapper -c home create-config /home')
+    expect(flagship).toContain('[PCRSignature:initrd]')
+    expect(flagship).toContain('shim-signed.git')
+    expect(flagship).toContain('--tpm2-pcrs=7+14')
+    expect(flagship).toContain('--tpm2-public-key-pcrs=11')
+    expect(flagship).toContain('sudo pacman -Syu')
+  })
+
+  it('renders sbctl only for the custom-db secure boot path', () => {
+    const custom = renderHtml({ ...stageOneConfig, secureBoot: 'custom-db' })
+    expect(custom).toContain('sbctl enroll-keys -m')
+    expect(custom).not.toContain('shim-signed.git')
+    expect(html).not.toContain('sbctl create-keys')
   })
 })
 

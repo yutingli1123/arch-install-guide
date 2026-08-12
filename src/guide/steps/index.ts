@@ -3,6 +3,7 @@ import { liveSteps } from './live'
 import { diskSteps } from './disk'
 import { installSteps } from './install'
 import { systemSteps } from './system'
+import { storageSteps } from './storage'
 import { bootSteps } from './boot'
 import { finishSteps } from './finish'
 
@@ -11,6 +12,7 @@ export const sectionTitles: Record<string, Localized<string>> = {
   disk: { zh: '磁盘' },
   install: { zh: '安装系统' },
   system: { zh: '系统配置' },
+  storage: { zh: '存储配置' },
   boot: { zh: '引导' },
   finish: { zh: '收尾' },
 }
@@ -21,6 +23,7 @@ export const steps: Step[] = [
   ...diskSteps,
   ...installSteps,
   ...systemSteps,
+  ...storageSteps,
   ...bootSteps,
   ...finishSteps,
 ]

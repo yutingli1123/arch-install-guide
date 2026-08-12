@@ -1,11 +1,11 @@
-import type { Config, ConfigDraft } from './types'
+import type { Config, ConfigDraft, Encryption, Tpm2Preset } from './types'
 
 export type ConfigChoice =
   | 'swap.zram'
   | 'swap.swapfile'
   | 'swap.partition'
   | 'encryption.password'
-  | 'encryption.tpm2-pin'
+  | 'encryption.tpm2'
   | 'secureBoot.custom-db'
   | 'secureBoot.shim-mok'
   | 'snapper.root'
@@ -128,21 +128,38 @@ export const VERIFIED_AGAINST = '2026-08'
 
 const NOT_IMPLEMENTED = '对应安装步骤尚未提供'
 
+const TPM2_PRESETS: Record<
+  Tpm2Preset,
+  { hashPcrs: number[]; signedPcrs: number[]; secureBoot: Config['secureBoot'] | null }
+> = {
+  minimal: { hashPcrs: [7], signedPcrs: [], secureBoot: null },
+  'custom-db': { hashPcrs: [7], signedPcrs: [11], secureBoot: 'custom-db' },
+  'shim-mok': { hashPcrs: [7, 14], signedPcrs: [11], secureBoot: 'shim-mok' },
+}
+
+export function tpm2Preset(encryption: Encryption | undefined): Tpm2Preset | undefined {
+  if (encryption?.mode !== 'luks2' || encryption.unlock.method !== 'tpm2') return undefined
+  const hash = encryption.unlock.hashPcrs.join('+')
+  const signed = encryption.unlock.signedPcrs.join('+')
+  return (Object.entries(TPM2_PRESETS) as [Tpm2Preset, (typeof TPM2_PRESETS)[Tpm2Preset]][]).find(
+    ([, value]) => value.hashPcrs.join('+') === hash && value.signedPcrs.join('+') === signed,
+  )?.[0]
+}
+
+export function makeTpm2Encryption(preset: Tpm2Preset, pin = true): Encryption {
+  const { hashPcrs, signedPcrs } = TPM2_PRESETS[preset]
+  return { mode: 'luks2', unlock: { method: 'tpm2', pin, hashPcrs, signedPcrs } }
+}
+
 /** Returns the choices that the current guide cannot safely generate. */
 export function validate(config: ConfigDraft): Availability {
-  const snapperReason =
-    config.subvolumeLayout === 'root-only' ? '需要标准分离子卷布局' : NOT_IMPLEMENTED
+  const snapperReason = config.subvolumeLayout === 'root-only' ? '需要标准分离子卷布局' : undefined
 
   return {
     'swap.zram': NOT_IMPLEMENTED,
     'swap.swapfile': NOT_IMPLEMENTED,
     'swap.partition': NOT_IMPLEMENTED,
-    'encryption.password': NOT_IMPLEMENTED,
-    'encryption.tpm2-pin': NOT_IMPLEMENTED,
-    'secureBoot.custom-db': NOT_IMPLEMENTED,
-    'secureBoot.shim-mok': NOT_IMPLEMENTED,
-    'snapper.root': snapperReason,
-    'snapper.root-home': snapperReason,
+    ...(snapperReason ? { 'snapper.root': snapperReason, 'snapper.root-home': snapperReason } : {}),
     'desktop.gnome': NOT_IMPLEMENTED,
     'desktop.kde': NOT_IMPLEMENTED,
     'desktop.hyprland': NOT_IMPLEMENTED,
@@ -172,9 +189,13 @@ export function parseDraft(search: string): ConfigDraft {
   const cpu = listedValue(params.get('cpu'), ['intel', 'amd'] as const)
   const swap = listedValue(params.get('swap'), ['none'] as const)
   const subvolumeLayout = listedValue(params.get('layout'), ['root-only', 'separated'] as const)
-  const encryption = listedValue(params.get('encryption'), ['none'] as const)
-  const secureBoot = listedValue(params.get('secureBoot'), ['none'] as const)
-  const snapper = listedValue(params.get('snapper'), ['none'] as const)
+  const encryption = parseEncryption(params)
+  const secureBoot = listedValue(params.get('secureBoot'), [
+    'none',
+    'custom-db',
+    'shim-mok',
+  ] as const)
+  const snapper = listedValue(params.get('snapper'), ['none', 'root', 'root-home'] as const)
   const desktop = listedValue(params.get('desktop'), ['none'] as const)
   const timezone = listedValue(params.get('timezone'), TIMEZONES)
   const systemLocale = listedValue(params.get('locale'), SYSTEM_LOCALES)
@@ -186,7 +207,7 @@ export function parseDraft(search: string): ConfigDraft {
   if (cpu) draft.cpu = cpu
   if (swap) draft.swap = swap
   if (subvolumeLayout) draft.subvolumeLayout = subvolumeLayout
-  if (encryption) draft.encryption = { mode: encryption }
+  if (encryption) draft.encryption = encryption
   if (secureBoot) draft.secureBoot = secureBoot
   if (snapper) draft.snapper = snapper
   if (desktop) draft.desktop = desktop
@@ -197,6 +218,18 @@ export function parseDraft(search: string): ConfigDraft {
   if (username) draft.username = username
   if (draft.subvolumeLayout === 'root-only') delete draft.snapper
   return draft
+}
+
+function parseEncryption(params: URLSearchParams): Encryption | undefined {
+  const mode = listedValue(params.get('encryption'), ['none', 'luks2'] as const)
+  if (mode === 'none') return { mode: 'none' }
+  if (mode !== 'luks2') return undefined
+  const unlock = listedValue(params.get('unlock'), ['password', 'tpm2'] as const)
+  if (unlock === 'password') return { mode: 'luks2', unlock: { method: 'password' } }
+  if (unlock !== 'tpm2') return undefined
+  const preset = listedValue(params.get('tpmPreset'), ['minimal', 'custom-db', 'shim-mok'] as const)
+  const pin = listedValue(params.get('tpmPin'), ['0', '1'] as const)
+  return preset && pin ? makeTpm2Encryption(preset, pin === '1') : undefined
 }
 
 /** Writes only choices the user has actually made. */
@@ -227,6 +260,13 @@ export function completeConfig(draft: ConfigDraft): Config | null {
     draft.desktop === undefined
   ) {
     return null
+  }
+
+  const preset = tpm2Preset(draft.encryption)
+  if (draft.encryption.mode === 'luks2' && draft.encryption.unlock.method === 'tpm2') {
+    if (!preset) return null
+    const requiredSecureBoot = TPM2_PRESETS[preset].secureBoot
+    if (requiredSecureBoot && draft.secureBoot !== requiredSecureBoot) return null
   }
 
   return {
@@ -296,7 +336,7 @@ const COMPACT_ENUMS = {
 function encodeCompactConfig(draft: ConfigDraft): string | null {
   // Byte 0 is the format version; bytes 1-2 are the field-presence bitmap.
   let mask = 0
-  const bytes = [1, 0, 0]
+  const bytes = [2, 0, 0]
   const include = (bit: number, write: () => void) => {
     mask |= 1 << bit
     write()
@@ -318,7 +358,19 @@ function encodeCompactConfig(draft: ConfigDraft): string | null {
   if (draft.subvolumeLayout !== undefined)
     include(3, () => writeEnum(draft.subvolumeLayout!, COMPACT_ENUMS.layout))
   if (draft.encryption !== undefined)
-    include(4, () => writeEnum(draft.encryption!.mode, COMPACT_ENUMS.encryption))
+    include(4, () => {
+      const encryption = draft.encryption!
+      writeEnum(encryption.mode, COMPACT_ENUMS.encryption)
+      if (encryption.mode === 'none') return
+      if (encryption.unlock.method === 'password') {
+        bytes.push(0)
+        return
+      }
+      const preset = tpm2Preset(encryption)
+      if (!preset) throw new RangeError('unsupported TPM2 PCR combination')
+      bytes.push(1 + (['minimal', 'custom-db', 'shim-mok'] as const).indexOf(preset))
+      bytes.push(encryption.unlock.pin ? 1 : 0)
+    })
   if (draft.secureBoot !== undefined)
     include(5, () => writeEnum(draft.secureBoot!, COMPACT_ENUMS.secureBoot))
   if (draft.snapper !== undefined)
@@ -340,7 +392,8 @@ function encodeCompactConfig(draft: ConfigDraft): string | null {
 
 function decodeCompactConfig(value: string): URLSearchParams | null {
   const bytes = decodeBase64Url(value)
-  if (!bytes || bytes.length < 3 || bytes[0] !== 1) return null
+  if (!bytes || bytes.length < 3 || (bytes[0] !== 1 && bytes[0] !== 2)) return null
+  const version = bytes[0]
   const mask = bytes[1]! | (bytes[2]! << 8)
   if ((mask & ~0x1fff) !== 0) return null
 
@@ -365,12 +418,32 @@ function decodeCompactConfig(value: string): URLSearchParams | null {
     return true
   }
 
+  const readEncryption = () => {
+    if ((mask & (1 << 4)) === 0) return true
+    const mode = readEnum(COMPACT_ENUMS.encryption)
+    if (!mode) return false
+    params.set('encryption', mode)
+    if (version === 1 || mode === 'none') return true
+    const unlock = bytes[cursor++]
+    if (unlock === 0) {
+      params.set('unlock', 'password')
+      return true
+    }
+    const preset = ['minimal', 'custom-db', 'shim-mok'][unlock! - 1]
+    const pin = bytes[cursor++]
+    if (!preset || (pin !== 0 && pin !== 1)) return false
+    params.set('unlock', 'tpm2')
+    params.set('tpmPreset', preset)
+    params.set('tpmPin', String(pin))
+    return true
+  }
+
   const valid =
     read(0, 'disk', readText, '/dev/') &&
     read(1, 'cpu', () => readEnum(COMPACT_ENUMS.cpu)) &&
     read(2, 'swap', () => readEnum(COMPACT_ENUMS.swap)) &&
     read(3, 'layout', () => readEnum(COMPACT_ENUMS.layout)) &&
-    read(4, 'encryption', () => readEnum(COMPACT_ENUMS.encryption)) &&
+    readEncryption() &&
     read(5, 'secureBoot', () => readEnum(COMPACT_ENUMS.secureBoot)) &&
     read(6, 'snapper', () => readEnum(COMPACT_ENUMS.snapper)) &&
     read(7, 'desktop', () => readEnum(COMPACT_ENUMS.desktop)) &&
