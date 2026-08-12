@@ -99,21 +99,49 @@ describe('setup wizard', () => {
       wrapper.get('.secure-boot-field').element,
     )
 
-    await selectChoice(wrapper, 'tpm2Preset', 'shim-mok')
+    await selectChoice(wrapper, 'tpm2Preset', 'custom-db')
     let saved = parseDraft(window.location.search)
+    expect(saved.secureBoot).toBe('custom-db')
+    expect(
+      wrapper.get('input[name="secureBoot"][value="custom-db"]').attributes('disabled'),
+    ).toBeUndefined()
+    expect(
+      wrapper.get('input[name="secureBoot"][value="none"]').attributes('disabled'),
+    ).toBeDefined()
+    expect(
+      wrapper.get('input[name="secureBoot"][value="shim-mok"]').attributes('disabled'),
+    ).toBeDefined()
+
+    await selectChoice(wrapper, 'tpm2Preset', 'shim-mok')
+    saved = parseDraft(window.location.search)
     expect(saved.secureBoot).toBe('shim-mok')
     expect(saved.encryption).toEqual({
       mode: 'luks2',
       unlock: { method: 'tpm2', pin: true, hashPcrs: [7, 14], signedPcrs: [11] },
     })
+    expect(
+      wrapper.get('input[name="secureBoot"][value="shim-mok"]').attributes('disabled'),
+    ).toBeUndefined()
+    expect(
+      wrapper.get('input[name="secureBoot"][value="none"]').attributes('disabled'),
+    ).toBeDefined()
+    expect(
+      wrapper.get('input[name="secureBoot"][value="custom-db"]').attributes('disabled'),
+    ).toBeDefined()
+    expect(wrapper.get('.secure-boot-field').text()).toContain(
+      '当前 TPM2 绑定策略要求shim-signed + MOK',
+    )
 
-    await selectChoice(wrapper, 'secureBoot', 'none')
-    saved = parseDraft(window.location.search)
-    expect(saved.secureBoot).toBe('none')
-    expect(saved.encryption).toEqual({
-      mode: 'luks2',
-      unlock: { method: 'tpm2', pin: true, hashPcrs: [7], signedPcrs: [] },
-    })
+    await selectChoice(wrapper, 'tpm2Preset', 'minimal')
+    expect(
+      wrapper.get('input[name="secureBoot"][value="none"]').attributes('disabled'),
+    ).toBeUndefined()
+    expect(
+      wrapper.get('input[name="secureBoot"][value="custom-db"]').attributes('disabled'),
+    ).toBeUndefined()
+    expect(
+      wrapper.get('input[name="secureBoot"][value="shim-mok"]').attributes('disabled'),
+    ).toBeUndefined()
   })
 
   it('walks through configuration, review, and the generated guide', async () => {

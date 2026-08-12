@@ -101,19 +101,26 @@ const tpmPresetOptions = computed(() =>
     description: pick(choiceDescriptions.tpm2Preset[value], props.locale),
   })),
 )
-const secureBootOptions = computed(() => [
-  {
-    value: 'none',
-    label: pick(choices.secureBoot.none, props.locale),
-    description: pick(choiceDescriptions.secureBoot.none, props.locale),
-  },
-  ...(['custom-db', 'shim-mok'] as const).map((value) => ({
+const requiredSecureBoot = computed(() => {
+  const preset = tpm2Preset(model.value.encryption)
+  return preset === 'custom-db' || preset === 'shim-mok' ? preset : undefined
+})
+const secureBootOptions = computed(() =>
+  (['none', 'custom-db', 'shim-mok'] as const).map((value) => ({
     value,
     label: pick(choices.secureBoot[value], props.locale),
     description: pick(choiceDescriptions.secureBoot[value], props.locale),
-    disabledReason: unavailableReason(`secureBoot.${value}`),
+    disabledReason:
+      requiredSecureBoot.value && value !== requiredSecureBoot.value
+        ? pick(
+            ui.tpmPolicyRequiresSecureBoot,
+            props.locale,
+          )(pick(choices.secureBoot[requiredSecureBoot.value], props.locale))
+        : value === 'none'
+          ? undefined
+          : unavailableReason(`secureBoot.${value}`),
   })),
-])
+)
 const snapperOptions = computed(() => [
   {
     value: 'none',

@@ -47,6 +47,7 @@ export const ui = {
   tpmPolicy: { zh: 'TPM2 绑定策略' },
   requireTpmPin: { zh: '启动时要求输入 TPM PIN' },
   pcr7Warning: { zh: '仅绑定 PCR 7 不区分具体 UKI；关闭安全启动时只记录“安全启动关闭”。' },
+  tpmPolicyRequiresSecureBoot: { zh: (mode: string) => `当前 TPM2 绑定策略要求${mode}` },
   hashPcrs: { zh: 'PCR 哈希绑定' },
   signedPcrs: { zh: 'PCR 签名策略' },
   secureBoot: { zh: '安全启动' },
