@@ -60,7 +60,7 @@ chmod 750 /home/.snapshots
 
 \`\`\`
 snapper --no-dbus list-configs
-findmnt /.snapshots${cfg.snapper === 'root-home' ? ' /home/.snapshots' : ''}
+findmnt --mountpoint /.snapshots${cfg.snapper === 'root-home' ? '\nfindmnt --mountpoint /home/.snapshots' : ''}
 \`\`\``,
     },
   },
