@@ -173,13 +173,32 @@ h3 {
 
 .body :deep(.cmd pre) {
   margin: 0;
-  padding: 0.85rem 1.05rem;
-  overflow-x: auto;
+  padding: 0.85rem 4.5rem 0.85rem 0;
+  overflow-x: hidden;
 }
 
 .body :deep(.cmd code) {
+  display: block;
   font-size: 0.85rem;
   line-height: 1.65;
+}
+
+.body :deep(.cmd-line) {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+}
+
+.body :deep(.cmd-line-number) {
+  padding-right: 0.75rem;
+  color: var(--faint);
+  text-align: right;
+  user-select: none;
+}
+
+.body :deep(.cmd-line-text) {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .body :deep(.cmd-copy) {
@@ -262,12 +281,8 @@ h3 {
 
   /** Paper cannot scroll: an overflowing command would print truncated. */
   .body :deep(.cmd pre) {
+    padding-right: 0;
     overflow-x: visible;
-  }
-
-  .body :deep(.cmd code) {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
   }
 }
 </style>

@@ -8,6 +8,7 @@ import {
   validate,
 } from '../config'
 import { derive, partition } from '../derive'
+import { createMarkdown } from '../markdown'
 import { renderGuide, selectSteps } from '../render'
 import { sectionTitles, steps } from '../steps'
 import type { Config } from '../types'
@@ -18,6 +19,16 @@ describe('partition', () => {
     expect(partition('/dev/mmcblk0', 2)).toBe('/dev/mmcblk0p2')
     expect(partition('/dev/sda', 1)).toBe('/dev/sda1')
     expect(partition('/dev/vda', 2)).toBe('/dev/vda2')
+  })
+})
+
+describe('command blocks', () => {
+  it('marks authored lines while preserving the original copied command', () => {
+    const rendered = createMarkdown('复制').render('```\nfirst command\nsecond command\n```')
+
+    expect(rendered).toContain('<span class="cmd-line-number" aria-hidden="true">1</span>')
+    expect(rendered).toContain('<span class="cmd-line-number" aria-hidden="true">2</span>')
+    expect(rendered).toContain('data-copy="first command\nsecond command"')
   })
 })
 
@@ -208,7 +219,7 @@ describe('renderGuide', () => {
   })
 
   it('uses concise disk discovery and mounts the ESP with noatime', () => {
-    expect(html).toContain('<pre><code>lsblk</code></pre>')
+    expect(html).toContain('<span class="cmd-line-text">lsblk</span>')
     expect(html).not.toContain('lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS')
     expect(html).toContain('mount --mkdir -o noatime /dev/nvme0n1p1 /mnt/efi')
   })
