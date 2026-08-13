@@ -59,6 +59,22 @@ describe('setup wizard', () => {
     expect(parseDraft(window.location.search).timezone).toBe(timezone)
   })
 
+  it('warns that TTY cannot display CJK system locales', async () => {
+    const wrapper = mount(App)
+    await start(wrapper)
+
+    expect(wrapper.find('.locale-warning').exists()).toBe(false)
+    await wrapper.get('select[name="systemLocale"]').setValue('zh_CN.UTF-8')
+    expect(wrapper.get('.locale-warning').text()).toContain('TTY 无法显示 CJK 字符，会显示为方框')
+    expect(wrapper.get('.locale-warning').text()).toContain('明确计划安装并使用图形界面')
+
+    await wrapper.get('select[name="systemLocale"]').setValue('ja_JP.UTF-8')
+    expect(wrapper.find('.locale-warning').exists()).toBe(true)
+
+    await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
+    expect(wrapper.find('.locale-warning').exists()).toBe(false)
+  })
+
   it('uses completed progress steps as backward navigation', async () => {
     const wrapper = mount(App)
     await start(wrapper)
@@ -72,6 +88,76 @@ describe('setup wizard', () => {
     expect(wrapper.get('.wizard h1').text()).toBe('区域与语言')
     expect(new URLSearchParams(window.location.search).get('step')).toBe('1')
     expect(parseDraft(window.location.search).timezone).toBe('America/Toronto')
+  })
+
+  it('keeps TPM2 presets and their required secure boot path consistent', async () => {
+    const wrapper = mount(App)
+    await start(wrapper)
+    await wrapper.get('select[name="timezone"]').setValue('America/Toronto')
+    await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
+    await next(wrapper)
+    await wrapper.get('select[name="keymap"]').setValue('us')
+    await next(wrapper)
+
+    expect(
+      wrapper.get('input[name="encryption"][value="password"]').attributes('disabled'),
+    ).toBeUndefined()
+    expect(
+      wrapper.get('input[name="secureBoot"][value="shim-mok"]').attributes('disabled'),
+    ).toBeUndefined()
+    await selectChoice(wrapper, 'encryption', 'tpm2')
+    expect(wrapper.get('.nested-field').text()).toContain('最小（PCR 7）')
+    expect(wrapper.get('.nested-field').text()).toContain('不区分具体 UKI')
+    expect(
+      wrapper.get('.encryption-field').element.contains(wrapper.get('.nested-field').element),
+    ).toBe(true)
+    expect(wrapper.get('.encryption-field').element.nextElementSibling).toBe(
+      wrapper.get('.secure-boot-field').element,
+    )
+
+    await selectChoice(wrapper, 'tpm2Preset', 'custom-db')
+    let saved = parseDraft(window.location.search)
+    expect(saved.secureBoot).toBe('custom-db')
+    expect(
+      wrapper.get('input[name="secureBoot"][value="custom-db"]').attributes('disabled'),
+    ).toBeUndefined()
+    expect(
+      wrapper.get('input[name="secureBoot"][value="none"]').attributes('disabled'),
+    ).toBeDefined()
+    expect(
+      wrapper.get('input[name="secureBoot"][value="shim-mok"]').attributes('disabled'),
+    ).toBeDefined()
+
+    await selectChoice(wrapper, 'tpm2Preset', 'shim-mok')
+    saved = parseDraft(window.location.search)
+    expect(saved.secureBoot).toBe('shim-mok')
+    expect(saved.encryption).toEqual({
+      mode: 'luks2',
+      unlock: { method: 'tpm2', pin: true, hashPcrs: [7, 14], signedPcrs: [11] },
+    })
+    expect(
+      wrapper.get('input[name="secureBoot"][value="shim-mok"]').attributes('disabled'),
+    ).toBeUndefined()
+    expect(
+      wrapper.get('input[name="secureBoot"][value="none"]').attributes('disabled'),
+    ).toBeDefined()
+    expect(
+      wrapper.get('input[name="secureBoot"][value="custom-db"]').attributes('disabled'),
+    ).toBeDefined()
+    expect(wrapper.get('.secure-boot-field').text()).toContain(
+      '当前 TPM2 绑定策略要求shim-signed + MOK',
+    )
+
+    await selectChoice(wrapper, 'tpm2Preset', 'minimal')
+    expect(
+      wrapper.get('input[name="secureBoot"][value="none"]').attributes('disabled'),
+    ).toBeUndefined()
+    expect(
+      wrapper.get('input[name="secureBoot"][value="custom-db"]').attributes('disabled'),
+    ).toBeUndefined()
+    expect(
+      wrapper.get('input[name="secureBoot"][value="shim-mok"]').attributes('disabled'),
+    ).toBeUndefined()
   })
 
   it('walks through configuration, review, and the generated guide', async () => {

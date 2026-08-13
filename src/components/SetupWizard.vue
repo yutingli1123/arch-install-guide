@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ChoicePicker from '@/components/ChoicePicker.vue'
-import { KEYMAPS, SYSTEM_LOCALES, TIMEZONES, validate, type ConfigChoice } from '@/guide/config'
-import type { ConfigDraft, Locale } from '@/guide/types'
+import {
+  KEYMAPS,
+  SYSTEM_LOCALES,
+  TIMEZONES,
+  makeTpm2Encryption,
+  tpm2Preset,
+  validate,
+  type ConfigChoice,
+} from '@/guide/config'
+import type { ConfigDraft, Locale, Tpm2Preset } from '@/guide/types'
 import { choiceDescriptions, choices, pick, ui } from '@/guide/ui'
 
 const props = defineProps<{
@@ -15,6 +23,11 @@ const step = defineModel<number>('step', { required: true })
 const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 const canUseDetectedTimezone = TIMEZONES.includes(detectedTimezone)
 const sortedSystemLocales = [...SYSTEM_LOCALES].sort()
+const isCjkSystemLocale = computed(() =>
+  ['zh_CN.UTF-8', 'zh_TW.UTF-8', 'ja_JP.UTF-8', 'ko_KR.UTF-8'].includes(
+    model.value.systemLocale ?? '',
+  ),
+)
 
 const titles = computed(() => [
   pick(ui.regionLanguage, props.locale),
@@ -74,26 +87,45 @@ const encryptionOptions = computed(() => [
     label: pick(choices.encryption.none, props.locale),
     description: pick(choiceDescriptions.encryption.none, props.locale),
   },
-  ...(['password', 'tpm2-pin'] as const).map((value) => ({
+  ...(['password', 'tpm2'] as const).map((value) => ({
     value,
     label: pick(choices.encryption[value], props.locale),
     description: pick(choiceDescriptions.encryption[value], props.locale),
     disabledReason: unavailableReason(`encryption.${value}`),
   })),
 ])
-const secureBootOptions = computed(() => [
-  {
-    value: 'none',
-    label: pick(choices.secureBoot.none, props.locale),
-    description: pick(choiceDescriptions.secureBoot.none, props.locale),
-  },
-  ...(['custom-db', 'shim-mok'] as const).map((value) => ({
+const selectedEncryption = computed(() => {
+  const encryption = model.value.encryption
+  if (!encryption || encryption.mode === 'none') return encryption?.mode
+  return encryption.unlock.method === 'password' ? 'password' : 'tpm2'
+})
+const tpmPresetOptions = computed(() =>
+  (['minimal', 'custom-db', 'shim-mok'] as const).map((value) => ({
+    value,
+    label: pick(choices.tpm2Preset[value], props.locale),
+    description: pick(choiceDescriptions.tpm2Preset[value], props.locale),
+  })),
+)
+const requiredSecureBoot = computed(() => {
+  const preset = tpm2Preset(model.value.encryption)
+  return preset === 'custom-db' || preset === 'shim-mok' ? preset : undefined
+})
+const secureBootOptions = computed(() =>
+  (['none', 'custom-db', 'shim-mok'] as const).map((value) => ({
     value,
     label: pick(choices.secureBoot[value], props.locale),
     description: pick(choiceDescriptions.secureBoot[value], props.locale),
-    disabledReason: unavailableReason(`secureBoot.${value}`),
+    disabledReason:
+      requiredSecureBoot.value && value !== requiredSecureBoot.value
+        ? pick(
+            ui.tpmPolicyRequiresSecureBoot,
+            props.locale,
+          )(pick(choices.secureBoot[requiredSecureBoot.value], props.locale))
+        : value === 'none'
+          ? undefined
+          : unavailableReason(`secureBoot.${value}`),
   })),
-])
+)
 const snapperOptions = computed(() => [
   {
     value: 'none',
@@ -161,6 +193,54 @@ function commitChoice(field: ChoiceField, value: string | undefined) {
 
 function commitEncryption(value: string | undefined) {
   if (value === 'none') model.value = { ...model.value, encryption: { mode: 'none' } }
+  if (value === 'password') {
+    model.value = { ...model.value, encryption: { mode: 'luks2', unlock: { method: 'password' } } }
+  }
+  if (value === 'tpm2') {
+    model.value = { ...model.value, encryption: makeTpm2Encryption('minimal') }
+  }
+}
+
+function commitTpm2Preset(value: string | undefined) {
+  if (!value) return
+  const preset = value as Tpm2Preset
+  const current = model.value.encryption
+  const pin =
+    current?.mode === 'luks2' && current.unlock.method === 'tpm2' ? current.unlock.pin : true
+  const next = { ...model.value, encryption: makeTpm2Encryption(preset, pin) }
+  if (preset === 'custom-db') next.secureBoot = 'custom-db'
+  if (preset === 'shim-mok') next.secureBoot = 'shim-mok'
+  model.value = next
+}
+
+function commitTpmPin(event: Event) {
+  const encryption = model.value.encryption
+  if (encryption?.mode !== 'luks2' || encryption.unlock.method !== 'tpm2') return
+  model.value = {
+    ...model.value,
+    encryption: {
+      mode: 'luks2',
+      unlock: { ...encryption.unlock, pin: (event.currentTarget as HTMLInputElement).checked },
+    },
+  }
+}
+
+function commitSecureBoot(value: string | undefined) {
+  if (!value) return
+  const next = { ...model.value, secureBoot: value as ConfigDraft['secureBoot'] }
+  const preset = tpm2Preset(next.encryption)
+  if (
+    (preset === 'custom-db' && value !== 'custom-db') ||
+    (preset === 'shim-mok' && value !== 'shim-mok')
+  ) {
+    const encryption = next.encryption
+    const pin =
+      encryption?.mode === 'luks2' && encryption.unlock.method === 'tpm2'
+        ? encryption.unlock.pin
+        : true
+    next.encryption = makeTpm2Encryption('minimal', pin)
+  }
+  model.value = next
 }
 
 function advance(event: Event) {
@@ -262,23 +342,47 @@ function goToStep(index: number) {
           />
         </div>
 
-        <div class="field">
+        <div class="field encryption-field">
           <span>{{ pick(ui.encryption, props.locale) }}</span>
           <ChoicePicker
             name="encryption"
-            :model-value="model.encryption?.mode"
+            :model-value="selectedEncryption"
             :options="encryptionOptions"
             @update:model-value="commitEncryption"
           />
+          <div
+            v-if="model.encryption?.mode === 'luks2' && model.encryption.unlock.method === 'tpm2'"
+            class="field nested-field"
+          >
+            <span>{{ pick(ui.tpmPolicy, props.locale) }}</span>
+            <ChoicePicker
+              name="tpm2Preset"
+              :model-value="tpm2Preset(model.encryption)"
+              :options="tpmPresetOptions"
+              @update:model-value="commitTpm2Preset"
+            />
+            <label class="check-option">
+              <input
+                name="tpmPin"
+                type="checkbox"
+                :checked="model.encryption.unlock.pin"
+                @change="commitTpmPin"
+              />
+              <span>{{ pick(ui.requireTpmPin, props.locale) }}</span>
+            </label>
+            <p v-if="tpm2Preset(model.encryption) === 'minimal'" class="constraint-message">
+              {{ pick(ui.pcr7Warning, props.locale) }}
+            </p>
+          </div>
         </div>
 
-        <div class="field">
+        <div class="field secure-boot-field">
           <span>{{ pick(ui.secureBoot, props.locale) }}</span>
           <ChoicePicker
             name="secureBoot"
             :model-value="model.secureBoot"
             :options="secureBootOptions"
-            @update:model-value="commitChoice('secureBoot', $event)"
+            @update:model-value="commitSecureBoot"
           />
         </div>
 
@@ -338,6 +442,9 @@ function goToStep(index: number) {
             </option>
           </select>
           <small>{{ pick(ui.systemLocaleHint, props.locale) }}</small>
+          <p v-if="isCjkSystemLocale" class="locale-warning" role="alert">
+            {{ pick(ui.cjkTtyWarning, props.locale) }}
+          </p>
         </label>
       </fieldset>
 
@@ -658,6 +765,26 @@ small.description {
   color: var(--faint);
 }
 
+.nested-field {
+  margin-top: 0.5rem;
+  padding: 0.8rem;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--bg);
+}
+
+.check-option {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--fg);
+}
+
+.check-option input {
+  width: auto;
+}
+
 .constraint-message {
   margin: 0;
   padding: 0.65rem;
@@ -666,6 +793,16 @@ small.description {
   background: var(--bg);
   color: var(--faint);
   font-size: 0.72rem;
+}
+
+.locale-warning {
+  margin: 0.25rem 0 0;
+  padding: 0.65rem;
+  border-left: 3px solid var(--warn);
+  background: var(--bg);
+  color: var(--warn);
+  font-size: 0.72rem;
+  line-height: 1.5;
 }
 
 .review ul {

@@ -10,9 +10,19 @@ export function createMarkdown(copyLabel: string) {
   md.renderer.rules.fence = (tokens, idx) => {
     const code = (tokens[idx]?.content ?? '').replace(/\n+$/, '')
     const escaped = md.utils.escapeHtml(code)
+    const lines = code
+      .split('\n')
+      .map(
+        (line, index) =>
+          `<span class="cmd-line">` +
+          `<span class="cmd-line-number" aria-hidden="true">${index + 1}</span>` +
+          `<span class="cmd-line-text">${md.utils.escapeHtml(line)}</span>` +
+          `</span>`,
+      )
+      .join('')
     return (
       `<div class="cmd">` +
-      `<pre><code>${escaped}</code></pre>` +
+      `<pre><code>${lines}</code></pre>` +
       `<button class="cmd-copy" type="button" data-copy="${escaped}">${copyLabel}</button>` +
       `</div>`
     )

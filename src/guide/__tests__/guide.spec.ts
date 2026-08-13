@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { completeConfig, parseDraft, serializeDraft, stageOneConfig, validate } from '../config'
+import {
+  completeConfig,
+  makeTpm2Encryption,
+  parseDraft,
+  serializeDraft,
+  stageOneConfig,
+  validate,
+} from '../config'
 import { derive, partition } from '../derive'
+import { createMarkdown } from '../markdown'
 import { renderGuide, selectSteps } from '../render'
 import { sectionTitles, steps } from '../steps'
 import type { Config } from '../types'
@@ -11,6 +19,16 @@ describe('partition', () => {
     expect(partition('/dev/mmcblk0', 2)).toBe('/dev/mmcblk0p2')
     expect(partition('/dev/sda', 1)).toBe('/dev/sda1')
     expect(partition('/dev/vda', 2)).toBe('/dev/vda2')
+  })
+})
+
+describe('command blocks', () => {
+  it('marks authored lines while preserving the original copied command', () => {
+    const rendered = createMarkdown('复制').render('```\nfirst command\nsecond command\n```')
+
+    expect(rendered).toContain('<span class="cmd-line-number" aria-hidden="true">1</span>')
+    expect(rendered).toContain('<span class="cmd-line-number" aria-hidden="true">2</span>')
+    expect(rendered).toContain('data-copy="first command\nsecond command"')
   })
 })
 
@@ -37,6 +55,32 @@ describe('derive', () => {
   it('picks microcode matching the cpu vendor', () => {
     expect(derive({ ...stageOneConfig, cpu: 'amd' }).packages).toContain('amd-ucode')
     expect(derive({ ...stageOneConfig, cpu: 'intel' }).packages).not.toContain('amd-ucode')
+  })
+
+  it('derives encrypted storage and snapshot mount points from the final configuration', () => {
+    const context = derive({
+      ...stageOneConfig,
+      encryption: { mode: 'luks2', unlock: { method: 'password' } },
+      snapper: 'root-home',
+    })
+
+    expect(context.rootDevice).toBe('/dev/nvme0n1p2')
+    expect(context.rootFsDevice).toBe('/dev/mapper/cryptroot')
+    expect(context.packages).toEqual(expect.arrayContaining(['cryptsetup', 'snapper']))
+    expect(context.subvolumes.slice(-2)).toEqual([
+      { name: '@snapshots', mountPoint: '/.snapshots' },
+      { name: '@home_snapshots', mountPoint: '/home/.snapshots' },
+    ])
+  })
+
+  it('rejects PCR policies paired with the wrong secure boot path', () => {
+    expect(() =>
+      derive({
+        ...stageOneConfig,
+        encryption: makeTpm2Encryption('shim-mok'),
+        secureBoot: 'custom-db',
+      }),
+    ).toThrow('PCR 14 requires shim/MOK secure boot')
   })
 })
 
@@ -109,6 +153,28 @@ describe('configuration', () => {
     expect(parseDraft('?c=invalid!')).toEqual({})
     expect(parseDraft('?cpu=amd&layout=root-only')).toEqual({})
   })
+
+  it('round-trips the complete flagship storage path without flattening its TPM policy', () => {
+    const flagship: Config = {
+      ...stageOneConfig,
+      encryption: makeTpm2Encryption('shim-mok', true),
+      secureBoot: 'shim-mok',
+      snapper: 'root-home',
+    }
+
+    expect(completeConfig(parseDraft(serializeDraft(flagship)))).toEqual(flagship)
+    expect(serializeDraft(flagship)).toMatch(/^c=[A-Za-z0-9_-]+$/)
+  })
+
+  it('does not complete a recommended TPM policy with a mismatched secure boot mode', () => {
+    expect(
+      completeConfig({
+        ...stageOneConfig,
+        encryption: makeTpm2Encryption('custom-db'),
+        secureBoot: 'shim-mok',
+      }),
+    ).toBeNull()
+  })
 })
 
 describe('steps', () => {
@@ -152,10 +218,10 @@ describe('renderGuide', () => {
     expect(html).toContain('class="cmd-copy"')
   })
 
-  it('uses concise disk discovery and mounts the ESP with noatime', () => {
-    expect(html).toContain('<pre><code>lsblk</code></pre>')
+  it('uses concise disk discovery and mounts the ESP for root-only access', () => {
+    expect(html).toContain('<span class="cmd-line-text">lsblk</span>')
     expect(html).not.toContain('lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS')
-    expect(html).toContain('mount --mkdir -o noatime /dev/nvme0n1p1 /mnt/efi')
+    expect(html).toContain('mount --mkdir -o noatime,umask=0077 /dev/nvme0n1p1 /mnt/efi')
   })
 
   it('creates and mounts boot before home', () => {
@@ -199,6 +265,72 @@ describe('renderGuide', () => {
   it('documents both UKI presets without mentioning fallback_image', () => {
     expect(html).toContain("PRESETS=('default' 'fallback')")
     expect(html).not.toContain('fallback_image')
+    expect(html).toContain('mkdir -p /efi/EFI/Linux')
+    expect(html).toContain('data-copy="mkdir -p /efi/EFI/Linux\nmkinitcpio -P"')
+  })
+
+  it('renders the password-encrypted path against the opened LUKS mapping', () => {
+    const encrypted = renderHtml({
+      ...stageOneConfig,
+      encryption: { mode: 'luks2', unlock: { method: 'password' } },
+    })
+
+    expect(encrypted.indexOf('sgdisk')).toBeLessThan(encrypted.indexOf('cryptsetup luksFormat'))
+    expect(encrypted).toContain('mkfs.btrfs -f /dev/mapper/cryptroot')
+    expect(encrypted).toContain('rd.luks.name=$(blkid -s UUID -o value /dev/nvme0n1p2)=cryptroot')
+    expect(encrypted).toContain('在 <code>HOOKS</code> 行的 <code>block</code> 后添加 <code>sd-encrypt</code>')
+    expect(encrypted).toContain('block sd-encrypt filesystems')
+    expect(encrypted).not.toContain('HOOKS=(base systemd autodetect')
+    expect(encrypted).not.toContain('systemd-cryptenroll --tpm2-device=auto')
+  })
+
+  it('renders the flagship TPM, shim, PCR policy, Snapper, and update verification chain', () => {
+    const flagship = renderHtml({
+      ...stageOneConfig,
+      encryption: makeTpm2Encryption('shim-mok'),
+      secureBoot: 'shim-mok',
+      snapper: 'root-home',
+    })
+
+    expect(flagship).toContain('btrfs subvolume create /mnt/@home_snapshots')
+    expect(flagship).toContain('snapper --no-dbus -c root create-config /')
+    expect(flagship).toContain('snapper --no-dbus -c home create-config /home')
+    expect(flagship).toContain('snapper --no-dbus list-configs')
+    expect(flagship).toContain('findmnt --mountpoint /.snapshots')
+    expect(flagship).toContain('findmnt --mountpoint /home/.snapshots')
+    expect(flagship).not.toContain('findmnt /.snapshots /home/.snapshots')
+    expect(flagship).not.toContain('install -d -m 700 /etc/kernel')
+    expect(flagship).toContain('[PCRSignature:initrd]')
+    expect(flagship).toContain('Phases=enter-initrd')
+    expect(flagship).toContain('/etc/kernel/uki.conf')
+    expect(flagship).not.toContain('/etc/systemd/ukify.conf')
+    expect(flagship).not.toContain('加入 <code>--ukify</code>')
+    expect(flagship).toContain('shim-signed.git')
+    expect(flagship).toContain('--tpm2-pcrs=7+14')
+    expect(flagship).toContain('--tpm2-public-key-pcrs=11')
+    expect(flagship).toContain('sudo systemd-cryptenroll --tpm2-device=auto')
+    expect(flagship).toContain('sudo systemd-cryptenroll /dev/nvme0n1p2')
+    expect(flagship).toContain('sudo bootctl status')
+    expect(flagship).toContain('至此，TPM2 解锁配置完成')
+    expect(flagship).not.toContain('sudo pacman -Syu')
+  })
+
+  it('signs installed systemd-boot files without relying on a same-version bootctl update', () => {
+    const customDb = renderHtml({
+      ...stageOneConfig,
+      secureBoot: 'custom-db',
+    })
+
+    expect(customDb).toContain('sbctl sign -s /efi/EFI/systemd/systemd-bootx64.efi')
+    expect(customDb).toContain('sbctl sign -s /efi/EFI/BOOT/BOOTX64.EFI')
+    expect(customDb).not.toContain('\nbootctl update\n')
+  })
+
+  it('renders sbctl only for the custom-db secure boot path', () => {
+    const custom = renderHtml({ ...stageOneConfig, secureBoot: 'custom-db' })
+    expect(custom).toContain('sbctl enroll-keys -m')
+    expect(custom).not.toContain('shim-signed.git')
+    expect(html).not.toContain('sbctl create-keys')
   })
 })
 

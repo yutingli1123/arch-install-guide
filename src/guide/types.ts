@@ -11,6 +11,7 @@ export type SubvolumeLayout = 'root-only' | 'separated'
 export type SecureBootMode = 'none' | 'custom-db' | 'shim-mok'
 export type SnapperMode = 'none' | 'root' | 'root-home'
 export type Desktop = 'none' | 'gnome' | 'kde' | 'hyprland'
+export type Tpm2Preset = 'minimal' | 'custom-db' | 'shim-mok'
 
 export type Encryption =
   | { mode: 'none' }
@@ -64,6 +65,9 @@ export type Context = {
   espDevice: string
   /** Root block device, e.g. `/dev/nvme0n1p2`. */
   rootDevice: string
+  /** Device containing btrfs: the partition itself or the opened LUKS mapping. */
+  rootFsDevice: string
+  luksName: string
   /** ESP mount point inside the installed system. */
   espMountPoint: string
   rootSubvolume: Subvolume

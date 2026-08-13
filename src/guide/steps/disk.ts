@@ -39,15 +39,38 @@ lsblk ${cfg.disk}
     },
   },
   {
+    id: 'luks-format',
+    section: 'disk',
+    title: { zh: '创建 LUKS2 加密容器' },
+    when: (cfg) => cfg.encryption.mode === 'luks2',
+    body: {
+      zh: ({
+        rootDevice,
+        luksName,
+      }) => `为根分区设置 LUKS 密码，并打开为 \`/dev/mapper/${luksName}\`：
+
+\`\`\`
+cryptsetup luksFormat --type luks2 ${rootDevice}
+cryptsetup open ${rootDevice} ${luksName}
+\`\`\`
+
+此密码占用一个独立密钥槽。即使后续配置 TPM2，也必须保留它，TPM 状态变化时用作后备解锁方式。`,
+    },
+  },
+  {
     id: 'format',
     section: 'disk',
     title: { zh: '格式化' },
     body: {
-      zh: ({ espDevice, rootDevice }) => `将 ESP 格式化为 UEFI 固件普遍支持的 FAT32 文件系统：
+      zh: ({
+        cfg,
+        espDevice,
+        rootFsDevice,
+      }) => `将 ESP 格式化为 UEFI 固件普遍支持的 FAT32 文件系统，并在${cfg.encryption.mode === 'luks2' ? '已打开的 LUKS 映射' : '根分区'}上创建 btrfs：
 
 \`\`\`
 mkfs.fat -F 32 ${espDevice}
-mkfs.btrfs -f ${rootDevice}
+mkfs.btrfs -f ${rootFsDevice}
 \`\`\``,
     },
   },
@@ -56,10 +79,10 @@ mkfs.btrfs -f ${rootDevice}
     section: 'disk',
     title: { zh: '创建子卷' },
     body: {
-      zh: ({ cfg, rootDevice, subvolumes }) => `先挂载 btrfs 顶层，创建子卷，然后卸载：
+      zh: ({ cfg, rootFsDevice, subvolumes }) => `先挂载 btrfs 顶层，创建子卷，然后卸载：
 
 \`\`\`
-mount ${rootDevice} /mnt
+mount ${rootFsDevice} /mnt
 ${subvolumes.map((s) => `btrfs subvolume create /mnt/${s.name}`).join('\n')}
 umount /mnt
 \`\`\`
@@ -80,7 +103,7 @@ ${cfg.subvolumeLayout === 'separated' ? '\`@log\`、\`@pkg\` 和 \`@boot\` 均�
     body: {
       zh: ({
         cfg,
-        rootDevice,
+        rootFsDevice,
         espDevice,
         espMountPoint,
         rootSubvolume,
@@ -90,14 +113,16 @@ ${cfg.subvolumeLayout === 'separated' ? '\`@log\`、\`@pkg\` 和 \`@boot\` 均�
       }) => `按照挂载点的层级依次挂载，最后挂载 ESP：
 
 \`\`\`
-mount -o subvol=${rootSubvolume.name},${mountOptions} ${rootDevice} /mnt
+mount -o subvol=${rootSubvolume.name},${mountOptions} ${rootFsDevice} /mnt
 ${nestedSubvolumes
-  .map((s) => `mount --mkdir -o subvol=${s.name},${mountOptions} ${rootDevice} /mnt${s.mountPoint}`)
+  .map(
+    (s) => `mount --mkdir -o subvol=${s.name},${mountOptions} ${rootFsDevice} /mnt${s.mountPoint}`,
+  )
   .join('\n')}
-mount --mkdir -o noatime ${espDevice} /mnt${espMountPoint}
+mount --mkdir -o noatime,umask=0077 ${espDevice} /mnt${espMountPoint}
 \`\`\`
 
-这些挂载选项会由 \`genfstab\` 写入 fstab。btrfs 子卷使用 \`${mountOptions}\`；ESP 使用 \`noatime\`，以避免读取文件时更新访问时间而产生不必要的写入。
+这些挂载选项会由 \`genfstab\` 写入 fstab。btrfs 子卷使用 \`${mountOptions}\`；ESP 使用 \`noatime\` 避免读取文件时更新访问时间，并使用 \`umask=0077\` 限制为仅 root 可访问。
 
 ESP 挂载在 \`${espMountPoint}\`：用于引导的 UKI 最终会生成到此处，固件和 systemd-boot 需要从 FAT 文件系统读取它。${cfg.subvolumeLayout === 'separated' ? '\`/boot\` 是根 btrfs 文件系统上的 \`@boot\` 子卷，仅存放 pacman 安装的 vmlinuz 和 mkinitcpio 的中间产物。' : '\`/boot\` 是根子卷内的普通目录。'}
 
