@@ -60,7 +60,7 @@ sudo systemd-cryptenroll ${rootDevice}
 
 注册时输入保留的 LUKS 密码${unlock.pin ? '，再设置 TPM PIN' : ''}。列表中必须同时保留 \`password\` 槽和新增的 \`tpm2\` token。
 
-重启一次，确认${unlock.pin ? '输入 PIN 后' : ''}无需 LUKS 密码即可解锁。`
+至此，TPM2 解锁配置完成。`
       },
     },
   },
