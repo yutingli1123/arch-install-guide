@@ -13,13 +13,13 @@ export const storageSteps: Step[] = [
 vim /etc/mkinitcpio.conf
 \`\`\`
 
-将 \`HOOKS\` 行改为：
+在 \`HOOKS\` 行的 \`block\` 后添加 \`sd-encrypt\`：
 
 \`\`\`
-HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block sd-encrypt filesystems fsck)
+block sd-encrypt filesystems
 \`\`\`
 
-\`systemd\` 与 \`sd-encrypt\` 负责在挂载根文件系统前打开 LUKS2；\`sd-vconsole\` 负责应用虚拟控制台的键盘与字体设置。`,
+不要改动该行的其他内容或顺序。\`systemd\` 与 \`sd-encrypt\` 负责在挂载根文件系统前打开 LUKS2。`,
     },
   },
   {

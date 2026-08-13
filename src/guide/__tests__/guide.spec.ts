@@ -278,7 +278,9 @@ describe('renderGuide', () => {
     expect(encrypted.indexOf('sgdisk')).toBeLessThan(encrypted.indexOf('cryptsetup luksFormat'))
     expect(encrypted).toContain('mkfs.btrfs -f /dev/mapper/cryptroot')
     expect(encrypted).toContain('rd.luks.name=$(blkid -s UUID -o value /dev/nvme0n1p2)=cryptroot')
-    expect(encrypted).toContain('keyboard sd-vconsole block sd-encrypt filesystems fsck')
+    expect(encrypted).toContain('在 <code>HOOKS</code> 行的 <code>block</code> 后添加 <code>sd-encrypt</code>')
+    expect(encrypted).toContain('block sd-encrypt filesystems')
+    expect(encrypted).not.toContain('HOOKS=(base systemd autodetect')
     expect(encrypted).not.toContain('systemd-cryptenroll --tpm2-device=auto')
   })
 
