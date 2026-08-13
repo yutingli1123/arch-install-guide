@@ -289,6 +289,7 @@ describe('renderGuide', () => {
     expect(flagship).toContain('Phases=enter-initrd')
     expect(flagship).toContain('/etc/kernel/uki.conf')
     expect(flagship).not.toContain('/etc/systemd/ukify.conf')
+    expect(flagship).not.toContain('加入 <code>--ukify</code>')
     expect(flagship).toContain('shim-signed.git')
     expect(flagship).toContain('--tpm2-pcrs=7+14')
     expect(flagship).toContain('--tpm2-public-key-pcrs=11')

@@ -98,7 +98,7 @@ PCRPublicKey=/etc/kernel/pcr-initrd.pub.pem
 
 \`Phases=enter-initrd\` 将这套签名策略限制在 initrd 阶段，使根分区解锁密钥在切换到主系统后不能再次由 TPM 解封。
 
-mkinitcpio 的 \`--ukify\` 模式会自动读取 \`/etc/kernel/uki.conf\`。ukify 会在每次内核更新重建 UKI 时重新计算 PCR 11、签名策略，并将公钥和签名嵌入镜像。`,
+生成 UKI 时，mkinitcpio 检测到已安装的 ukify 后会自动调用它，并读取 \`/etc/kernel/uki.conf\`。ukify 会在每次内核更新重建 UKI 时重新计算 PCR 11、签名策略，并将公钥和签名嵌入镜像。`,
     },
   },
 ]

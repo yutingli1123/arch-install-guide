@@ -61,13 +61,6 @@ vim /etc/mkinitcpio.d/linux.preset
 - 注释 \`PRESETS=('default')\`，并取消注释 \`PRESETS=('default' 'fallback')\`，以同时生成常规镜像和 fallback 镜像。
 - 取消注释 \`default_uki\` 和 \`fallback_uki\`。
 - 注释 \`default_image\`。
-${
-  cfg.encryption.mode === 'luks2' &&
-  cfg.encryption.unlock.method === 'tpm2' &&
-  cfg.encryption.unlock.signedPcrs.includes(11)
-    ? '- 在 `default_options` 和 `fallback_options` 中加入 `--ukify`。'
-    : ''
-}
 
 \`default_uki\` 和 \`fallback_uki\` 中的路径应为 \`${espMountPoint}/EFI/Linux/\`，无需修改。
 
