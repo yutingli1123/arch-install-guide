@@ -50,24 +50,17 @@ ping -c 3 archlinux.org
 
 \`\`\`
 bootctl status
-systemd-cryptenroll --tpm2-device=auto --tpm2-with-pin=${unlock.pin ? 'yes' : 'no'} --tpm2-pcrs=${hash}${
+sudo systemd-cryptenroll --tpm2-device=auto --tpm2-with-pin=${unlock.pin ? 'yes' : 'no'} --tpm2-pcrs=${hash}${
           signed
             ? ` --tpm2-public-key=/etc/kernel/pcr-initrd.pub.pem --tpm2-public-key-pcrs=${signed}`
             : ''
         } ${rootDevice}
-systemd-cryptenroll ${rootDevice}
+sudo systemd-cryptenroll ${rootDevice}
 \`\`\`
 
 注册时输入保留的 LUKS 密码${unlock.pin ? '，再设置 TPM PIN' : ''}。列表中必须同时保留 \`password\` 槽和新增的 \`tpm2\` token。
 
-先重启一次，确认${unlock.pin ? '输入 PIN 后' : ''}无需 LUKS 密码即可解锁；再执行一次完整内核更新并重启：
-
-\`\`\`
-sudo pacman -Syu
-sudo reboot
-\`\`\`
-
-更新后仍应由 TPM2 解锁。若失败，在密码提示处使用保留的 LUKS 密码进入系统，不要删除密码槽。`
+重启一次，确认${unlock.pin ? '输入 PIN 后' : ''}无需 LUKS 密码即可解锁。`
       },
     },
   },

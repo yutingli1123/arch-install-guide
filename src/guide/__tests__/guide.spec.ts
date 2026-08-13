@@ -308,7 +308,10 @@ describe('renderGuide', () => {
     expect(flagship).toContain('shim-signed.git')
     expect(flagship).toContain('--tpm2-pcrs=7+14')
     expect(flagship).toContain('--tpm2-public-key-pcrs=11')
-    expect(flagship).toContain('sudo pacman -Syu')
+    expect(flagship).toContain('sudo systemd-cryptenroll --tpm2-device=auto')
+    expect(flagship).toContain('sudo systemd-cryptenroll /dev/nvme0n1p2')
+    expect(flagship).toContain('重启一次，确认输入 PIN 后无需 LUKS 密码即可解锁')
+    expect(flagship).not.toContain('sudo pacman -Syu')
   })
 
   it('signs installed systemd-boot files without relying on a same-version bootctl update', () => {
