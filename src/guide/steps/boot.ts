@@ -97,12 +97,13 @@ sbctl status
 sbctl create-keys
 sbctl enroll-keys -m
 sbctl sign -s -o /usr/lib/systemd/boot/efi/systemd-bootx64.efi.signed /usr/lib/systemd/boot/efi/systemd-bootx64.efi
-bootctl update
+sbctl sign -s ${espMountPoint}/EFI/systemd/systemd-bootx64.efi
+sbctl sign -s ${espMountPoint}/EFI/BOOT/BOOTX64.EFI
 find ${espMountPoint}/EFI/Linux -type f -name '*.efi' -exec sbctl sign -s {} \\;
 sbctl verify
 \`\`\`
 
-\`sbctl status\` 必须显示 Setup Mode；否则先进入固件设置清除或重置 Secure Boot 密钥。保留 Microsoft 密钥可避免依赖它们的固件组件失效。sbctl 会记录已签名文件，并在后续内核更新重建 UKI 后重新签名。`,
+\`sbctl status\` 必须显示 Setup Mode；否则进入固件设置启用 Setup Mode，具体入口和选项名称因主板固件而异。sbctl 会记录已签名文件，并在后续内核更新重建 UKI 后重新签名。`,
     },
   },
   {

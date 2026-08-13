@@ -311,6 +311,17 @@ describe('renderGuide', () => {
     expect(flagship).toContain('sudo pacman -Syu')
   })
 
+  it('signs installed systemd-boot files without relying on a same-version bootctl update', () => {
+    const customDb = renderHtml({
+      ...stageOneConfig,
+      secureBoot: 'custom-db',
+    })
+
+    expect(customDb).toContain('sbctl sign -s /efi/EFI/systemd/systemd-bootx64.efi')
+    expect(customDb).toContain('sbctl sign -s /efi/EFI/BOOT/BOOTX64.EFI')
+    expect(customDb).not.toContain('\nbootctl update\n')
+  })
+
   it('renders sbctl only for the custom-db secure boot path', () => {
     const custom = renderHtml({ ...stageOneConfig, secureBoot: 'custom-db' })
     expect(custom).toContain('sbctl enroll-keys -m')
