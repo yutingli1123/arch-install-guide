@@ -49,7 +49,7 @@ ping -c 3 archlinux.org
         return `确认已经从安装后的 UKI 启动${cfg.secureBoot === 'none' ? '。当前未启用 Secure Boot，PCR 7 只记录“安全启动关闭”，不能验证启动文件签名' : '，并确认 Secure Boot 已启用'}：
 
 \`\`\`
-bootctl status
+sudo bootctl status
 sudo systemd-cryptenroll --tpm2-device=auto --tpm2-with-pin=${unlock.pin ? 'yes' : 'no'} --tpm2-pcrs=${hash}${
           signed
             ? ` --tpm2-public-key=/etc/kernel/pcr-initrd.pub.pem --tpm2-public-key-pcrs=${signed}`

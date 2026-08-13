@@ -310,6 +310,7 @@ describe('renderGuide', () => {
     expect(flagship).toContain('--tpm2-public-key-pcrs=11')
     expect(flagship).toContain('sudo systemd-cryptenroll --tpm2-device=auto')
     expect(flagship).toContain('sudo systemd-cryptenroll /dev/nvme0n1p2')
+    expect(flagship).toContain('sudo bootctl status')
     expect(flagship).toContain('至此，TPM2 解锁配置完成')
     expect(flagship).not.toContain('sudo pacman -Syu')
   })
