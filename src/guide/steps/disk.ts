@@ -119,10 +119,10 @@ ${nestedSubvolumes
     (s) => `mount --mkdir -o subvol=${s.name},${mountOptions} ${rootFsDevice} /mnt${s.mountPoint}`,
   )
   .join('\n')}
-mount --mkdir -o noatime ${espDevice} /mnt${espMountPoint}
+mount --mkdir -o noatime,umask=0077 ${espDevice} /mnt${espMountPoint}
 \`\`\`
 
-这些挂载选项会由 \`genfstab\` 写入 fstab。btrfs 子卷使用 \`${mountOptions}\`；ESP 使用 \`noatime\`，以避免读取文件时更新访问时间而产生不必要的写入。
+这些挂载选项会由 \`genfstab\` 写入 fstab。btrfs 子卷使用 \`${mountOptions}\`；ESP 使用 \`noatime\` 避免读取文件时更新访问时间，并使用 \`umask=0077\` 限制为仅 root 可访问。
 
 ESP 挂载在 \`${espMountPoint}\`：用于引导的 UKI 最终会生成到此处，固件和 systemd-boot 需要从 FAT 文件系统读取它。${cfg.subvolumeLayout === 'separated' ? '\`/boot\` 是根 btrfs 文件系统上的 \`@boot\` 子卷，仅存放 pacman 安装的 vmlinuz 和 mkinitcpio 的中间产物。' : '\`/boot\` 是根子卷内的普通目录。'}
 

@@ -218,10 +218,10 @@ describe('renderGuide', () => {
     expect(html).toContain('class="cmd-copy"')
   })
 
-  it('uses concise disk discovery and mounts the ESP with noatime', () => {
+  it('uses concise disk discovery and mounts the ESP for root-only access', () => {
     expect(html).toContain('<span class="cmd-line-text">lsblk</span>')
     expect(html).not.toContain('lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS')
-    expect(html).toContain('mount --mkdir -o noatime /dev/nvme0n1p1 /mnt/efi')
+    expect(html).toContain('mount --mkdir -o noatime,umask=0077 /dev/nvme0n1p1 /mnt/efi')
   })
 
   it('creates and mounts boot before home', () => {
