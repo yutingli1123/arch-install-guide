@@ -286,6 +286,7 @@ describe('renderGuide', () => {
     expect(flagship).not.toContain('findmnt /.snapshots /home/.snapshots')
     expect(flagship).not.toContain('install -d -m 700 /etc/kernel')
     expect(flagship).toContain('[PCRSignature:initrd]')
+    expect(flagship).toContain('Phases=enter-initrd')
     expect(flagship).toContain('/etc/kernel/uki.conf')
     expect(flagship).not.toContain('/etc/systemd/ukify.conf')
     expect(flagship).toContain('shim-signed.git')
