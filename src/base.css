@@ -9,7 +9,7 @@
   --warn: #b4531a;
   --sans: system-ui, sans-serif;
   --mono: ui-monospace, 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-  --column: 44rem;
+  --column: 56rem;
 }
 
 @media (prefers-color-scheme: dark) {
