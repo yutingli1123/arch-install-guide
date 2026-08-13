@@ -265,6 +265,8 @@ describe('renderGuide', () => {
   it('documents both UKI presets without mentioning fallback_image', () => {
     expect(html).toContain("PRESETS=('default' 'fallback')")
     expect(html).not.toContain('fallback_image')
+    expect(html).toContain('mkdir -p /efi/EFI/Linux')
+    expect(html).toContain('data-copy="mkdir -p /efi/EFI/Linux\nmkinitcpio -P"')
   })
 
   it('renders the password-encrypted path against the opened LUKS mapping', () => {

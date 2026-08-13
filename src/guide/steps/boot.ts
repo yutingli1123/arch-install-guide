@@ -69,6 +69,7 @@ ${cfg.encryption.mode === 'none' ? '无需修改 `/etc/mkinitcpio.conf`：btrfs 
 重新构建：
 
 \`\`\`
+mkdir -p ${espMountPoint}/EFI/Linux
 mkinitcpio -P
 \`\`\`
 
