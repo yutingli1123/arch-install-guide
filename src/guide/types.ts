@@ -91,6 +91,7 @@ export type Context = {
   packages: string[]
   microcode: string
   graphicsPackages: string[]
+  audioPackages: string[]
   desktopPackages: string[]
   displayManager?: string
 }

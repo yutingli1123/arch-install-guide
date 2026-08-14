@@ -70,9 +70,29 @@ export function derive(cfg: Config): Context {
     gnome: { packages: ['gnome'], displayManager: 'gdm' },
     kde: { packages: ['plasma-meta', 'sddm', 'konsole', 'dolphin'], displayManager: 'sddm' },
     hyprland: {
-      packages: ['hyprland', 'uwsm', 'ghostty', 'xdg-desktop-portal-hyprland', 'hyprpolkitagent'],
+      packages: [
+        'hyprland',
+        'uwsm',
+        'ghostty',
+        'xdg-desktop-portal-hyprland',
+        'hyprpolkitagent',
+        'greetd',
+        'greetd-regreet',
+      ],
+      displayManager: 'greetd',
     },
   }[cfg.desktop]
+  const audioPackages =
+    cfg.desktop === 'none'
+      ? []
+      : [
+          'pipewire',
+          'pipewire-audio',
+          'pipewire-alsa',
+          'pipewire-pulse',
+          'wireplumber',
+          'pavucontrol',
+        ]
   if (cfg.encryption.mode === 'luks2') packages.push('cryptsetup')
   if (cfg.swap === 'zram') packages.push('zram-generator')
   if (cfg.snapper !== 'none') packages.push('snapper')
@@ -103,6 +123,7 @@ export function derive(cfg: Config): Context {
     packages: [...new Set(packages)].sort(),
     microcode,
     graphicsPackages,
+    audioPackages,
     desktopPackages: desktop.packages,
     displayManager: 'displayManager' in desktop ? desktop.displayManager : undefined,
   }

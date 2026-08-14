@@ -65,7 +65,22 @@ describe('derive', () => {
 
     const headless = derive({ ...stageOneConfig, desktop: 'none' })
     expect(headless.desktopPackages).toEqual([])
+    expect(headless.audioPackages).toEqual([])
     expect(headless.displayManager).toBeUndefined()
+
+    const hyprland = derive({ ...stageOneConfig, desktop: 'hyprland' })
+    expect(hyprland.displayManager).toBe('greetd')
+    expect(hyprland.desktopPackages).toEqual(
+      expect.arrayContaining(['ghostty', 'hyprpolkitagent', 'greetd', 'greetd-regreet']),
+    )
+    expect(hyprland.audioPackages).toEqual([
+      'pipewire',
+      'pipewire-audio',
+      'pipewire-alsa',
+      'pipewire-pulse',
+      'wireplumber',
+      'pavucontrol',
+    ])
   })
 
   it('adds zram-generator and renders its configuration only for zram', () => {
@@ -428,6 +443,19 @@ describe('renderGuide', () => {
     expect(hyprland).toContain('pacman -S nvidia-open nvidia-utils')
     expect(hyprland).toContain('pacman -S hyprland uwsm ghostty')
     expect(hyprland).toContain('xdg-desktop-portal-hyprland hyprpolkitagent')
+    expect(hyprland).toContain('greetd greetd-regreet')
+    expect(hyprland).toContain('systemctl enable greetd')
+    expect(hyprland).toContain(
+      'command = &quot;dbus-run-session start-hyprland -- -c /etc/greetd/hyprland.lua&quot;',
+    )
+    expect(hyprland).toContain('hl.on(&quot;hyprland.start&quot;, function()')
+    expect(hyprland).toContain(
+      "hl.exec_cmd(&quot;regreet; hyprctl dispatch 'hl.dsp.exit()'&quot;)",
+    )
+    expect(hyprland).not.toContain('/etc/greetd/hyprland.conf')
+    expect(hyprland).toContain(
+      'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse wireplumber pavucontrol',
+    )
     expect(hyprland).not.toContain('polkit-kde-agent')
     expect(hyprland).not.toContain('qt5-wayland')
     expect(hyprland).not.toContain('qt6-wayland')
