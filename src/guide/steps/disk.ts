@@ -20,18 +20,24 @@ lsblk
     section: 'disk',
     title: { zh: '分区' },
     body: {
-      zh: ({ cfg, espDevice, rootDevice }) => `创建 GPT 分区表和两个分区：
+      zh: ({
+        cfg,
+        espDevice,
+        rootDevice,
+        swapDevice,
+      }) => `创建 GPT 分区表和${cfg.swap === 'partition' ? '三个' : '两个'}分区：
 
 | 分区 | 大小 | 类型 | 用途 |
 | --- | --- | --- | --- |
 | \`${espDevice}\` | ${cfg.espSize} | EFI System | ESP，存内核与引导器 |
-| \`${rootDevice}\` | 剩余全部 | Linux filesystem | btrfs 根 |
+| \`${rootDevice}\` | ${cfg.swap === 'partition' ? `剩余空间减去 ${cfg.swapSizeGiB} GiB` : '剩余全部'} | Linux filesystem | btrfs 根 |
+${cfg.swap === 'partition' ? `| \`${swapDevice}\` | ${cfg.swapSizeGiB} GiB | Linux swap | swap |` : ''}
 
 \`\`\`
-sgdisk ${cfg.disk} -o -n 1:0:+${cfg.espSize} -t 1:ef00 -n 2:0:0 -t 2:8300
+sgdisk ${cfg.disk} -o -n 1:0:+${cfg.espSize} -t 1:ef00 -n 2:0:${cfg.swap === 'partition' ? `-${cfg.swapSizeGiB}G` : '0'} -t 2:8300${cfg.swap === 'partition' ? ' -n 3:0:0 -t 3:8200' : ''}
 \`\`\`
 
-参数从左到右执行：\`-o\` 清空分区表，\`-n 编号:起点:终点\` 创建分区（\`0\` 表示采用默认值，终点为 \`0\` 表示使用全部剩余空间），\`-t\` 设置类型；\`ef00\` 是 EFI System，\`8300\` 是 Linux filesystem。核对结果：
+参数从左到右执行：\`-o\` 清空分区表，\`-n 编号:起点:终点\` 创建分区（\`0\` 表示采用默认值，终点为 \`0\` 表示使用全部剩余空间${cfg.swap === 'partition' ? `；\`-${cfg.swapSizeGiB}G\` 表示在磁盘末尾预留 ${cfg.swapSizeGiB} GiB` : ''}），\`-t\` 设置类型；\`ef00\` 是 EFI System，\`8300\` 是 Linux filesystem${cfg.swap === 'partition' ? '，`8200` 是 Linux swap' : ''}。核对结果：
 
 \`\`\`
 lsblk ${cfg.disk}
@@ -66,12 +72,21 @@ cryptsetup open ${rootDevice} ${luksName}
         cfg,
         espDevice,
         rootFsDevice,
+        swapDevice,
       }) => `将 ESP 格式化为 UEFI 固件普遍支持的 FAT32 文件系统，并在${cfg.encryption.mode === 'luks2' ? '已打开的 LUKS 映射' : '根分区'}上创建 btrfs：
 
 \`\`\`
 mkfs.fat -F 32 ${espDevice}
-mkfs.btrfs -f ${rootFsDevice}
-\`\`\``,
+mkfs.btrfs -f ${rootFsDevice}${
+        cfg.swap === 'partition' && cfg.encryption.mode === 'none'
+          ? `\nmkswap ${swapDevice}\nswapon ${swapDevice}`
+          : ''
+      }
+\`\`\`${
+        cfg.swap === 'partition' && cfg.encryption.mode === 'luks2'
+          ? '\n\n独立 swap 分区将在新系统中使用每次启动随机生成的密钥加密，因此这里不直接格式化或启用它。'
+          : ''
+      }`,
     },
   },
   {
@@ -116,7 +131,8 @@ ${cfg.subvolumeLayout === 'separated' ? '\`@log\`、\`@pkg\` 和 \`@boot\` 均�
 mount -o subvol=${rootSubvolume.name},${mountOptions} ${rootFsDevice} /mnt
 ${nestedSubvolumes
   .map(
-    (s) => `mount --mkdir -o subvol=${s.name},${mountOptions} ${rootFsDevice} /mnt${s.mountPoint}`,
+    (s) =>
+      `mount --mkdir -o subvol=${s.name},${(s.mountOptions ?? cfg.mountOptions).join(',')} ${rootFsDevice} /mnt${s.mountPoint}`,
   )
   .join('\n')}
 mount --mkdir -o noatime,umask=0077 ${espDevice} /mnt${espMountPoint}

@@ -57,6 +57,60 @@ describe('derive', () => {
     expect(derive({ ...stageOneConfig, cpu: 'intel' }).packages).not.toContain('amd-ucode')
   })
 
+  it('derives graphics and desktop packages independently from storage', () => {
+    const kdeOnAmd = derive({ ...stageOneConfig, graphics: 'amd', desktop: 'kde' })
+    expect(kdeOnAmd.graphicsPackages).toEqual(['mesa', 'vulkan-radeon', 'libva-mesa-driver'])
+    expect(kdeOnAmd.desktopPackages).toEqual(['plasma-meta', 'sddm', 'konsole', 'dolphin'])
+    expect(kdeOnAmd.displayManager).toBe('sddm')
+
+    const headless = derive({ ...stageOneConfig, desktop: 'none' })
+    expect(headless.desktopPackages).toEqual([])
+    expect(headless.displayManager).toBeUndefined()
+  })
+
+  it('adds zram-generator and renders its configuration only for zram', () => {
+    const zram = { ...stageOneConfig, swap: 'zram' as const }
+    expect(derive(zram).packages).toContain('zram-generator')
+    expect(renderHtml(zram)).toContain('zram-size = ram / 2')
+    expect(renderHtml(stageOneConfig)).not.toContain('/etc/systemd/zram-generator.conf')
+  })
+
+  it('creates a dedicated uncompressed subvolume for a btrfs swapfile', () => {
+    const swapfile = { ...stageOneConfig, swap: 'swapfile' as const, swapSizeGiB: 8 }
+    const context = derive(swapfile)
+    expect(context.subvolumes[context.subvolumes.length - 1]).toEqual({
+      name: '@swap',
+      mountPoint: '/swap',
+      mountOptions: ['noatime'],
+    })
+    const rendered = renderHtml(swapfile)
+    expect(rendered).toContain('mount --mkdir -o subvol=@swap,noatime')
+    expect(rendered).toContain('btrfs filesystem mkswapfile --size 8g --uuid clear')
+    expect(rendered).toContain('/swap/swapfile none swap defaults 0 0')
+    expect(completeConfig(parseDraft(serializeDraft(swapfile)))).toEqual(swapfile)
+  })
+
+  it('creates a sized swap partition and encrypts it when the root is encrypted', () => {
+    const plain = { ...stageOneConfig, swap: 'partition' as const, swapSizeGiB: 16 }
+    const plainHtml = renderHtml(plain)
+    expect(derive(plain).swapDevice).toBe('/dev/nvme0n1p3')
+    expect(plainHtml).toContain('-n 2:0:-16G -t 2:8300 -n 3:0:0 -t 3:8200')
+    expect(plainHtml).toContain('mkswap /dev/nvme0n1p3')
+    expect(plainHtml).toContain('swapon /dev/nvme0n1p3')
+    expect(plainHtml).not.toContain('/etc/crypttab')
+
+    const encrypted = {
+      ...plain,
+      encryption: { mode: 'luks2' as const, unlock: { method: 'password' as const } },
+    }
+    const encryptedHtml = renderHtml(encrypted)
+    expect(encryptedHtml).not.toContain('mkswap /dev/nvme0n1p3')
+    expect(encryptedHtml).toContain('PARTUUID=$(blkid -s PARTUUID -o value /dev/nvme0n1p3)')
+    expect(encryptedHtml).toContain('/dev/urandom swap,cipher=aes-xts-plain64,size=256')
+    expect(encryptedHtml).toContain('/dev/mapper/cryptswap none swap defaults 0 0')
+    expect(completeConfig(parseDraft(serializeDraft(encrypted)))).toEqual(encrypted)
+  })
+
   it('derives encrypted storage and snapshot mount points from the final configuration', () => {
     const context = derive({
       ...stageOneConfig,
@@ -96,9 +150,31 @@ describe('configuration', () => {
       keymap: 'de-latin1',
       hostname: 'workstation',
       username: 'alice',
+      graphics: 'nvidia',
+      desktop: 'hyprland',
+      reflector: { countries: ['GB', 'FR'], ageHours: 6, number: 7 },
     }
 
     expect(completeConfig(parseDraft(serializeDraft(config)))).toEqual(config)
+  })
+
+  it('keeps reflector freshness filtering independent from rate sorting', () => {
+    const config = {
+      ...stageOneConfig,
+      reflector: { countries: ['CA', 'US'], ageHours: 6, number: 12 },
+    }
+    const rendered = renderHtml(config)
+    expect(rendered).toContain(
+      'reflector --country CA,US --age 6 --protocol https --sort rate --number 12',
+    )
+    expect(rendered).not.toContain('--sort age')
+    expect(completeConfig(parseDraft(serializeDraft(config)))).toEqual(config)
+    expect(
+      completeConfig({
+        ...config,
+        reflector: { ...config.reflector, countries: ['CA', 'CA'] },
+      }),
+    ).toBeNull()
   })
 
   it('keeps an untouched draft empty and serializes only explicit choices', () => {
@@ -278,7 +354,9 @@ describe('renderGuide', () => {
     expect(encrypted.indexOf('sgdisk')).toBeLessThan(encrypted.indexOf('cryptsetup luksFormat'))
     expect(encrypted).toContain('mkfs.btrfs -f /dev/mapper/cryptroot')
     expect(encrypted).toContain('rd.luks.name=$(blkid -s UUID -o value /dev/nvme0n1p2)=cryptroot')
-    expect(encrypted).toContain('在 <code>HOOKS</code> 行的 <code>block</code> 后添加 <code>sd-encrypt</code>')
+    expect(encrypted).toContain(
+      '在 <code>HOOKS</code> 行的 <code>block</code> 后添加 <code>sd-encrypt</code>',
+    )
     expect(encrypted).toContain('block sd-encrypt filesystems')
     expect(encrypted).not.toContain('HOOKS=(base systemd autodetect')
     expect(encrypted).not.toContain('systemd-cryptenroll --tpm2-device=auto')
@@ -331,6 +409,32 @@ describe('renderGuide', () => {
     expect(custom).toContain('sbctl enroll-keys -m')
     expect(custom).not.toContain('shim-signed.git')
     expect(html).not.toContain('sbctl create-keys')
+  })
+
+  it('renders reflector, graphics, and each desktop path without changing storage', () => {
+    const gnome = renderHtml({ ...stageOneConfig, desktop: 'gnome', graphics: 'intel' })
+    expect(gnome).toContain(
+      'reflector --country CA --age 12 --protocol https --sort rate --number 10',
+    )
+    expect(gnome).toContain('pacman -S mesa vulkan-intel intel-media-driver')
+    expect(gnome).toContain('pacman -S gnome')
+    expect(gnome).toContain('systemctl enable gdm')
+
+    const kde = renderHtml({ ...stageOneConfig, desktop: 'kde', graphics: 'amd' })
+    expect(kde).toContain('pacman -S plasma-meta sddm konsole dolphin')
+    expect(kde).toContain('systemctl enable sddm')
+
+    const hyprland = renderHtml({ ...stageOneConfig, desktop: 'hyprland', graphics: 'nvidia' })
+    expect(hyprland).toContain('pacman -S nvidia-open nvidia-utils')
+    expect(hyprland).toContain('pacman -S hyprland uwsm ghostty')
+    expect(hyprland).toContain('xdg-desktop-portal-hyprland hyprpolkitagent')
+    expect(hyprland).not.toContain('polkit-kde-agent')
+    expect(hyprland).not.toContain('qt5-wayland')
+    expect(hyprland).not.toContain('qt6-wayland')
+    expect(hyprland).toContain('systemctl --user enable --now hyprpolkitagent.service')
+    expect(hyprland).toContain('start-hyprland')
+    expect(hyprland).not.toContain('systemctl enable gdm')
+    expect(hyprland).not.toContain('systemctl enable sddm')
   })
 })
 

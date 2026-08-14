@@ -2,6 +2,67 @@ import type { Step } from '../types'
 
 export const storageSteps: Step[] = [
   {
+    id: 'zram',
+    section: 'storage',
+    title: { zh: '配置 zram' },
+    when: (cfg) => cfg.swap === 'zram',
+    body: {
+      zh: () => `新建 zram-generator 配置：
+
+\`\`\`
+vim /etc/systemd/zram-generator.conf
+\`\`\`
+
+写入：
+
+\`\`\`
+[zram0]
+zram-size = ram / 2
+compression-algorithm = zstd
+swap-priority = 100
+\`\`\`
+
+重启后 systemd 会创建容量为物理内存一半的压缩交换设备 \`/dev/zram0\`。`,
+    },
+  },
+  {
+    id: 'swapfile',
+    section: 'storage',
+    title: { zh: '创建 swapfile' },
+    when: (cfg) => cfg.swap === 'swapfile',
+    body: {
+      zh: ({
+        cfg,
+      }) => `在独立的 \`@swap\` 子卷中关闭写时复制和压缩，再创建 ${cfg.swapSizeGiB} GiB swapfile：
+
+\`\`\`
+btrfs property set /swap compression none
+chattr +C /swap
+btrfs filesystem mkswapfile --size ${cfg.swapSizeGiB}g --uuid clear /swap/swapfile
+swapon /swap/swapfile
+echo '/swap/swapfile none swap defaults 0 0' >> /etc/fstab
+\`\`\`
+
+\`@swap\` 不会包含在根子卷快照中。\`--uuid clear\` 避免 swapfile 被误识别为可挂载文件系统。`,
+    },
+  },
+  {
+    id: 'encrypted-swap-partition',
+    section: 'storage',
+    title: { zh: '配置加密 swap 分区' },
+    when: (cfg) => cfg.swap === 'partition' && cfg.encryption.mode === 'luks2',
+    body: {
+      zh: ({ swapDevice }) => `让独立 swap 分区在每次启动时使用新的随机密钥加密：
+
+\`\`\`
+echo "cryptswap PARTUUID=$(blkid -s PARTUUID -o value ${swapDevice}) /dev/urandom swap,cipher=aes-xts-plain64,size=256" >> /etc/crypttab
+echo '/dev/mapper/cryptswap none swap defaults 0 0' >> /etc/fstab
+\`\`\`
+
+\`swap\` 选项会在打开随机加密映射后初始化交换空间。密钥不会保存，因此关机后无法恢复其中的数据，也不能使用休眠到磁盘。`,
+    },
+  },
+  {
     id: 'initramfs-encryption',
     section: 'storage',
     title: { zh: '启用 systemd initramfs 解锁' },

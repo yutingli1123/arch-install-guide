@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import ChoicePicker from '@/components/ChoicePicker.vue'
 import {
   KEYMAPS,
+  MIRROR_COUNTRIES,
   SYSTEM_LOCALES,
   TIMEZONES,
   makeTpm2Encryption,
@@ -23,6 +24,7 @@ const step = defineModel<number>('step', { required: true })
 const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 const canUseDetectedTimezone = TIMEZONES.includes(detectedTimezone)
 const sortedSystemLocales = [...SYSTEM_LOCALES].sort()
+const mirrorCountryCodes = MIRROR_COUNTRIES.map(([code]) => code)
 const isCjkSystemLocale = computed(() =>
   ['zh_CN.UTF-8', 'zh_TW.UTF-8', 'ja_JP.UTF-8', 'ko_KR.UTF-8'].includes(
     model.value.systemLocale ?? '',
@@ -152,9 +154,15 @@ const desktopOptions = computed(() => [
     disabledReason: unavailableReason(`desktop.${value}`),
   })),
 ])
-
+const graphicsOptions = computed(() =>
+  (['intel', 'amd', 'nvidia'] as const).map((value) => ({
+    value,
+    label: pick(choices.graphics[value], props.locale),
+    description: pick(choiceDescriptions.graphics[value], props.locale),
+  })),
+)
 type TextField = 'hostname' | 'username'
-type ChoiceField = Exclude<keyof ConfigDraft, 'encryption'>
+type ChoiceField = Exclude<keyof ConfigDraft, 'encryption' | 'reflector' | 'swapSizeGiB'>
 type SelectField = 'timezone' | 'systemLocale' | 'keymap'
 
 function commitText(field: TextField, event: Event) {
@@ -201,6 +209,20 @@ function commitEncryption(value: string | undefined) {
   }
 }
 
+function commitSwap(value: string | undefined) {
+  if (!value) return
+  model.value = {
+    ...model.value,
+    swap: value as ConfigDraft['swap'],
+    swapSizeGiB: value === 'swapfile' || value === 'partition' ? model.value.swapSizeGiB : null,
+  }
+}
+
+function commitSwapSize(event: Event) {
+  const size = Number((event.currentTarget as HTMLInputElement).value)
+  model.value = { ...model.value, swapSizeGiB: size }
+}
+
 function commitTpm2Preset(value: string | undefined) {
   if (!value) return
   const preset = value as Tpm2Preset
@@ -241,6 +263,61 @@ function commitSecureBoot(value: string | undefined) {
     next.encryption = makeTpm2Encryption('minimal', pin)
   }
   model.value = next
+}
+
+function commitReflectorCountries(event: Event) {
+  const input = event.currentTarget as HTMLInputElement
+  const countries = [
+    ...new Set(
+      input.value
+        .toUpperCase()
+        .split(',')
+        .map((country) => country.trim())
+        .filter(Boolean),
+    ),
+  ]
+  input.setCustomValidity(
+    countries.length > 0 &&
+      countries.every((country) => mirrorCountryCodes.includes(country as never))
+      ? ''
+      : '请输入有效的 ISO 国家代码，并用英文逗号分隔',
+  )
+  if (!input.reportValidity()) {
+    input.value = model.value.reflector?.countries.join(',') ?? ''
+    return
+  }
+  model.value = {
+    ...model.value,
+    reflector: {
+      countries,
+      ageHours: model.value.reflector?.ageHours ?? 12,
+      number: model.value.reflector?.number ?? 10,
+    },
+  }
+}
+
+function commitReflectorAge(event: Event) {
+  const ageHours = Number((event.currentTarget as HTMLInputElement).value)
+  model.value = {
+    ...model.value,
+    reflector: {
+      countries: model.value.reflector?.countries ?? [],
+      ageHours,
+      number: model.value.reflector?.number ?? 10,
+    },
+  }
+}
+
+function commitReflectorNumber(event: Event) {
+  const number = Number((event.currentTarget as HTMLInputElement).value)
+  model.value = {
+    ...model.value,
+    reflector: {
+      countries: model.value.reflector?.countries ?? [],
+      ageHours: model.value.reflector?.ageHours ?? 12,
+      number,
+    },
+  }
 }
 
 function advance(event: Event) {
@@ -319,6 +396,16 @@ function goToStep(index: number) {
             @update:model-value="commitChoice('cpu', $event)"
           />
         </div>
+
+        <div class="field">
+          <span>{{ pick(ui.graphics, props.locale) }}</span>
+          <ChoicePicker
+            name="graphics"
+            :model-value="model.graphics"
+            :options="graphicsOptions"
+            @update:model-value="commitChoice('graphics', $event)"
+          />
+        </div>
       </fieldset>
 
       <fieldset v-if="step === 2">
@@ -338,8 +425,23 @@ function goToStep(index: number) {
             name="swap"
             :model-value="model.swap"
             :options="swapOptions"
-            @update:model-value="commitChoice('swap', $event)"
+            @update:model-value="commitSwap"
           />
+          <label
+            v-if="model.swap === 'swapfile' || model.swap === 'partition'"
+            class="nested-field"
+          >
+            <span>容量（GiB）</span>
+            <input
+              name="swapSizeGiB"
+              required
+              type="number"
+              min="1"
+              max="1024"
+              :value="model.swapSizeGiB ?? ''"
+              @change="commitSwapSize"
+            />
+          </label>
         </div>
 
         <div class="field encryption-field">
@@ -500,6 +602,45 @@ function goToStep(index: number) {
             :options="desktopOptions"
             @update:model-value="commitChoice('desktop', $event)"
           />
+        </div>
+
+        <div class="field nested-field reflector-field">
+          <span>{{ pick(ui.reflector, props.locale) }}</span>
+          <label>
+            <span>{{ pick(ui.mirrorCountry, props.locale) }}</span>
+            <input
+              name="mirrorCountries"
+              required
+              placeholder="CA,US"
+              :value="model.reflector?.countries.join(',') ?? ''"
+              @change="commitReflectorCountries"
+            />
+            <small>{{ pick(ui.mirrorCountryHint, props.locale) }}</small>
+          </label>
+          <label>
+            <span>{{ pick(ui.mirrorAge, props.locale) }}</span>
+            <input
+              name="mirrorAge"
+              required
+              type="number"
+              min="1"
+              max="168"
+              :value="model.reflector?.ageHours ?? 12"
+              @change="commitReflectorAge"
+            />
+          </label>
+          <label>
+            <span>{{ pick(ui.mirrorNumber, props.locale) }}</span>
+            <input
+              name="mirrorNumber"
+              required
+              type="number"
+              min="1"
+              max="50"
+              :value="model.reflector?.number ?? 10"
+              @change="commitReflectorNumber"
+            />
+          </label>
         </div>
       </fieldset>
 

@@ -71,4 +71,26 @@ timedatectl
 \`System clock synchronized\` 应为 \`yes\`。系统时间不准确可能导致后续 pacman 签名校验失败。`,
     },
   },
+  {
+    id: 'mirrors',
+    section: 'live',
+    title: { zh: '选择镜像源' },
+    body: {
+      zh: ({
+        cfg,
+      }) => `使用 reflector 筛选 ${cfg.reflector.countries.join(',')} 中最近 ${cfg.reflector.ageHours} 小时内同步的 HTTPS 镜像，再按下载速度排序并保留 ${cfg.reflector.number} 个：
+
+\`\`\`
+reflector --country ${cfg.reflector.countries.join(',')} --age ${cfg.reflector.ageHours} --protocol https --sort rate --number ${cfg.reflector.number} --save /etc/pacman.d/mirrorlist
+\`\`\`
+
+检查生成的列表：
+
+\`\`\`
+cat /etc/pacman.d/mirrorlist
+\`\`\`
+
+列表中的每个 \`Server\` 地址都应以 \`https://\` 开头。安装介质中生成的 mirrorlist 会由后续的 \`pacstrap\` 复制到新系统。`,
+    },
+  },
 ]

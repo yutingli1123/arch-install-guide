@@ -175,7 +175,7 @@ describe('setup wizard', () => {
 
     expect(wrapper.get('form').text()).toContain('只创建 @，结构简单，但不能配置 Snapper')
     expect(wrapper.get('form').text()).toContain('在同一个 Btrfs 文件系统中')
-    expect(wrapper.get('form').text()).toContain('当前不可用：对应安装步骤尚未提供')
+    expect(wrapper.get('form').text()).not.toContain('当前不可用：对应安装步骤尚未提供')
     await selectChoice(wrapper, 'subvolumeLayout', 'root-only')
     expect(
       wrapper
@@ -194,6 +194,8 @@ describe('setup wizard', () => {
     expect((wrapper.get('input[name="username"]').element as HTMLInputElement).value).toBe('')
     await wrapper.get('input[name="username"]').setValue('alice')
     await selectChoice(wrapper, 'desktop', 'none')
+    expect(wrapper.find('input[name="mirrorSort"]').exists()).toBe(false)
+    await wrapper.get('input[name="mirrorCountries"]').setValue('CA,US')
     await next(wrapper)
 
     expect(wrapper.get('.wizard h1').text()).toBe('安装目标')
@@ -203,10 +205,13 @@ describe('setup wizard', () => {
     expect(wrapper.get('.device-prefix').text()).toBe('/dev/')
     await wrapper.get('input[name="disk"]').setValue('nvme0n1')
     await selectChoice(wrapper, 'cpu', 'amd')
+    await selectChoice(wrapper, 'graphics', 'amd')
     await next(wrapper)
 
     expect(wrapper.get('.wizard h1').text()).toBe('确认配置')
     expect(wrapper.get('.review').text()).toContain('CPUAMD')
+    expect(wrapper.get('.review').text()).toContain('显卡AMD')
+    expect(wrapper.get('.review').text()).toContain('镜像源CA,US / 12 h / 10')
     expect(wrapper.get('.review').text()).toContain('子卷布局单一根子卷')
     expect(wrapper.get('.review').text()).toContain('时区Asia/Shanghai')
     expect(wrapper.get('.review').text()).toContain('系统语言zh_CN.UTF-8')
@@ -219,6 +224,8 @@ describe('setup wizard', () => {
     expect(params.has('config')).toBe(false)
     expect(params.has('cpu')).toBe(false)
     expect(saved.cpu).toBe('amd')
+    expect(saved.graphics).toBe('amd')
+    expect(saved.reflector).toEqual({ countries: ['CA', 'US'], ageHours: 12, number: 10 })
     expect(saved.subvolumeLayout).toBe('root-only')
     expect(saved.snapper).toBeUndefined()
     expect(saved.username).toBe('alice')
@@ -342,9 +349,11 @@ async function openGuide(wrapper: VueWrapper) {
   await wrapper.get('input[name="hostname"]').setValue('archlinux')
   await wrapper.get('input[name="username"]').setValue('user')
   await selectChoice(wrapper, 'desktop', 'none')
+  await wrapper.get('input[name="mirrorCountries"]').setValue('CA')
   await next(wrapper)
   await wrapper.get('input[name="disk"]').setValue('nvme0n1')
   await selectChoice(wrapper, 'cpu', 'intel')
+  await selectChoice(wrapper, 'graphics', 'intel')
   await next(wrapper)
   await next(wrapper)
 }

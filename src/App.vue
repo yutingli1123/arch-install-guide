@@ -18,8 +18,8 @@ function firstIncompleteStep(draft: ConfigDraft): number {
     (draft.subvolumeLayout === 'separated' && !draft.snapper)
   )
     return 2
-  if (!draft.hostname || !draft.username || !draft.desktop) return 3
-  if (!draft.disk || !draft.cpu) return 4
+  if (!draft.hostname || !draft.username || !draft.desktop || !draft.reflector) return 3
+  if (!draft.disk || !draft.cpu || !draft.graphics) return 4
   return 5
 }
 
@@ -85,6 +85,10 @@ const summary = computed(() => {
   const items = [
     { label: pick(ui.targetDisk, locale.value), value: cfg.disk },
     { label: pick(ui.cpu, locale.value), value: pick(choices.cpu[cfg.cpu], locale.value) },
+    {
+      label: pick(ui.graphics, locale.value),
+      value: pick(choices.graphics[cfg.graphics], locale.value),
+    },
     { label: pick(ui.swap, locale.value), value: pick(choices.swap[cfg.swap], locale.value) },
     {
       label: pick(ui.subvolumes, locale.value),
@@ -105,6 +109,10 @@ const summary = computed(() => {
     {
       label: pick(ui.desktop, locale.value),
       value: pick(choices.desktop[cfg.desktop], locale.value),
+    },
+    {
+      label: pick(ui.reflector, locale.value),
+      value: `${cfg.reflector.countries.join(',')} / ${cfg.reflector.ageHours} h / ${cfg.reflector.number}`,
     },
     { label: pick(ui.timezone, locale.value), value: cfg.timezone },
     { label: pick(ui.systemLocale, locale.value), value: cfg.systemLocale },

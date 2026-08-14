@@ -11,6 +11,12 @@ export type SubvolumeLayout = 'root-only' | 'separated'
 export type SecureBootMode = 'none' | 'custom-db' | 'shim-mok'
 export type SnapperMode = 'none' | 'root' | 'root-home'
 export type Desktop = 'none' | 'gnome' | 'kde' | 'hyprland'
+export type Graphics = 'intel' | 'amd' | 'nvidia'
+export type ReflectorConfig = {
+  countries: string[]
+  ageHours: number
+  number: number
+}
 export type Tpm2Preset = 'minimal' | 'custom-db' | 'shim-mok'
 
 export type Encryption =
@@ -31,6 +37,8 @@ export type Subvolume = {
   name: string
   /** Mount point inside the installed system. `/` for the root subvolume. */
   mountPoint: string
+  /** Overrides the common btrfs mount options for this subvolume. */
+  mountOptions?: string[]
 }
 
 export type Config = {
@@ -38,6 +46,7 @@ export type Config = {
   cpu: CpuVendor
   espSize: string
   swap: SwapMode
+  swapSizeGiB: number | null
   subvolumeLayout: SubvolumeLayout
   /** Extra btrfs mount options applied to every subvolume. */
   mountOptions: string[]
@@ -50,6 +59,8 @@ export type Config = {
   secureBoot: SecureBootMode
   snapper: SnapperMode
   desktop: Desktop
+  graphics: Graphics
+  reflector: ReflectorConfig
 }
 
 /** User choices collected by the setup wizard; absent means not selected yet. */
@@ -65,6 +76,8 @@ export type Context = {
   espDevice: string
   /** Root block device, e.g. `/dev/nvme0n1p2`. */
   rootDevice: string
+  /** Dedicated swap partition when selected. */
+  swapDevice?: string
   /** Device containing btrfs: the partition itself or the opened LUKS mapping. */
   rootFsDevice: string
   luksName: string
@@ -77,6 +90,9 @@ export type Context = {
   mountOptions: string
   packages: string[]
   microcode: string
+  graphicsPackages: string[]
+  desktopPackages: string[]
+  displayManager?: string
 }
 
 export type Body = (ctx: Context) => string

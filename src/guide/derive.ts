@@ -49,14 +49,32 @@ export function derive(cfg: Config): Context {
   if (cfg.snapper === 'root-home') {
     subvolumes.push({ name: '@home_snapshots', mountPoint: '/home/.snapshots' })
   }
+  if (cfg.swap === 'swapfile') {
+    subvolumes.push({ name: '@swap', mountPoint: '/swap', mountOptions: ['noatime'] })
+  }
   const rootSubvolume = subvolumes[0]!
 
   const microcode = `${cfg.cpu}-ucode`
   const luksName = 'cryptroot'
   const rootDevice = partition(cfg.disk, 2)
+  const swapDevice = cfg.swap === 'partition' ? partition(cfg.disk, 3) : undefined
   const rootFsDevice = cfg.encryption.mode === 'luks2' ? `/dev/mapper/${luksName}` : rootDevice
   const packages = [...BASE_PACKAGES, microcode]
+  const graphicsPackages = {
+    intel: ['mesa', 'vulkan-intel', 'intel-media-driver'],
+    amd: ['mesa', 'vulkan-radeon', 'libva-mesa-driver'],
+    nvidia: ['nvidia-open', 'nvidia-utils'],
+  }[cfg.graphics]
+  const desktop = {
+    none: { packages: [] },
+    gnome: { packages: ['gnome'], displayManager: 'gdm' },
+    kde: { packages: ['plasma-meta', 'sddm', 'konsole', 'dolphin'], displayManager: 'sddm' },
+    hyprland: {
+      packages: ['hyprland', 'uwsm', 'ghostty', 'xdg-desktop-portal-hyprland', 'hyprpolkitagent'],
+    },
+  }[cfg.desktop]
   if (cfg.encryption.mode === 'luks2') packages.push('cryptsetup')
+  if (cfg.swap === 'zram') packages.push('zram-generator')
   if (cfg.snapper !== 'none') packages.push('snapper')
   if (cfg.secureBoot === 'custom-db') packages.push('sbctl')
   if (cfg.secureBoot === 'shim-mok') {
@@ -74,6 +92,7 @@ export function derive(cfg: Config): Context {
     cfg,
     espDevice: partition(cfg.disk, 1),
     rootDevice,
+    swapDevice,
     rootFsDevice,
     luksName,
     espMountPoint: '/efi',
@@ -83,5 +102,8 @@ export function derive(cfg: Config): Context {
     mountOptions: cfg.mountOptions.join(','),
     packages: [...new Set(packages)].sort(),
     microcode,
+    graphicsPackages,
+    desktopPackages: desktop.packages,
+    displayManager: 'displayManager' in desktop ? desktop.displayManager : undefined,
   }
 }
