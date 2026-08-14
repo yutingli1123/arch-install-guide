@@ -93,6 +93,21 @@ export function derive(cfg: Config): Context {
           'wireplumber',
           'pavucontrol',
         ]
+  const inputMethodEngine = cfg.systemLocale.startsWith('zh_')
+    ? 'fcitx5-rime'
+    : cfg.systemLocale.startsWith('ja_')
+      ? 'fcitx5-mozc'
+      : cfg.systemLocale.startsWith('ko_')
+        ? 'fcitx5-hangul'
+        : undefined
+  const desktopCommonPackages =
+    cfg.desktop === 'none'
+      ? []
+      : [
+          ...(cfg.desktop === 'hyprland' ? ['bluez', 'bluez-utils', 'blueman'] : []),
+          'fcitx5-im',
+          ...(inputMethodEngine ? [inputMethodEngine] : []),
+        ]
   if (cfg.encryption.mode === 'luks2') packages.push('cryptsetup')
   if (cfg.swap === 'zram') packages.push('zram-generator')
   if (cfg.snapper !== 'none') packages.push('snapper')
@@ -124,6 +139,7 @@ export function derive(cfg: Config): Context {
     microcode,
     graphicsPackages,
     audioPackages,
+    desktopCommonPackages,
     desktopPackages: desktop.packages,
     displayManager: 'displayManager' in desktop ? desktop.displayManager : undefined,
   }

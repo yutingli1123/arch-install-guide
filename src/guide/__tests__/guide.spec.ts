@@ -66,6 +66,7 @@ describe('derive', () => {
     const headless = derive({ ...stageOneConfig, desktop: 'none' })
     expect(headless.desktopPackages).toEqual([])
     expect(headless.audioPackages).toEqual([])
+    expect(headless.desktopCommonPackages).toEqual([])
     expect(headless.displayManager).toBeUndefined()
 
     const hyprland = derive({ ...stageOneConfig, desktop: 'hyprland' })
@@ -81,6 +82,32 @@ describe('derive', () => {
       'wireplumber',
       'pavucontrol',
     ])
+    expect(hyprland.desktopCommonPackages).toEqual([
+      'bluez',
+      'bluez-utils',
+      'blueman',
+      'fcitx5-im',
+    ])
+
+    const gnomeChinese = derive({
+      ...stageOneConfig,
+      desktop: 'gnome',
+      systemLocale: 'zh_CN.UTF-8',
+    })
+    expect(gnomeChinese.desktopCommonPackages).toContain('fcitx5-rime')
+    expect(gnomeChinese.desktopCommonPackages).not.toContain('bluez')
+    expect(gnomeChinese.desktopCommonPackages).not.toContain('bluez-utils')
+    expect(gnomeChinese.desktopCommonPackages).not.toContain('blueman')
+
+    const kdeJapanese = derive({
+      ...stageOneConfig,
+      desktop: 'kde',
+      systemLocale: 'ja_JP.UTF-8',
+    })
+    expect(kdeJapanese.desktopCommonPackages).toContain('fcitx5-mozc')
+    expect(kdeJapanese.desktopCommonPackages).not.toContain('bluez')
+    expect(kdeJapanese.desktopCommonPackages).not.toContain('bluez-utils')
+    expect(kdeJapanese.desktopCommonPackages).not.toContain('blueman')
   })
 
   it('adds zram-generator and renders its configuration only for zram', () => {
@@ -434,10 +461,16 @@ describe('renderGuide', () => {
     expect(gnome).toContain('pacman -S mesa vulkan-intel intel-media-driver')
     expect(gnome).toContain('pacman -S gnome')
     expect(gnome).toContain('systemctl enable gdm')
+    expect(gnome).toContain('/etc/environment.d/90-fcitx.conf')
+    expect(gnome).toContain('QT_IM_MODULE=fcitx')
 
     const kde = renderHtml({ ...stageOneConfig, desktop: 'kde', graphics: 'amd' })
     expect(kde).toContain('pacman -S plasma-meta sddm konsole dolphin')
     expect(kde).toContain('systemctl enable sddm')
+    expect(kde).toContain('/etc/environment.d/90-fcitx.conf')
+    expect(kde).toContain('XMODIFIERS=@im=fcitx')
+    expect(kde).not.toContain('QT_IM_MODULE=fcitx')
+    expect(kde).toContain('系统设置 → 虚拟键盘')
 
     const hyprland = renderHtml({ ...stageOneConfig, desktop: 'hyprland', graphics: 'nvidia' })
     expect(hyprland).toContain('pacman -S nvidia-open nvidia-utils')
@@ -456,6 +489,19 @@ describe('renderGuide', () => {
     expect(hyprland).toContain(
       'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse wireplumber pavucontrol',
     )
+    expect(hyprland).toContain(
+      'pacman -S bluez bluez-utils blueman fcitx5-im',
+    )
+    expect(hyprland).toContain('systemctl enable bluetooth')
+    expect(hyprland).toContain('/home/user/.config/uwsm/env')
+    expect(hyprland).toContain('XMODIFIERS=@im=fcitx')
+    expect(hyprland).toContain('QT_IM_MODULES=&quot;wayland;fcitx&quot;')
+    expect(hyprland).toContain('SDL_IM_MODULE=fcitx')
+    expect(hyprland).not.toContain('/etc/environment.d/90-fcitx.conf')
+    expect(hyprland).not.toContain('QT_IM_MODULE=fcitx')
+    expect(hyprland).not.toContain('GTK_IM_MODULE=fcitx')
+    expect(hyprland).not.toContain('系统设置 → 虚拟键盘')
+    expect(hyprland).not.toContain('不要全局设置')
     expect(hyprland).not.toContain('polkit-kde-agent')
     expect(hyprland).not.toContain('qt5-wayland')
     expect(hyprland).not.toContain('qt6-wayland')

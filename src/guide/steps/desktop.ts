@@ -40,6 +40,79 @@ PipeWire、PulseAudio 兼容服务和 WirePlumber 会在用户登录图形会话
     },
   },
   {
+    id: 'desktop-common',
+    section: 'desktop',
+    title: { zh: '安装蓝牙与输入法' },
+    when: (cfg) => cfg.desktop !== 'none',
+    body: {
+      zh: ({ cfg, desktopCommonPackages }) => `${
+        cfg.desktop === 'hyprland'
+          ? '安装 BlueZ 蓝牙后端与工具、Blueman 管理界面、Fcitx 5、GTK/Qt 前端和配置工具'
+          : `安装 Fcitx 5、GTK/Qt 前端和配置工具。${desktopNames[cfg.desktop]} 的软件包已经通过自身蓝牙管理组件依赖 BlueZ，无需重复列出`
+      }${
+        cfg.systemLocale.startsWith('zh_')
+          ? '；当前中文 locale 同时安装 Rime 输入引擎'
+          : cfg.systemLocale.startsWith('ja_')
+            ? '；当前日文 locale 同时安装 Mozc 输入引擎'
+            : cfg.systemLocale.startsWith('ko_')
+              ? '；当前韩文 locale 同时安装 Hangul 输入引擎'
+              : ''
+      }：
+
+\`\`\`
+pacman -S ${desktopCommonPackages.join(' ')}
+systemctl enable bluetooth
+\`\`\`
+
+Fcitx 5 软件包提供 XDG 自动启动项。${
+        cfg.desktop === 'hyprland'
+          ? `Hyprland 会话由 UWSM 管理，将输入法环境变量写入该用户的 UWSM 环境文件：
+
+\`\`\`
+install -d -o ${cfg.username} -g ${cfg.username} /home/${cfg.username}/.config/uwsm
+vim /home/${cfg.username}/.config/uwsm/env
+\`\`\`
+
+写入：
+
+\`\`\`
+export XMODIFIERS=@im=fcitx
+export QT_IM_MODULES="wayland;fcitx"
+export SDL_IM_MODULE=fcitx
+\`\`\`
+
+保存后修正文件所有者：
+
+\`\`\`
+chown ${cfg.username}:${cfg.username} /home/${cfg.username}/.config/uwsm/env
+\`\`\``
+          : `为 XWayland 应用设置 \`XMODIFIERS\`${
+              cfg.desktop === 'gnome' ? '，并为 Qt 应用设置 `QT_IM_MODULE`' : ''
+            }：
+
+\`\`\`
+install -d /etc/environment.d
+vim /etc/environment.d/90-fcitx.conf
+\`\`\`
+
+写入：
+
+\`\`\`
+XMODIFIERS=@im=fcitx${cfg.desktop === 'gnome' ? '\nQT_IM_MODULE=fcitx' : ''}
+\`\`\``
+      }`,
+    },
+  },
+  {
+    id: 'kde-fcitx',
+    section: 'desktop',
+    title: { zh: '启用 KDE 输入法' },
+    when: (cfg) => cfg.desktop === 'kde',
+    body: {
+      zh: () => `首次登录 KDE Plasma 后，打开“系统设置 → 虚拟键盘”，选择 Fcitx 5。`,
+    },
+  },
+  {
     id: 'desktop-environment',
     section: 'desktop',
     title: { zh: '安装桌面环境' },
