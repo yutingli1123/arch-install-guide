@@ -91,7 +91,7 @@ export function derive(cfg: Config): Context {
           'pipewire-alsa',
           'pipewire-pulse',
           'wireplumber',
-          'pavucontrol',
+          ...(cfg.desktop === 'hyprland' ? ['pavucontrol'] : []),
         ]
   const inputMethodEngine = cfg.systemLocale.startsWith('zh_')
     ? 'fcitx5-rime'

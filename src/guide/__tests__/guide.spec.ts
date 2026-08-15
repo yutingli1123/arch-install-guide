@@ -61,6 +61,7 @@ describe('derive', () => {
     const kdeOnAmd = derive({ ...stageOneConfig, graphics: 'amd', desktop: 'kde' })
     expect(kdeOnAmd.graphicsPackages).toEqual(['mesa', 'vulkan-radeon', 'libva-mesa-driver'])
     expect(kdeOnAmd.desktopPackages).toEqual(['plasma-meta', 'sddm', 'konsole', 'dolphin'])
+    expect(kdeOnAmd.audioPackages).not.toContain('pavucontrol')
     expect(kdeOnAmd.displayManager).toBe('sddm')
 
     const headless = derive({ ...stageOneConfig, desktop: 'none' })
@@ -94,6 +95,7 @@ describe('derive', () => {
       desktop: 'gnome',
       systemLocale: 'zh_CN.UTF-8',
     })
+    expect(gnomeChinese.audioPackages).not.toContain('pavucontrol')
     expect(gnomeChinese.desktopCommonPackages).toContain('fcitx5-rime')
     expect(gnomeChinese.desktopCommonPackages).not.toContain('bluez')
     expect(gnomeChinese.desktopCommonPackages).not.toContain('bluez-utils')
@@ -476,6 +478,7 @@ describe('renderGuide', () => {
     )
     expect(gnome).toContain('pacman -S mesa vulkan-intel intel-media-driver')
     expect(gnome).toContain('pacman -S gnome')
+    expect(gnome).not.toContain('pavucontrol')
     expect(gnome).toContain('systemctl enable gdm')
     expect(gnome).toContain('/etc/environment.d/90-fcitx.conf')
     expect(gnome).toContain('QT_IM_MODULE=fcitx')
@@ -483,6 +486,10 @@ describe('renderGuide', () => {
     const kde = renderHtml({ ...stageOneConfig, desktop: 'kde', graphics: 'amd' })
     expect(kde).toContain('pacman -S plasma-meta sddm konsole dolphin')
     expect(kde).toContain('systemctl enable sddm')
+    expect(kde).toContain(
+      'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse wireplumber',
+    )
+    expect(kde).not.toContain('pavucontrol')
     expect(kde).toContain('/etc/environment.d/90-fcitx.conf')
     expect(kde).toContain('XMODIFIERS=@im=fcitx')
     expect(kde).not.toContain('QT_IM_MODULE=fcitx')
