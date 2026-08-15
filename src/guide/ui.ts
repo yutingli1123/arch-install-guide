@@ -38,7 +38,8 @@ export const ui = {
   none: { zh: '无' },
   targetDisk: { zh: '目标磁盘' },
   cpu: { zh: 'CPU' },
-  swap: { zh: 'swap' },
+  zram: { zh: 'zram' },
+  diskSwap: { zh: '磁盘 swap' },
   subvolumes: { zh: '子卷布局' },
   encryption: { zh: '磁盘加密' },
   unlock: { zh: '解锁方式' },
@@ -84,9 +85,12 @@ export const choices = {
     intel: { zh: 'Intel' },
     amd: { zh: 'AMD' },
   },
-  swap: {
+  zram: {
+    false: { zh: '关闭' },
+    true: { zh: '开启' },
+  },
+  diskSwap: {
     none: { zh: '无' },
-    zram: { zh: 'zram' },
     swapfile: { zh: 'swapfile' },
     partition: { zh: '独立分区' },
   },
@@ -208,11 +212,14 @@ export const choiceDescriptions = {
     intel: { zh: '安装 Intel 处理器所需的 intel-ucode 微码包。' },
     amd: { zh: '安装 AMD 处理器所需的 amd-ucode 微码包。' },
   },
-  swap: {
-    none: { zh: '不配置交换空间；内存耗尽时系统无法将不活跃页面换出。' },
-    zram: { zh: '在内存中创建压缩交换设备，不占用磁盘空间。' },
-    swapfile: { zh: '在 Btrfs 文件系统中使用专门配置的交换文件。' },
-    partition: { zh: '在目标磁盘上划分一个专用交换分区。' },
+  zram: {
+    false: { zh: '不使用 zram。' },
+    true: { zh: '使用 zram，在内存中创建压缩 swap。' },
+  },
+  diskSwap: {
+    none: { zh: '不配置磁盘 swap。' },
+    swapfile: { zh: '在 Btrfs 文件系统中配置 swapfile。' },
+    partition: { zh: '在目标磁盘上划分独立 swap 分区。' },
   },
   subvolumeLayout: {
     'root-only': { zh: '只创建 @，结构简单，但不能配置 Snapper。' },

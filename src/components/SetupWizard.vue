@@ -70,17 +70,24 @@ const subvolumeOptions = computed(() => [
     description: pick(choiceDescriptions.subvolumeLayout.separated, props.locale),
   },
 ])
-const swapOptions = computed(() => [
+const zramOptions = computed(() =>
+  (['false', 'true'] as const).map((value) => ({
+    value,
+    label: pick(choices.zram[value], props.locale),
+    description: pick(choiceDescriptions.zram[value], props.locale),
+  })),
+)
+const diskSwapOptions = computed(() => [
   {
     value: 'none',
-    label: pick(choices.swap.none, props.locale),
-    description: pick(choiceDescriptions.swap.none, props.locale),
+    label: pick(choices.diskSwap.none, props.locale),
+    description: pick(choiceDescriptions.diskSwap.none, props.locale),
   },
-  ...(['zram', 'swapfile', 'partition'] as const).map((value) => ({
+  ...(['swapfile', 'partition'] as const).map((value) => ({
     value,
-    label: pick(choices.swap[value], props.locale),
-    description: pick(choiceDescriptions.swap[value], props.locale),
-    disabledReason: unavailableReason(`swap.${value}`),
+    label: pick(choices.diskSwap[value], props.locale),
+    description: pick(choiceDescriptions.diskSwap[value], props.locale),
+    disabledReason: unavailableReason(`diskSwap.${value}`),
   })),
 ])
 const encryptionOptions = computed(() => [
@@ -162,7 +169,10 @@ const graphicsOptions = computed(() =>
   })),
 )
 type TextField = 'hostname' | 'username'
-type ChoiceField = Exclude<keyof ConfigDraft, 'encryption' | 'reflector' | 'swapSizeGiB'>
+type ChoiceField = Exclude<
+  keyof ConfigDraft,
+  'encryption' | 'reflector' | 'zram' | 'diskSwap' | 'diskSwapSizeGiB'
+>
 type SelectField = 'timezone' | 'systemLocale' | 'keymap'
 
 function commitText(field: TextField, event: Event) {
@@ -209,18 +219,24 @@ function commitEncryption(value: string | undefined) {
   }
 }
 
-function commitSwap(value: string | undefined) {
+function commitZram(value: string | undefined) {
+  if (!value) return
+  model.value = { ...model.value, zram: value === 'true' }
+}
+
+function commitDiskSwap(value: string | undefined) {
   if (!value) return
   model.value = {
     ...model.value,
-    swap: value as ConfigDraft['swap'],
-    swapSizeGiB: value === 'swapfile' || value === 'partition' ? model.value.swapSizeGiB : null,
+    diskSwap: value as ConfigDraft['diskSwap'],
+    diskSwapSizeGiB:
+      value === 'swapfile' || value === 'partition' ? model.value.diskSwapSizeGiB : null,
   }
 }
 
-function commitSwapSize(event: Event) {
+function commitDiskSwapSize(event: Event) {
   const size = Number((event.currentTarget as HTMLInputElement).value)
-  model.value = { ...model.value, swapSizeGiB: size }
+  model.value = { ...model.value, diskSwapSizeGiB: size }
 }
 
 function commitTpm2Preset(value: string | undefined) {
@@ -420,26 +436,36 @@ function goToStep(index: number) {
         </div>
 
         <div class="field">
-          <span>{{ pick(ui.swap, props.locale) }}</span>
+          <span>{{ pick(ui.zram, props.locale) }}</span>
           <ChoicePicker
-            name="swap"
-            :model-value="model.swap"
-            :options="swapOptions"
-            @update:model-value="commitSwap"
+            name="zram"
+            :model-value="model.zram === undefined ? undefined : String(model.zram)"
+            :options="zramOptions"
+            @update:model-value="commitZram"
+          />
+        </div>
+
+        <div class="field">
+          <span>{{ pick(ui.diskSwap, props.locale) }}</span>
+          <ChoicePicker
+            name="diskSwap"
+            :model-value="model.diskSwap"
+            :options="diskSwapOptions"
+            @update:model-value="commitDiskSwap"
           />
           <label
-            v-if="model.swap === 'swapfile' || model.swap === 'partition'"
+            v-if="model.diskSwap === 'swapfile' || model.diskSwap === 'partition'"
             class="nested-field"
           >
             <span>容量（GiB）</span>
             <input
-              name="swapSizeGiB"
+              name="diskSwapSizeGiB"
               required
               type="number"
               min="1"
               max="1024"
-              :value="model.swapSizeGiB ?? ''"
-              @change="commitSwapSize"
+              :value="model.diskSwapSizeGiB ?? ''"
+              @change="commitDiskSwapSize"
             />
           </label>
         </div>

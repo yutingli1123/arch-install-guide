@@ -111,14 +111,14 @@ describe('derive', () => {
   })
 
   it('adds zram-generator and renders its configuration only for zram', () => {
-    const zram = { ...stageOneConfig, swap: 'zram' as const }
+    const zram = { ...stageOneConfig, zram: true }
     expect(derive(zram).packages).toContain('zram-generator')
     expect(renderHtml(zram)).toContain('zram-size = ram / 2')
     expect(renderHtml(stageOneConfig)).not.toContain('/etc/systemd/zram-generator.conf')
   })
 
   it('creates a dedicated uncompressed subvolume for a btrfs swapfile', () => {
-    const swapfile = { ...stageOneConfig, swap: 'swapfile' as const, swapSizeGiB: 8 }
+    const swapfile = { ...stageOneConfig, diskSwap: 'swapfile' as const, diskSwapSizeGiB: 8 }
     const context = derive(swapfile)
     expect(context.subvolumes[context.subvolumes.length - 1]).toEqual({
       name: '@swap',
@@ -132,8 +132,23 @@ describe('derive', () => {
     expect(completeConfig(parseDraft(serializeDraft(swapfile)))).toEqual(swapfile)
   })
 
+  it('configures zram and a disk swapfile together', () => {
+    const combined = {
+      ...stageOneConfig,
+      zram: true,
+      diskSwap: 'swapfile' as const,
+      diskSwapSizeGiB: 8,
+    }
+    const rendered = renderHtml(combined)
+
+    expect(derive(combined).packages).toContain('zram-generator')
+    expect(rendered).toContain('swap-priority = 100')
+    expect(rendered).toContain('/swap/swapfile none swap defaults 0 0')
+    expect(completeConfig(parseDraft(serializeDraft(combined)))).toEqual(combined)
+  })
+
   it('creates a sized swap partition and encrypts it when the root is encrypted', () => {
-    const plain = { ...stageOneConfig, swap: 'partition' as const, swapSizeGiB: 16 }
+    const plain = { ...stageOneConfig, diskSwap: 'partition' as const, diskSwapSizeGiB: 16 }
     const plainHtml = renderHtml(plain)
     expect(derive(plain).swapDevice).toBe('/dev/nvme0n1p3')
     expect(plainHtml).toContain('-n 2:0:-16G -t 2:8300 -n 3:0:0 -t 3:8200')
@@ -225,7 +240,7 @@ describe('configuration', () => {
     expect(serializeDraft({ cpu: 'amd' })).toMatch(/^c=[A-Za-z0-9_-]+$/)
     expect(serializeDraft({ cpu: 'amd' })).not.toContain('cpu')
     expect(parseDraft(serializeDraft({ cpu: 'amd' }))).toEqual({ cpu: 'amd' })
-    expect(parseDraft('?config=v1.Y3B1PWFtZA')).toEqual({ cpu: 'amd' })
+    expect(parseDraft('?config=v1.Y3B1PWFtZA')).toEqual({})
     expect(completeConfig({})).toBeNull()
   })
 
@@ -233,7 +248,8 @@ describe('configuration', () => {
     const query = serializeDraft({
       disk: '/dev/nvme0n1',
       cpu: 'amd',
-      swap: 'none',
+      zram: false,
+      diskSwap: 'none',
       subvolumeLayout: 'root-only',
       encryption: { mode: 'none' },
       secureBoot: 'none',

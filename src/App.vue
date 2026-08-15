@@ -12,7 +12,8 @@ function firstIncompleteStep(draft: ConfigDraft): number {
   if (!draft.keymap) return 1
   if (
     !draft.subvolumeLayout ||
-    !draft.swap ||
+    draft.zram === undefined ||
+    !draft.diskSwap ||
     !draft.encryption ||
     !draft.secureBoot ||
     (draft.subvolumeLayout === 'separated' && !draft.snapper)
@@ -82,6 +83,37 @@ const summary = computed(() => {
   if (!cfg) return []
   const disabled = pick(ui.disabled, locale.value)
   const none = pick(ui.none, locale.value)
+  const encryptionItems = [
+    {
+      label: pick(ui.encryption, locale.value),
+      value: cfg.encryption.mode === 'luks2' ? 'LUKS2' : disabled,
+    },
+  ]
+
+  if (cfg.encryption.mode === 'luks2') {
+    encryptionItems.push({
+      label: pick(ui.unlock, locale.value),
+      value: cfg.encryption.unlock.method === 'tpm2' ? 'TPM2' : pick(ui.password, locale.value),
+    })
+
+    if (cfg.encryption.unlock.method === 'tpm2') {
+      encryptionItems.push(
+        {
+          label: pick(ui.tpmPin, locale.value),
+          value: cfg.encryption.unlock.pin ? pick(ui.enabled, locale.value) : disabled,
+        },
+        {
+          label: pick(ui.hashPcrs, locale.value),
+          value: cfg.encryption.unlock.hashPcrs.join('+') || none,
+        },
+        {
+          label: pick(ui.signedPcrs, locale.value),
+          value: cfg.encryption.unlock.signedPcrs.join('+') || none,
+        },
+      )
+    }
+  }
+
   const items = [
     { label: pick(ui.targetDisk, locale.value), value: cfg.disk },
     { label: pick(ui.cpu, locale.value), value: pick(choices.cpu[cfg.cpu], locale.value) },
@@ -89,15 +121,19 @@ const summary = computed(() => {
       label: pick(ui.graphics, locale.value),
       value: pick(choices.graphics[cfg.graphics], locale.value),
     },
-    { label: pick(ui.swap, locale.value), value: pick(choices.swap[cfg.swap], locale.value) },
+    {
+      label: pick(ui.zram, locale.value),
+      value: pick(choices.zram[String(cfg.zram) as 'false' | 'true'], locale.value),
+    },
+    {
+      label: pick(ui.diskSwap, locale.value),
+      value: pick(choices.diskSwap[cfg.diskSwap], locale.value),
+    },
     {
       label: pick(ui.subvolumes, locale.value),
       value: pick(choices.subvolumeLayout[cfg.subvolumeLayout], locale.value),
     },
-    {
-      label: pick(ui.encryption, locale.value),
-      value: cfg.encryption.mode === 'luks2' ? 'LUKS2' : disabled,
-    },
+    ...encryptionItems,
     {
       label: pick(ui.secureBoot, locale.value),
       value: pick(choices.secureBoot[cfg.secureBoot], locale.value),
@@ -120,32 +156,6 @@ const summary = computed(() => {
     { label: pick(ui.hostname, locale.value), value: cfg.hostname },
     { label: pick(ui.username, locale.value), value: cfg.username },
   ]
-
-  if (cfg.encryption.mode === 'luks2') {
-    items.splice(5, 0, {
-      label: pick(ui.unlock, locale.value),
-      value: cfg.encryption.unlock.method === 'tpm2' ? 'TPM2' : pick(ui.password, locale.value),
-    })
-
-    if (cfg.encryption.unlock.method === 'tpm2') {
-      items.splice(
-        6,
-        0,
-        {
-          label: pick(ui.tpmPin, locale.value),
-          value: cfg.encryption.unlock.pin ? pick(ui.enabled, locale.value) : disabled,
-        },
-        {
-          label: pick(ui.hashPcrs, locale.value),
-          value: cfg.encryption.unlock.hashPcrs.join('+') || none,
-        },
-        {
-          label: pick(ui.signedPcrs, locale.value),
-          value: cfg.encryption.unlock.signedPcrs.join('+') || none,
-        },
-      )
-    }
-  }
 
   return items
 })

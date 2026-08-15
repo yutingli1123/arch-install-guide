@@ -5,7 +5,7 @@ export const storageSteps: Step[] = [
     id: 'zram',
     section: 'storage',
     title: { zh: '配置 zram' },
-    when: (cfg) => cfg.swap === 'zram',
+    when: (cfg) => cfg.zram,
     body: {
       zh: () => `新建 zram-generator 配置：
 
@@ -29,16 +29,16 @@ swap-priority = 100
     id: 'swapfile',
     section: 'storage',
     title: { zh: '创建 swapfile' },
-    when: (cfg) => cfg.swap === 'swapfile',
+    when: (cfg) => cfg.diskSwap === 'swapfile',
     body: {
       zh: ({
         cfg,
-      }) => `在独立的 \`@swap\` 子卷中关闭写时复制和压缩，再创建 ${cfg.swapSizeGiB} GiB swapfile：
+      }) => `在独立的 \`@swap\` 子卷中关闭写时复制和压缩，再创建 ${cfg.diskSwapSizeGiB} GiB swapfile：
 
 \`\`\`
 btrfs property set /swap compression none
 chattr +C /swap
-btrfs filesystem mkswapfile --size ${cfg.swapSizeGiB}g --uuid clear /swap/swapfile
+btrfs filesystem mkswapfile --size ${cfg.diskSwapSizeGiB}g --uuid clear /swap/swapfile
 swapon /swap/swapfile
 echo '/swap/swapfile none swap defaults 0 0' >> /etc/fstab
 \`\`\`
@@ -50,7 +50,7 @@ echo '/swap/swapfile none swap defaults 0 0' >> /etc/fstab
     id: 'encrypted-swap-partition',
     section: 'storage',
     title: { zh: '配置加密 swap 分区' },
-    when: (cfg) => cfg.swap === 'partition' && cfg.encryption.mode === 'luks2',
+    when: (cfg) => cfg.diskSwap === 'partition' && cfg.encryption.mode === 'luks2',
     body: {
       zh: ({ swapDevice }) => `让独立 swap 分区在每次启动时使用新的随机密钥加密：
 

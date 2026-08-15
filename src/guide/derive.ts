@@ -49,7 +49,7 @@ export function derive(cfg: Config): Context {
   if (cfg.snapper === 'root-home') {
     subvolumes.push({ name: '@home_snapshots', mountPoint: '/home/.snapshots' })
   }
-  if (cfg.swap === 'swapfile') {
+  if (cfg.diskSwap === 'swapfile') {
     subvolumes.push({ name: '@swap', mountPoint: '/swap', mountOptions: ['noatime'] })
   }
   const rootSubvolume = subvolumes[0]!
@@ -57,7 +57,7 @@ export function derive(cfg: Config): Context {
   const microcode = `${cfg.cpu}-ucode`
   const luksName = 'cryptroot'
   const rootDevice = partition(cfg.disk, 2)
-  const swapDevice = cfg.swap === 'partition' ? partition(cfg.disk, 3) : undefined
+  const swapDevice = cfg.diskSwap === 'partition' ? partition(cfg.disk, 3) : undefined
   const rootFsDevice = cfg.encryption.mode === 'luks2' ? `/dev/mapper/${luksName}` : rootDevice
   const packages = [...BASE_PACKAGES, microcode]
   const graphicsPackages = {
@@ -109,7 +109,7 @@ export function derive(cfg: Config): Context {
           ...(inputMethodEngine ? [inputMethodEngine] : []),
         ]
   if (cfg.encryption.mode === 'luks2') packages.push('cryptsetup')
-  if (cfg.swap === 'zram') packages.push('zram-generator')
+  if (cfg.zram) packages.push('zram-generator')
   if (cfg.snapper !== 'none') packages.push('snapper')
   if (cfg.secureBoot === 'custom-db') packages.push('sbctl')
   if (cfg.secureBoot === 'shim-mok') {

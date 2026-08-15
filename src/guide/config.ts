@@ -1,9 +1,8 @@
 import type { Config, ConfigDraft, Encryption, Tpm2Preset } from './types'
 
 export type ConfigChoice =
-  | 'swap.zram'
-  | 'swap.swapfile'
-  | 'swap.partition'
+  | 'diskSwap.swapfile'
+  | 'diskSwap.partition'
   | 'encryption.password'
   | 'encryption.tpm2'
   | 'secureBoot.custom-db'
@@ -191,8 +190,9 @@ export const stageOneConfig: Config = {
   disk: '/dev/nvme0n1',
   cpu: 'intel',
   espSize: '1G',
-  swap: 'none',
-  swapSizeGiB: null,
+  zram: false,
+  diskSwap: 'none',
+  diskSwapSizeGiB: null,
   subvolumeLayout: 'separated',
   mountOptions: ['compress=zstd', 'noatime'],
   timezone: 'America/Toronto',
@@ -253,19 +253,18 @@ const SAFE = {
 export function parseDraft(search: string): ConfigDraft {
   const outer = new URLSearchParams(search)
   const compact = outer.get('c')
-  const legacy = outer.get('config')
-  const params =
-    compact !== null
-      ? decodeCompactConfig(compact)
-      : legacy !== null
-        ? decodeLegacyConfig(legacy)
-        : new URLSearchParams()
+  const params = compact !== null ? decodeCompactConfig(compact) : new URLSearchParams()
   const draft: ConfigDraft = {}
   if (!params) return draft
   const disk = safeValue(params.get('disk'), SAFE.disk)
   const cpu = listedValue(params.get('cpu'), ['intel', 'amd'] as const)
-  const swap = listedValue(params.get('swap'), ['none', 'zram', 'swapfile', 'partition'] as const)
-  const swapSizeGiB = sizedValue(params.get('swapSize'))
+  const zramValue = listedValue(params.get('zram'), ['false', 'true'] as const)
+  const diskSwapValue = listedValue(params.get('diskSwap'), [
+    'none',
+    'swapfile',
+    'partition',
+  ] as const)
+  const diskSwapSizeGiB = sizedValue(params.get('diskSwapSize'))
   const subvolumeLayout = listedValue(params.get('layout'), ['root-only', 'separated'] as const)
   const encryption = parseEncryption(params)
   const secureBoot = listedValue(params.get('secureBoot'), [
@@ -285,8 +284,9 @@ export function parseDraft(search: string): ConfigDraft {
 
   if (disk) draft.disk = disk
   if (cpu) draft.cpu = cpu
-  if (swap) draft.swap = swap
-  if (swapSizeGiB) draft.swapSizeGiB = swapSizeGiB
+  if (zramValue) draft.zram = zramValue === 'true'
+  if (diskSwapValue) draft.diskSwap = diskSwapValue
+  if (diskSwapSizeGiB) draft.diskSwapSizeGiB = diskSwapSizeGiB
   if (subvolumeLayout) draft.subvolumeLayout = subvolumeLayout
   if (encryption) draft.encryption = encryption
   if (secureBoot) draft.secureBoot = secureBoot
@@ -351,9 +351,10 @@ export function completeConfig(draft: ConfigDraft): Config | null {
   if (
     draft.disk === undefined ||
     draft.cpu === undefined ||
-    draft.swap === undefined ||
-    ((draft.swap === 'swapfile' || draft.swap === 'partition') &&
-      draft.swapSizeGiB === undefined) ||
+    draft.zram === undefined ||
+    draft.diskSwap === undefined ||
+    ((draft.diskSwap === 'swapfile' || draft.diskSwap === 'partition') &&
+      draft.diskSwapSizeGiB === undefined) ||
     draft.subvolumeLayout === undefined ||
     draft.timezone === undefined ||
     draft.systemLocale === undefined ||
@@ -396,9 +397,12 @@ export function completeConfig(draft: ConfigDraft): Config | null {
     disk: draft.disk,
     cpu: draft.cpu,
     espSize: '1G',
-    swap: draft.swap,
-    swapSizeGiB:
-      draft.swap === 'swapfile' || draft.swap === 'partition' ? draft.swapSizeGiB! : null,
+    zram: draft.zram,
+    diskSwap: draft.diskSwap,
+    diskSwapSizeGiB:
+      draft.diskSwap === 'swapfile' || draft.diskSwap === 'partition'
+        ? draft.diskSwapSizeGiB!
+        : null,
     subvolumeLayout: draft.subvolumeLayout,
     mountOptions: ['compress=zstd', 'noatime'],
     timezone: draft.timezone,
@@ -447,10 +451,10 @@ function decodeBase64Url(value: string): Uint8Array | null {
   }
 }
 
-/** Enum order is part of the v1 URL format. Append only; never reorder existing entries. */
+/** Enum order is part of the URL format. */
 const COMPACT_ENUMS = {
   cpu: ['intel', 'amd'],
-  swap: ['none', 'zram', 'swapfile', 'partition'],
+  diskSwap: ['none', 'swapfile', 'partition'],
   layout: ['root-only', 'separated'],
   encryption: ['none', 'luks2'],
   secureBoot: ['none', 'custom-db', 'shim-mok'],
@@ -464,7 +468,7 @@ const COMPACT_ENUMS = {
 function encodeCompactConfig(draft: ConfigDraft): string | null {
   // Byte 0 is the format version; bytes 1-2 are the field-presence bitmap.
   let mask = 0
-  const bytes = [5, 0, 0]
+  const bytes = [1, 0, 0]
   const include = (bit: number, write: () => void) => {
     mask |= 1 << bit
     write()
@@ -482,11 +486,11 @@ function encodeCompactConfig(draft: ConfigDraft): string | null {
 
   if (draft.disk !== undefined) include(0, () => writeText(draft.disk!.replace(/^\/dev\//, '')))
   if (draft.cpu !== undefined) include(1, () => writeEnum(draft.cpu!, COMPACT_ENUMS.cpu))
-  if (draft.swap !== undefined)
+  if (draft.diskSwap !== undefined)
     include(2, () => {
-      writeEnum(draft.swap!, COMPACT_ENUMS.swap)
-      if (draft.swap === 'swapfile' || draft.swap === 'partition') {
-        const size = draft.swapSizeGiB ?? 0
+      writeEnum(draft.diskSwap!, COMPACT_ENUMS.diskSwap)
+      if (draft.diskSwap === 'swapfile' || draft.diskSwap === 'partition') {
+        const size = draft.diskSwapSizeGiB ?? 0
         bytes.push(size & 0xff, size >> 8)
       }
     })
@@ -527,6 +531,7 @@ function encodeCompactConfig(draft: ConfigDraft): string | null {
       bytes.push(draft.reflector!.ageHours)
       bytes.push(draft.reflector!.number)
     })
+  if (draft.zram !== undefined) include(15, () => bytes.push(draft.zram ? 1 : 0))
   if (mask === 0) return null
 
   bytes[1] = mask & 0xff
@@ -536,10 +541,9 @@ function encodeCompactConfig(draft: ConfigDraft): string | null {
 
 function decodeCompactConfig(value: string): URLSearchParams | null {
   const bytes = decodeBase64Url(value)
-  if (!bytes || bytes.length < 3 || ![1, 2, 3, 4, 5].includes(bytes[0]!)) return null
-  const version = bytes[0]!
+  if (!bytes || bytes.length < 3 || bytes[0] !== 1) return null
   const mask = bytes[1]! | (bytes[2]! << 8)
-  if ((mask & ~0x7fff) !== 0) return null
+  if ((mask & ~0xffff) !== 0) return null
 
   let cursor = 3
   const params = new URLSearchParams()
@@ -567,7 +571,7 @@ function decodeCompactConfig(value: string): URLSearchParams | null {
     const mode = readEnum(COMPACT_ENUMS.encryption)
     if (!mode) return false
     params.set('encryption', mode)
-    if (version === 1 || mode === 'none') return true
+    if (mode === 'none') return true
     const unlock = bytes[cursor++]
     if (unlock === 0) {
       params.set('unlock', 'password')
@@ -581,23 +585,22 @@ function decodeCompactConfig(value: string): URLSearchParams | null {
     params.set('tpmPin', String(pin))
     return true
   }
-  const readSwap = () => {
+  const readDiskSwap = () => {
     if ((mask & (1 << 2)) === 0) return true
-    const swap = readEnum(COMPACT_ENUMS.swap)
-    if (!swap) return false
-    params.set('swap', swap)
-    if (version < 4 || (swap !== 'swapfile' && swap !== 'partition')) return true
+    const diskSwap = readEnum(COMPACT_ENUMS.diskSwap)
+    if (!diskSwap) return false
+    params.set('diskSwap', diskSwap)
+    if (diskSwap === 'none') return true
     const low = bytes[cursor++]
     const high = bytes[cursor++]
     if (low === undefined || high === undefined) return false
     const size = low | (high << 8)
     if (size > 1024) return false
-    if (size > 0) params.set('swapSize', String(size))
+    if (size > 0) params.set('diskSwapSize', String(size))
     return true
   }
   const readReflector = () => {
     if ((mask & (1 << 14)) === 0) return true
-    if (version < 5) return false
     const countryCount = bytes[cursor++]
     if (
       countryCount === undefined ||
@@ -620,11 +623,18 @@ function decodeCompactConfig(value: string): URLSearchParams | null {
     params.set('mirrorNumber', String(number))
     return true
   }
+  const readZram = () => {
+    if ((mask & (1 << 15)) === 0) return true
+    const zram = bytes[cursor++]
+    if (zram !== 0 && zram !== 1) return false
+    params.set('zram', String(zram === 1))
+    return true
+  }
 
   const valid =
     read(0, 'disk', readText, '/dev/') &&
     read(1, 'cpu', () => readEnum(COMPACT_ENUMS.cpu)) &&
-    readSwap() &&
+    readDiskSwap() &&
     read(3, 'layout', () => readEnum(COMPACT_ENUMS.layout)) &&
     readEncryption() &&
     read(5, 'secureBoot', () => readEnum(COMPACT_ENUMS.secureBoot)) &&
@@ -636,13 +646,8 @@ function decodeCompactConfig(value: string): URLSearchParams | null {
     read(11, 'hostname', readText) &&
     read(12, 'user', readText) &&
     read(13, 'graphics', () => readEnum(COMPACT_ENUMS.graphics)) &&
-    readReflector()
+    readReflector() &&
+    readZram()
 
   return valid && cursor === bytes.length ? params : null
-}
-
-function decodeLegacyConfig(value: string): URLSearchParams | null {
-  if (!value.startsWith('v1.')) return null
-  const bytes = decodeBase64Url(value.slice(3))
-  return bytes ? new URLSearchParams(new TextDecoder().decode(bytes)) : null
 }
