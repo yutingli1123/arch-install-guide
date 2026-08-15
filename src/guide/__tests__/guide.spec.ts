@@ -57,6 +57,25 @@ describe('derive', () => {
     expect(derive({ ...stageOneConfig, cpu: 'intel' }).packages).not.toContain('amd-ucode')
   })
 
+  it('describes every base and conditional package by its actual purpose', () => {
+    const rendered = renderHtml({
+      ...stageOneConfig,
+      zram: true,
+      snapper: 'root-home',
+      encryption: makeTpm2Encryption('custom-db'),
+      secureBoot: 'custom-db',
+    })
+    expect(rendered).toContain('以 Root 权限执行命令')
+    expect(rendered).not.toContain('以管理员权限执行命令')
+    expect(rendered).toContain('编辑配置文件')
+    expect(rendered).toContain('配置 zram')
+    expect(rendered).toContain('创建和打开 LUKS2 加密卷')
+    expect(rendered).toContain('管理 btrfs 快照')
+    expect(rendered).toContain('管理自定义 Secure Boot 密钥并签名 EFI 文件')
+    expect(rendered).toContain('生成 UKI 并创建 PCR 11 签名')
+    expect(rendered).not.toContain('后续步骤要用')
+  })
+
   it('derives graphics and desktop packages independently from storage', () => {
     const kdeOnAmd = derive({ ...stageOneConfig, graphics: 'amd', desktop: 'kde' })
     expect(kdeOnAmd.graphicsPackages).toEqual(['mesa', 'vulkan-radeon', 'libva-mesa-driver'])

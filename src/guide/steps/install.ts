@@ -1,5 +1,32 @@
 import type { Step } from '../types'
 
+function packagePurposeRows(packages: string[], microcode: string): string {
+  const rows: Array<[string[], string]> = [
+    [['base'], '基本系统'],
+    [['linux', 'linux-firmware'], '内核与固件'],
+    [['btrfs-progs'], 'btrfs 工具，根文件系统需要'],
+    [[microcode], 'CPU 微码，引导时加载'],
+    [['cryptsetup'], '创建和打开 LUKS2 加密卷'],
+    [['networkmanager'], '装完之后的联网'],
+    [['sudo'], '以 Root 权限执行命令'],
+    [['vim'], '编辑配置文件'],
+    [['zram-generator'], '配置 zram'],
+    [['snapper'], '管理 btrfs 快照'],
+    [['sbctl'], '管理自定义 Secure Boot 密钥并签名 EFI 文件'],
+    [['systemd-ukify'], '生成 UKI 并创建 PCR 11 签名'],
+    [['base-devel', 'git'], '下载并构建 shim-signed'],
+    [['efibootmgr', 'mokutil', 'sbsigntools'], '创建 UEFI 启动项、导入 MOK 并签名 EFI 文件'],
+  ]
+  const visible = rows.filter(([names]) => names.every((name) => packages.includes(name)))
+  const covered = new Set(visible.flatMap(([names]) => names))
+  const missing = packages.filter((name) => !covered.has(name))
+  if (missing.length > 0) throw new Error(`missing package purpose: ${missing.join(', ')}`)
+
+  return visible
+    .map(([names, purpose]) => `| ${names.map((name) => `\`${name}\``).join(' ')} | ${purpose} |`)
+    .join('\n')
+}
+
 export const installSteps: Step[] = [
   {
     id: 'pacstrap',
@@ -16,12 +43,7 @@ pacstrap -K /mnt ${packages.join(' ')}
 
 | 包 | 用途 |
 | --- | --- |
-| \`base\` | 基本系统 |
-| \`linux\` \`linux-firmware\` | 内核与固件 |
-| \`btrfs-progs\` | btrfs 工具，根文件系统需要 |
-| \`${microcode}\` | CPU 微码，引导时加载 |
-| \`networkmanager\` | 装完之后的联网 |
-| \`sudo\` \`vim\` | 后续步骤要用 |
+${packagePurposeRows(packages, microcode)}
 
 这一步会下载几百 MB，耗时取决于镜像源速度。`,
     },
