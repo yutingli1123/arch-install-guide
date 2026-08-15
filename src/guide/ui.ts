@@ -92,7 +92,6 @@ export const choices = {
   diskSwap: {
     none: { zh: '无' },
     swapfile: { zh: 'swapfile' },
-    partition: { zh: '独立分区' },
   },
   subvolumeLayout: {
     'root-only': { zh: '单一根子卷（结构简单）' },
@@ -219,7 +218,6 @@ export const choiceDescriptions = {
   diskSwap: {
     none: { zh: '不配置磁盘 swap。' },
     swapfile: { zh: '在 Btrfs 文件系统中配置 swapfile。' },
-    partition: { zh: '在目标磁盘上划分独立 swap 分区。' },
   },
   subvolumeLayout: {
     'root-only': { zh: '只创建 @，结构简单，但不能配置 Snapper。' },

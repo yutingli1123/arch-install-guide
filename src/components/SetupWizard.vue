@@ -83,12 +83,11 @@ const diskSwapOptions = computed(() => [
     label: pick(choices.diskSwap.none, props.locale),
     description: pick(choiceDescriptions.diskSwap.none, props.locale),
   },
-  ...(['swapfile', 'partition'] as const).map((value) => ({
-    value,
-    label: pick(choices.diskSwap[value], props.locale),
-    description: pick(choiceDescriptions.diskSwap[value], props.locale),
-    disabledReason: unavailableReason(`diskSwap.${value}`),
-  })),
+  {
+    value: 'swapfile',
+    label: pick(choices.diskSwap.swapfile, props.locale),
+    description: pick(choiceDescriptions.diskSwap.swapfile, props.locale),
+  },
 ])
 const encryptionOptions = computed(() => [
   {
@@ -229,8 +228,7 @@ function commitDiskSwap(value: string | undefined) {
   model.value = {
     ...model.value,
     diskSwap: value as ConfigDraft['diskSwap'],
-    diskSwapSizeGiB:
-      value === 'swapfile' || value === 'partition' ? model.value.diskSwapSizeGiB : null,
+    diskSwapSizeGiB: value === 'swapfile' ? model.value.diskSwapSizeGiB : null,
   }
 }
 
@@ -453,10 +451,7 @@ function goToStep(index: number) {
             :options="diskSwapOptions"
             @update:model-value="commitDiskSwap"
           />
-          <label
-            v-if="model.diskSwap === 'swapfile' || model.diskSwap === 'partition'"
-            class="nested-field"
-          >
+          <label v-if="model.diskSwap === 'swapfile'" class="nested-field">
             <span>容量（GiB）</span>
             <input
               name="diskSwapSizeGiB"

@@ -1,8 +1,6 @@
 import type { Config, ConfigDraft, Encryption, Tpm2Preset } from './types'
 
 export type ConfigChoice =
-  | 'diskSwap.swapfile'
-  | 'diskSwap.partition'
   | 'encryption.password'
   | 'encryption.tpm2'
   | 'secureBoot.custom-db'
@@ -259,11 +257,7 @@ export function parseDraft(search: string): ConfigDraft {
   const disk = safeValue(params.get('disk'), SAFE.disk)
   const cpu = listedValue(params.get('cpu'), ['intel', 'amd'] as const)
   const zramValue = listedValue(params.get('zram'), ['false', 'true'] as const)
-  const diskSwapValue = listedValue(params.get('diskSwap'), [
-    'none',
-    'swapfile',
-    'partition',
-  ] as const)
+  const diskSwapValue = listedValue(params.get('diskSwap'), ['none', 'swapfile'] as const)
   const diskSwapSizeGiB = sizedValue(params.get('diskSwapSize'))
   const subvolumeLayout = listedValue(params.get('layout'), ['root-only', 'separated'] as const)
   const encryption = parseEncryption(params)
@@ -353,8 +347,7 @@ export function completeConfig(draft: ConfigDraft): Config | null {
     draft.cpu === undefined ||
     draft.zram === undefined ||
     draft.diskSwap === undefined ||
-    ((draft.diskSwap === 'swapfile' || draft.diskSwap === 'partition') &&
-      draft.diskSwapSizeGiB === undefined) ||
+    (draft.diskSwap === 'swapfile' && draft.diskSwapSizeGiB === undefined) ||
     draft.subvolumeLayout === undefined ||
     draft.timezone === undefined ||
     draft.systemLocale === undefined ||
@@ -399,10 +392,7 @@ export function completeConfig(draft: ConfigDraft): Config | null {
     espSize: '1G',
     zram: draft.zram,
     diskSwap: draft.diskSwap,
-    diskSwapSizeGiB:
-      draft.diskSwap === 'swapfile' || draft.diskSwap === 'partition'
-        ? draft.diskSwapSizeGiB!
-        : null,
+    diskSwapSizeGiB: draft.diskSwap === 'swapfile' ? draft.diskSwapSizeGiB! : null,
     subvolumeLayout: draft.subvolumeLayout,
     mountOptions: ['compress=zstd', 'noatime'],
     timezone: draft.timezone,
@@ -454,7 +444,7 @@ function decodeBase64Url(value: string): Uint8Array | null {
 /** Enum order is part of the URL format. */
 const COMPACT_ENUMS = {
   cpu: ['intel', 'amd'],
-  diskSwap: ['none', 'swapfile', 'partition'],
+  diskSwap: ['none', 'swapfile'],
   layout: ['root-only', 'separated'],
   encryption: ['none', 'luks2'],
   secureBoot: ['none', 'custom-db', 'shim-mok'],
@@ -489,7 +479,7 @@ function encodeCompactConfig(draft: ConfigDraft): string | null {
   if (draft.diskSwap !== undefined)
     include(2, () => {
       writeEnum(draft.diskSwap!, COMPACT_ENUMS.diskSwap)
-      if (draft.diskSwap === 'swapfile' || draft.diskSwap === 'partition') {
+      if (draft.diskSwap === 'swapfile') {
         const size = draft.diskSwapSizeGiB ?? 0
         bytes.push(size & 0xff, size >> 8)
       }

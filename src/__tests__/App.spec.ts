@@ -169,6 +169,7 @@ describe('setup wizard', () => {
     await wrapper.get('select[name="keymap"]').setValue('us')
     await next(wrapper)
 
+    expect(wrapper.find('input[name="diskSwap"][value="partition"]').exists()).toBe(false)
     await selectChoice(wrapper, 'zram', 'true')
     await selectChoice(wrapper, 'diskSwap', 'swapfile')
     await wrapper.get('input[name="diskSwapSizeGiB"]').setValue(8)

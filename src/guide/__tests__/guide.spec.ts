@@ -170,27 +170,6 @@ describe('derive', () => {
     expect(completeConfig(parseDraft(serializeDraft(combined)))).toEqual(combined)
   })
 
-  it('creates a sized swap partition and encrypts it when the root is encrypted', () => {
-    const plain = { ...stageOneConfig, diskSwap: 'partition' as const, diskSwapSizeGiB: 16 }
-    const plainHtml = renderHtml(plain)
-    expect(derive(plain).swapDevice).toBe('/dev/nvme0n1p3')
-    expect(plainHtml).toContain('-n 2:0:-16G -t 2:8300 -n 3:0:0 -t 3:8200')
-    expect(plainHtml).toContain('mkswap /dev/nvme0n1p3')
-    expect(plainHtml).toContain('swapon /dev/nvme0n1p3')
-    expect(plainHtml).not.toContain('/etc/crypttab')
-
-    const encrypted = {
-      ...plain,
-      encryption: { mode: 'luks2' as const, unlock: { method: 'password' as const } },
-    }
-    const encryptedHtml = renderHtml(encrypted)
-    expect(encryptedHtml).not.toContain('mkswap /dev/nvme0n1p3')
-    expect(encryptedHtml).toContain('PARTUUID=$(blkid -s PARTUUID -o value /dev/nvme0n1p3)')
-    expect(encryptedHtml).toContain('/dev/urandom swap,cipher=aes-xts-plain64,size=256')
-    expect(encryptedHtml).toContain('/dev/mapper/cryptswap none swap defaults 0 0')
-    expect(completeConfig(parseDraft(serializeDraft(encrypted)))).toEqual(encrypted)
-  })
-
   it('derives encrypted storage and snapshot mount points from the final configuration', () => {
     const context = derive({
       ...stageOneConfig,

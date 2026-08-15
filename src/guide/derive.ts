@@ -57,7 +57,6 @@ export function derive(cfg: Config): Context {
   const microcode = `${cfg.cpu}-ucode`
   const luksName = 'cryptroot'
   const rootDevice = partition(cfg.disk, 2)
-  const swapDevice = cfg.diskSwap === 'partition' ? partition(cfg.disk, 3) : undefined
   const rootFsDevice = cfg.encryption.mode === 'luks2' ? `/dev/mapper/${luksName}` : rootDevice
   const packages = [...BASE_PACKAGES, microcode]
   const graphicsPackages = {
@@ -127,7 +126,6 @@ export function derive(cfg: Config): Context {
     cfg,
     espDevice: partition(cfg.disk, 1),
     rootDevice,
-    swapDevice,
     rootFsDevice,
     luksName,
     espMountPoint: '/efi',

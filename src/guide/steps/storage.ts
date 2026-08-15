@@ -47,22 +47,6 @@ echo '/swap/swapfile none swap defaults 0 0' >> /etc/fstab
     },
   },
   {
-    id: 'encrypted-swap-partition',
-    section: 'storage',
-    title: { zh: '配置加密 swap 分区' },
-    when: (cfg) => cfg.diskSwap === 'partition' && cfg.encryption.mode === 'luks2',
-    body: {
-      zh: ({ swapDevice }) => `让独立 swap 分区在每次启动时使用新的随机密钥加密：
-
-\`\`\`
-echo "cryptswap PARTUUID=$(blkid -s PARTUUID -o value ${swapDevice}) /dev/urandom swap,cipher=aes-xts-plain64,size=256" >> /etc/crypttab
-echo '/dev/mapper/cryptswap none swap defaults 0 0' >> /etc/fstab
-\`\`\`
-
-\`swap\` 选项会在打开随机加密映射后初始化交换空间。密钥不会保存，因此关机后无法恢复其中的数据，也不能使用休眠到磁盘。`,
-    },
-  },
-  {
     id: 'initramfs-encryption',
     section: 'storage',
     title: { zh: '启用 systemd initramfs 解锁' },

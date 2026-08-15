@@ -5,8 +5,7 @@ export type Localized<T> = { zh: T } & Partial<Record<Locale, T>>
 
 export type CpuVendor = 'intel' | 'amd'
 
-/** Kernel image form. Decides where the ESP is mounted and what gets signed. */
-export type DiskSwapMode = 'none' | 'swapfile' | 'partition'
+export type DiskSwapMode = 'none' | 'swapfile'
 export type SubvolumeLayout = 'root-only' | 'separated'
 export type SecureBootMode = 'none' | 'custom-db' | 'shim-mok'
 export type SnapperMode = 'none' | 'root' | 'root-home'
@@ -77,8 +76,6 @@ export type Context = {
   espDevice: string
   /** Root block device, e.g. `/dev/nvme0n1p2`. */
   rootDevice: string
-  /** Dedicated swap partition when selected. */
-  swapDevice?: string
   /** Device containing btrfs: the partition itself or the opened LUKS mapping. */
   rootFsDevice: string
   luksName: string
