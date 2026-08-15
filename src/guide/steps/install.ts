@@ -13,7 +13,7 @@ function packagePurposeRows(packages: string[], microcode: string): string {
     [['zram-generator'], '配置 zram'],
     [['snapper'], '管理 btrfs 快照'],
     [['sbctl'], '管理自定义 Secure Boot 密钥并签名 EFI 文件'],
-    [['systemd-ukify'], '生成 UKI 并创建 PCR 11 签名'],
+    [['systemd-ukify'], '生成 UKI，并按配置创建 Secure Boot 或 PCR 11 签名'],
     [['base-devel', 'git'], '下载并构建 shim-signed'],
     [['efibootmgr', 'mokutil', 'sbsigntools'], '创建 UEFI 启动项、导入 MOK 并签名 EFI 文件'],
   ]

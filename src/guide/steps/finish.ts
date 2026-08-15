@@ -36,6 +36,21 @@ ping -c 3 archlinux.org
     },
   },
   {
+    id: 'secure-boot-shim-verify',
+    section: 'finish',
+    title: { zh: '验证 shim 安全启动' },
+    when: (cfg) => cfg.secureBoot === 'shim-mok',
+    body: {
+      zh: () => `\`\`\`
+sudo mokutil --sb-state
+sudo mokutil --test-key /etc/secureboot/MOK.cer
+sudo bootctl --print-loader-path
+\`\`\`
+
+三条命令应分别确认 Secure Boot 已启用、MOK 已注册，并显示 \`/EFI/systemd/grubx64.efi\`。`,
+    },
+  },
+  {
     id: 'tpm2-enroll',
     section: 'finish',
     title: { zh: '注册 TPM2 解锁' },
@@ -46,11 +61,10 @@ ping -c 3 archlinux.org
         const unlock = cfg.encryption.unlock
         const hash = unlock.hashPcrs.join('+')
         const signed = unlock.signedPcrs.join('+')
-        return `确认已经从安装后的 UKI 启动${cfg.secureBoot === 'none' ? '。当前未启用 Secure Boot，PCR 7 只记录“安全启动关闭”，不能验证启动文件签名' : '，并确认 Secure Boot 已启用'}：
+        return `在安装后的系统中注册 TPM2 解锁${cfg.secureBoot === 'none' ? '。当前未启用 Secure Boot，PCR 7 只记录“安全启动关闭”，不能验证启动文件签名' : ''}：
 
 \`\`\`
-sudo bootctl status
-sudo systemd-cryptenroll --tpm2-device=auto --tpm2-with-pin=${unlock.pin ? 'yes' : 'no'} --tpm2-pcrs=${hash}${
+${cfg.secureBoot === 'shim-mok' ? '' : 'sudo bootctl status\n'}sudo systemd-cryptenroll --tpm2-device=auto --tpm2-with-pin=${unlock.pin ? 'yes' : 'no'} --tpm2-pcrs=${hash}${
           signed
             ? ` --tpm2-public-key=/etc/kernel/pcr-initrd.pub.pem --tpm2-public-key-pcrs=${signed}`
             : ''

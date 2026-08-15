@@ -112,7 +112,14 @@ export function derive(cfg: Config): Context {
   if (cfg.snapper !== 'none') packages.push('snapper')
   if (cfg.secureBoot === 'custom-db') packages.push('sbctl')
   if (cfg.secureBoot === 'shim-mok') {
-    packages.push('base-devel', 'efibootmgr', 'git', 'mokutil', 'sbsigntools')
+    packages.push(
+      'base-devel',
+      'efibootmgr',
+      'git',
+      'mokutil',
+      'sbsigntools',
+      'systemd-ukify',
+    )
   }
   if (
     cfg.encryption.mode === 'luks2' &&

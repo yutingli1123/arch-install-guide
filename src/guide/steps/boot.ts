@@ -6,11 +6,11 @@ export const bootSteps: Step[] = [
     section: 'boot',
     title: { zh: '安装 systemd-boot' },
     body: {
-      zh: ({ espMountPoint }) => `\`\`\`
-bootctl install
+      zh: ({ cfg, espMountPoint }) => `\`\`\`
+bootctl ${cfg.secureBoot === 'shim-mok' ? '--variables=no ' : ''}install
 \`\`\`
 
-\`bootctl\` 会依次检查 \`/efi\`、\`/boot\`、\`/boot/efi\` 以定位 ESP，此处会找到 \`${espMountPoint}\`。它会将引导器安装到 ESP、把对应条目置于固件启动项列表首位，并创建 ESP 目录结构；其中 \`EFI/Linux/\` 是后续 UKI 的输出位置。`,
+\`bootctl\` 会依次检查 \`/efi\`、\`/boot\`、\`/boot/efi\` 以定位 ESP，此处会找到 \`${espMountPoint}\`。它会将引导器安装到 ESP${cfg.secureBoot === 'shim-mok' ? '，但不创建直接指向 systemd-boot 的固件启动项；后面只注册 shim 启动项' : '、把对应条目置于固件启动项列表首位'}，并创建 ESP 目录结构；其中 \`EFI/Linux/\` 是后续 UKI 的输出位置。`,
     },
   },
   {
@@ -96,14 +96,66 @@ bootctl list
 sbctl status
 sbctl create-keys
 sbctl enroll-keys -m
-sbctl sign -s -o /usr/lib/systemd/boot/efi/systemd-bootx64.efi.signed /usr/lib/systemd/boot/efi/systemd-bootx64.efi
 sbctl sign -s ${espMountPoint}/EFI/systemd/systemd-bootx64.efi
 sbctl sign -s ${espMountPoint}/EFI/BOOT/BOOTX64.EFI
 find ${espMountPoint}/EFI/Linux -type f -name '*.efi' -exec sbctl sign -s {} \\;
 sbctl verify
 \`\`\`
 
-\`sbctl status\` 必须显示 Setup Mode；否则进入固件设置启用 Setup Mode，具体入口和选项名称因主板固件而异。sbctl 会记录已签名文件，并在后续内核更新重建 UKI 后重新签名。`,
+\`sbctl status\` 必须显示 Setup Mode；否则进入固件设置启用 Setup Mode，具体入口和选项名称因主板固件而异。sbctl 会记录已签名文件，并在后续内核更新重建 UKI 后重新签名——但这只覆盖 UKI，ESP 里 \`EFI/systemd/systemd-bootx64.efi\` 和 \`EFI/BOOT/BOOTX64.EFI\` 这两份 systemd-boot 二进制不会被自动刷新，需要单独处理。
+
+创建 \`/usr/local/sbin/update-sbctl-systemd-boot\`：
+
+\`\`\`
+vim /usr/local/sbin/update-sbctl-systemd-boot
+\`\`\`
+
+\`\`\`sh
+#!/bin/sh
+set -eu
+
+destination=${espMountPoint}/EFI/systemd
+fallback=${espMountPoint}/EFI/BOOT
+source=/usr/lib/systemd/boot/efi/systemd-bootx64.efi
+
+install_file() {
+  install -m 644 "$1" "$2.new"
+  mv "$2.new" "$2"
+}
+
+install_file "$source" "$destination/systemd-bootx64.efi"
+install_file "$source" "$fallback/BOOTX64.EFI"
+sbctl sign-all
+\`\`\`
+
+执行脚本：
+
+\`\`\`
+chmod 700 /usr/local/sbin/update-sbctl-systemd-boot
+/usr/local/sbin/update-sbctl-systemd-boot
+\`\`\`
+
+创建 \`/etc/pacman.d/hooks/95-sbctl-systemd-boot.hook\`：
+
+\`\`\`
+vim /etc/pacman.d/hooks/95-sbctl-systemd-boot.hook
+\`\`\`
+
+\`\`\`
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = systemd
+
+[Action]
+Description = Updating the sbctl-signed systemd-boot copy
+When = PostTransaction
+Depends = sbctl
+Exec = /usr/local/sbin/update-sbctl-systemd-boot
+\`\`\`
+
+\`sbctl sign -s <路径>\` 只在首次注册文件时需要指定路径；上面命令行里已经用 \`-s\` 把这两份 ESP 文件存进了 sbctl 的数据库，之后 \`sbctl sign-all\` 会直接对数据库里记录的路径按当前内容重新签名，不用再重复指定文件。`,
     },
   },
   {
@@ -124,48 +176,116 @@ cd /tmp/shim-build/shim-signed
 sudo -u ${cfg.username} makepkg -s
 pacman -U ./*.pkg.tar.zst
 cd /
+pacman -Q shim-signed
 \`\`\`
 
-创建 MOK，并用它签名 systemd-boot 与当前 UKI：
+\`shim-signed\` 必须为 16.1 或更高版本，systemd-boot 才能通过 shim 的 loader protocol 加载 MOK 签名的 UKI。
+
+创建 MOK：
 
 \`\`\`
 install -d -m 700 /etc/secureboot
-openssl req -new -x509 -newkey rsa:2048 -keyout /etc/secureboot/MOK.key -out /etc/secureboot/MOK.crt -nodes -days 3650 -subj '/CN=Arch Linux MOK/'
+openssl req -new -x509 -newkey rsa:2048 -sha256 -keyout /etc/secureboot/MOK.key -out /etc/secureboot/MOK.crt -nodes -days 3650 -subj '/CN=Arch Linux MOK/'
 openssl x509 -in /etc/secureboot/MOK.crt -outform DER -out /etc/secureboot/MOK.cer
 chmod 600 /etc/secureboot/MOK.key
-cp /usr/share/shim-signed/shimx64.efi ${espMountPoint}/EFI/systemd/shimx64.efi
-cp /usr/share/shim-signed/mmx64.efi ${espMountPoint}/EFI/systemd/mmx64.efi
-sbsign --key /etc/secureboot/MOK.key --cert /etc/secureboot/MOK.crt --output ${espMountPoint}/EFI/systemd/grubx64.efi /usr/lib/systemd/boot/efi/systemd-bootx64.efi
-for uki in ${espMountPoint}/EFI/Linux/*.efi; do sbsign --key /etc/secureboot/MOK.key --cert /etc/secureboot/MOK.crt --output "$uki.signed" "$uki" && mv "$uki.signed" "$uki"; done
-efibootmgr --create --disk ${cfg.disk} --part 1 --label 'Arch Linux (shim)' --loader '\\EFI\\systemd\\shimx64.efi'
-mokutil --import /etc/secureboot/MOK.cer
 \`\`\`
 
-为内核更新创建 \`/etc/initcpio/post/uki-sign\`，写入以下内容后执行 \`chmod 700 /etc/initcpio/post/uki-sign\`：
+编辑 \`/etc/kernel/uki.conf\`：
+
+\`\`\`
+vim /etc/kernel/uki.conf
+\`\`\`
+
+加入：
+
+\`\`\`
+[UKI]
+SecureBootPrivateKey=/etc/secureboot/MOK.key
+SecureBootCertificate=/etc/secureboot/MOK.crt
+\`\`\`
+
+如果文件中已经存在 PCR 签名配置，请保留原有内容。
+
+创建 \`/usr/local/sbin/update-shim-systemd-boot\`：
+
+\`\`\`
+vim /usr/local/sbin/update-shim-systemd-boot
+\`\`\`
 
 \`\`\`sh
 #!/bin/sh
-uki="$3"
-[ -n "$uki" ] || exit 0
-tmp="$uki.signed"
-sbsign --key /etc/secureboot/MOK.key --cert /etc/secureboot/MOK.crt --output "$tmp" "$uki" && mv "$tmp" "$uki"
+set -eu
+
+destination=${espMountPoint}/EFI/systemd
+fallback=${espMountPoint}/EFI/BOOT
+source=/usr/lib/systemd/boot/efi/systemd-bootx64.efi
+signed="$source.signed"
+workdir=$(mktemp -d)
+trap 'rm -rf "$workdir"' EXIT
+
+install -d -m 755 "$destination"
+install -d -m 755 "$fallback"
+sbsign --key /etc/secureboot/MOK.key --cert /etc/secureboot/MOK.crt --output "$workdir/systemd-bootx64.efi" "$source"
+
+install_file() {
+  install -m 644 "$1" "$2.new"
+  mv "$2.new" "$2"
+}
+
+install_file "$workdir/systemd-bootx64.efi" "$signed"
+install_file /usr/share/shim-signed/shimx64.efi "$destination/shimx64.efi"
+install_file /usr/share/shim-signed/mmx64.efi "$destination/mmx64.efi"
+install_file "$signed" "$destination/grubx64.efi"
+install_file /usr/share/shim-signed/shimx64.efi "$fallback/BOOTX64.EFI"
+install_file /usr/share/shim-signed/mmx64.efi "$fallback/mmx64.efi"
+install_file "$signed" "$fallback/grubx64.efi"
 \`\`\`
 
-创建 \`/etc/pacman.d/hooks/95-systemd-boot-mok.hook\`，让 systemd 更新后重签 shim 的第二阶段：
+执行脚本：
+
+\`\`\`
+chmod 700 /usr/local/sbin/update-shim-systemd-boot
+/usr/local/sbin/update-shim-systemd-boot
+\`\`\`
+
+创建 \`/etc/pacman.d/hooks/95-shim-systemd-boot.hook\`：
+
+\`\`\`
+vim /etc/pacman.d/hooks/95-shim-systemd-boot.hook
+\`\`\`
 
 \`\`\`
 [Trigger]
+Operation = Install
 Operation = Upgrade
 Type = Package
 Target = systemd
+Target = shim-signed
 
 [Action]
-Description = Signing systemd-boot for shim
+Description = Updating the shim systemd-boot chain
 When = PostTransaction
-Exec = /usr/bin/sbsign --key /etc/secureboot/MOK.key --cert /etc/secureboot/MOK.crt --output /efi/EFI/systemd/grubx64.efi /usr/lib/systemd/boot/efi/systemd-bootx64.efi
+Depends = sbsigntools
+Exec = /usr/local/sbin/update-shim-systemd-boot
 \`\`\`
 
-再次运行 \`mkinitcpio -P\`，确认 post hook 能签名两个 UKI。重启时在 MokManager 中选择 \`Enroll MOK\`，输入刚才设置的一次性密码并确认；随后在固件中启用 Secure Boot。`,
+重新构建 UKI，并核对 systemd-boot 与两个 UKI 均由 MOK 签名：
+
+\`\`\`
+mkinitcpio -P
+sbverify --cert /etc/secureboot/MOK.crt ${espMountPoint}/EFI/systemd/grubx64.efi
+for uki in ${espMountPoint}/EFI/Linux/*.efi; do sbverify --cert /etc/secureboot/MOK.crt "$uki"; done
+\`\`\`
+
+创建 shim 启动项并提交 MOK 注册请求：
+
+\`\`\`
+efibootmgr --create --disk ${cfg.disk} --part 1 --label 'Arch Linux (shim)' --loader '\\EFI\\systemd\\shimx64.efi'
+mokutil --import /etc/secureboot/MOK.cer
+mokutil --list-new
+\`\`\`
+
+为 \`mokutil --import\` 设置一次性密码。重启时先进入固件启用 Secure Boot，再从 \`Arch Linux (shim)\` 启动；在 MokManager 中选择 \`Enroll MOK\`，输入一次性密码并确认。`,
     },
   },
 ]
