@@ -7,7 +7,7 @@ function packagePurposeRows(packages: string[], microcode: string): string {
     [['btrfs-progs'], 'btrfs 工具，根文件系统需要'],
     [[microcode], 'CPU 微码，引导时加载'],
     [['cryptsetup'], '创建和打开 LUKS2 加密卷'],
-    [['networkmanager'], '装完之后的联网'],
+    [['networkmanager'], '管理网络连接'],
     [['sudo'], '以 Root 权限执行命令'],
     [['vim'], '编辑配置文件'],
     [['zram-generator'], '配置 zram'],

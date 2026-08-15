@@ -71,9 +71,11 @@ describe('derive', () => {
     expect(rendered).toContain('配置 zram')
     expect(rendered).toContain('创建和打开 LUKS2 加密卷')
     expect(rendered).toContain('管理 btrfs 快照')
+    expect(rendered).toContain('管理网络连接')
     expect(rendered).toContain('管理自定义 Secure Boot 密钥并签名 EFI 文件')
     expect(rendered).toContain('生成 UKI 并创建 PCR 11 签名')
     expect(rendered).not.toContain('后续步骤要用')
+    expect(rendered).not.toContain('装完之后的联网')
   })
 
   it('derives graphics and desktop packages independently from storage', () => {
