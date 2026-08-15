@@ -89,7 +89,7 @@ umount /mnt
 | --- | --- |
 ${subvolumes.map((s) => `| \`${s.name}\` | \`${s.mountPoint}\` |`).join('\n')}
 
-${cfg.subvolumeLayout === 'separated' ? '\`@log\`、\`@pkg\` 和 \`@boot\` 均不包含在 \`@\` 的快照中。此布局可以不配置快照，也可以配置 snapper。' : '此布局只创建根子卷，不支持配置 snapper 快照。'}`,
+${cfg.subvolumeLayout === 'separated' ? '\`@log\`、\`@pkg\` 和 \`@boot\` 均不包含在 \`@\` 的快照中。此布局可以不配置快照，也可以配置 snapper。' : ''}`,
     },
   },
   {
