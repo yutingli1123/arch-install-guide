@@ -14,7 +14,8 @@ function packagePurposeRows(packages: string[], microcode: string): string {
     [['snapper'], '管理 btrfs 快照'],
     [['sbctl'], '管理自定义 Secure Boot 密钥并签名 EFI 文件'],
     [['systemd-ukify'], '生成 UKI，并按配置创建 Secure Boot 或 PCR 11 签名'],
-    [['base-devel', 'git'], '下载并构建 shim-signed'],
+    [['base-devel'], '编译与打包软件的基础工具链'],
+    [['git'], '版本控制，克隆代码仓库'],
     [['efibootmgr', 'mokutil', 'sbsigntools'], '创建 UEFI 启动项、导入 MOK 并签名 EFI 文件'],
   ]
   const visible = rows.filter(([names]) => names.every((name) => packages.includes(name)))
