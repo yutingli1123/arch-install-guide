@@ -488,6 +488,7 @@ describe('renderGuide', () => {
     const kde = renderHtml({ ...stageOneConfig, desktop: 'kde', graphics: 'amd' })
     expect(kde).toContain('pacman -S plasma-meta sddm konsole dolphin')
     expect(kde).toContain('systemctl enable sddm')
+    expect(kde.indexOf('pacman -S plasma-meta')).toBeLessThan(kde.indexOf('systemctl enable bluetooth'))
     expect(kde).toContain(
       'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse wireplumber',
     )

@@ -60,8 +60,7 @@ PipeWire、PulseAudio 兼容服务和 WirePlumber 会在用户登录图形会话
       }：
 
 \`\`\`
-pacman -S ${desktopCommonPackages.join(' ')}
-systemctl enable bluetooth
+pacman -S ${desktopCommonPackages.join(' ')}${cfg.desktop === 'hyprland' ? '\nsystemctl enable bluetooth' : ''}
 \`\`\`
 
 Fcitx 5 软件包提供 XDG 自动启动项。${
@@ -121,7 +120,7 @@ XMODIFIERS=@im=fcitx${cfg.desktop === 'gnome' ? '\nQT_IM_MODULE=fcitx\nQT_IM_MOD
       zh: ({ cfg, desktopPackages, displayManager }) => `安装 ${desktopNames[cfg.desktop]}：
 
 \`\`\`
-pacman -S ${desktopPackages.join(' ')}${displayManager ? `\nsystemctl enable ${displayManager}` : ''}
+pacman -S ${desktopPackages.join(' ')}${cfg.desktop !== 'hyprland' ? '\nsystemctl enable bluetooth' : ''}${displayManager ? `\nsystemctl enable ${displayManager}` : ''}
 \`\`\`${
         cfg.desktop === 'hyprland'
           ? `
