@@ -70,7 +70,9 @@ ${
 \`\`\`
 sudo -u ${cfg.username} paru -S gnome-shell-extension-kimpanel-git
 \`\`\``
-          : `为 XWayland 应用设置输入法环境变量：
+          : `${
+              cfg.desktop === 'kde'
+                ? `为 XWayland 应用设置输入法环境变量：
 
 \`\`\`
 install -d /etc/environment.d
@@ -84,7 +86,9 @@ XMODIFIERS=@im=fcitx
 QT_IM_MODULES=wayland;fcitx
 \`\`\`
 
-GTK 应用改用配置文件指定输入法模块，只作用于 X11/XWayland 下的 GTK 程序：
+`
+                : ''
+            }GTK 应用改用配置文件指定输入法模块，只作用于 X11/XWayland 下的 GTK 程序：
 
 \`\`\`
 install -d -o ${cfg.username} -g ${cfg.username} /home/${cfg.username}/.config/gtk-3.0
@@ -228,11 +232,18 @@ vim /home/${cfg.username}/.config/hypr/hyprland.lua
 local terminal    = "ghostty"
 \`\`\`
 
+在 \`ENVIRONMENT\` 一节加入：
+
+\`\`\`lua
+hl.env("XMODIFIERS", "@im=fcitx")
+hl.env("QT_IM_MODULES", "wayland;fcitx")
+\`\`\`
+
 在 \`AUTOSTART\` 一节加入：
 
 \`\`\`lua
 hl.on("hyprland.start", function()
-    hl.exec_cmd("systemctl --user start hyprland-session.target")
+    hl.exec_cmd("bash -c 'dbus-update-activation-environment --systemd XCURSOR_THEME XCURSOR_SIZE XMODIFIERS QT_IM_MODULES XDG_SESSION_TYPE; systemctl --user start hyprland-session.target'")
 end)
 
 hl.on("hyprland.shutdown", function()
