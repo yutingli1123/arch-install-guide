@@ -19,7 +19,14 @@ function firstIncompleteStep(draft: ConfigDraft): number {
     (draft.subvolumeLayout === 'separated' && !draft.snapper)
   )
     return 2
-  if (!draft.hostname || !draft.username || !draft.desktop || !draft.reflector) return 3
+  if (
+    !draft.hostname ||
+    !draft.username ||
+    !draft.desktop ||
+    (draft.desktop === 'hyprland' && !draft.hyprland) ||
+    !draft.reflector
+  )
+    return 3
   if (!draft.disk || !draft.cpu || !draft.graphics) return 4
   return 5
 }
@@ -146,6 +153,22 @@ const summary = computed(() => {
       label: pick(ui.desktop, locale.value),
       value: pick(choices.desktop[cfg.desktop], locale.value),
     },
+    ...(cfg.desktop === 'hyprland'
+      ? [
+          {
+            label: pick(ui.hyprlandExtras, locale.value),
+            value:
+              [
+                ...(
+                  ['terminal', 'launcher', 'fileManager', 'notifications', 'bar', 'lock'] as const
+                )
+                  .map((category) => cfg.hyprland[category])
+                  .filter((selected) => selected !== 'none'),
+                ...cfg.hyprland.addons,
+              ].join(' ') || none,
+          },
+        ]
+      : []),
     {
       label: pick(ui.reflector, locale.value),
       value: `${cfg.reflector.countries.join(',')} / ${cfg.reflector.ageHours} h / ${cfg.reflector.number}`,

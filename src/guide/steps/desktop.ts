@@ -274,12 +274,6 @@ install -o ${cfg.username} -g ${cfg.username} -m 644 /usr/share/hypr/hyprland.lu
 vim /home/${cfg.username}/.config/hypr/hyprland.lua
 \`\`\`
 
-将 \`MY PROGRAMS\` 一节的 \`terminal\` 改为：
-
-\`\`\`lua
-local terminal    = "ghostty"
-\`\`\`
-
 在 \`ENVIRONMENT VARIABLES\` 一节加入：
 
 \`\`\`lua

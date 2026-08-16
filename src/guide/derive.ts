@@ -1,4 +1,11 @@
-import type { Config, Context, Subvolume, SubvolumeLayout } from './types'
+import type {
+  Config,
+  Context,
+  HyprlandExtras,
+  HyprlandFileManager,
+  Subvolume,
+  SubvolumeLayout,
+} from './types'
 
 /** Devices whose partitions carry a `p` before the partition number. */
 const PARTITION_SUFFIX = /^\/dev\/(nvme|mmcblk|loop|md)/
@@ -100,6 +107,43 @@ const SUBVOLUME_LAYOUTS = {
   ],
 } satisfies Record<SubvolumeLayout, [Subvolume, ...Subvolume[]]>
 
+/** A file manager only integrates with the rest of the system through these. */
+const FILE_MANAGER_PACKAGES: Record<Exclude<HyprlandFileManager, 'none'>, string[]> = {
+  nautilus: ['nautilus', 'gvfs-smb', 'sushi'],
+  dolphin: ['dolphin', 'ffmpegthumbs', 'kdegraphics-thumbnailers'],
+  thunar: [
+    'thunar',
+    'gvfs',
+    'gvfs-smb',
+    'tumbler',
+    'ffmpegthumbnailer',
+    'thunar-volman',
+    'thunar-archive-plugin',
+  ],
+}
+
+/** Packages that ship a systemd user unit wanted by graphical-session.target. */
+const HYPRLAND_SERVICE_PACKAGES = [
+  'swaync',
+  'mako',
+  'waybar',
+  'hypridle',
+  'hyprpaper',
+  'hyprsunset',
+]
+
+function hyprlandPackages(extras: HyprlandExtras): string[] {
+  return [
+    ...(extras.terminal === 'none' ? [] : [extras.terminal]),
+    ...(extras.launcher === 'none' ? [] : [extras.launcher]),
+    ...(extras.fileManager === 'none' ? [] : FILE_MANAGER_PACKAGES[extras.fileManager]),
+    ...(extras.notifications === 'none' ? [] : [extras.notifications]),
+    ...(extras.bar === 'none' ? [] : [extras.bar]),
+    ...(extras.lock === 'none' ? [] : ['hyprlock', 'hypridle']),
+    ...extras.addons,
+  ]
+}
+
 export function derive(cfg: Config): Context {
   if (cfg.subvolumeLayout === 'root-only' && cfg.snapper !== 'none') {
     throw new Error('snapper requires the separated subvolume layout')
@@ -156,7 +200,6 @@ export function derive(cfg: Config): Context {
     hyprland: {
       packages: [
         'hyprland',
-        'ghostty',
         'xdg-desktop-portal-hyprland',
         'hyprpolkitagent',
         'greetd',
@@ -175,7 +218,6 @@ export function derive(cfg: Config): Context {
           'pipewire-pulse',
           'pipewire-jack',
           'wireplumber',
-          ...(cfg.desktop === 'hyprland' ? ['pavucontrol'] : []),
         ]
   const inputMethodEngine = cfg.systemLocale.startsWith('zh_')
     ? 'fcitx5-chinese-addons'
@@ -211,6 +253,8 @@ export function derive(cfg: Config): Context {
     packages.push('systemd-ukify')
   }
 
+  const hyprland = cfg.desktop === 'hyprland' ? hyprlandPackages(cfg.hyprland) : []
+
   return {
     cfg,
     espDevice: partition(cfg.disk, 1),
@@ -228,6 +272,8 @@ export function derive(cfg: Config): Context {
     audioPackages,
     desktopCommonPackages,
     desktopPackages: desktop.packages,
+    hyprlandPackages: hyprland,
+    hyprlandServices: hyprland.filter((name) => HYPRLAND_SERVICE_PACKAGES.includes(name)),
     cjkVariant: cfg.desktop === 'none' ? undefined : CJK_VARIANTS[cfg.systemLocale],
     displayManager: 'displayManager' in desktop ? desktop.displayManager : undefined,
   }

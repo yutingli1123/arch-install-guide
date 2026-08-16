@@ -24,7 +24,11 @@ reboot
     section: 'finish',
     title: { zh: '进系统之后' },
     body: {
-      zh: ({ cfg }) => `${cfg.desktop === 'hyprland' ? '登录后按 `SUPER + Q` 打开终端。\n\n' : ''}确认网络：
+      zh: ({ cfg }) => `${
+        cfg.desktop === 'hyprland' && cfg.hyprland.terminal !== 'none'
+          ? '登录后按 `SUPER + Q` 打开终端。\n\n'
+          : ''
+      }确认网络：
 
 \`\`\`
 ping -c 3 archlinux.org

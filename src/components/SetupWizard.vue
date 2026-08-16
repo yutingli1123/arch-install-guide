@@ -2,16 +2,20 @@
 import { computed } from 'vue'
 import ChoicePicker from '@/components/ChoicePicker.vue'
 import {
+  HYPRLAND_ADDONS,
+  HYPRLAND_CHOICES,
   KEYMAPS,
   MIRROR_COUNTRIES,
+  NO_HYPRLAND_EXTRAS,
   SYSTEM_LOCALES,
   TIMEZONES,
   makeTpm2Encryption,
+  orderAddons,
   tpm2Preset,
   validate,
   type ConfigChoice,
 } from '@/guide/config'
-import type { ConfigDraft, Locale, Tpm2Preset } from '@/guide/types'
+import type { ConfigDraft, HyprlandAddon, HyprlandExtras, Locale, Tpm2Preset } from '@/guide/types'
 import { choiceDescriptions, choices, pick, ui } from '@/guide/ui'
 
 const props = defineProps<{
@@ -160,6 +164,92 @@ const desktopOptions = computed(() => [
     disabledReason: unavailableReason(`desktop.${value}`),
   })),
 ])
+type HyprlandCategory = keyof typeof HYPRLAND_CHOICES
+type HyprlandCategoryUi = {
+  label: (typeof ui)['hyprlandTerminal']
+  choices: Record<string, (typeof ui)['hyprlandTerminal']>
+  descriptions: Record<string, (typeof ui)['hyprlandTerminal']>
+}
+const HYPRLAND_CATEGORY_UI: Record<HyprlandCategory, HyprlandCategoryUi> = {
+  notifications: {
+    label: ui.hyprlandNotifications,
+    choices: choices.hyprlandNotifications,
+    descriptions: choiceDescriptions.hyprlandNotifications,
+  },
+  launcher: {
+    label: ui.hyprlandLauncher,
+    choices: choices.hyprlandLauncher,
+    descriptions: choiceDescriptions.hyprlandLauncher,
+  },
+  fileManager: {
+    label: ui.hyprlandFileManager,
+    choices: choices.hyprlandFileManager,
+    descriptions: choiceDescriptions.hyprlandFileManager,
+  },
+  terminal: {
+    label: ui.hyprlandTerminal,
+    choices: choices.hyprlandTerminal,
+    descriptions: choiceDescriptions.hyprlandTerminal,
+  },
+  bar: {
+    label: ui.hyprlandBar,
+    choices: choices.hyprlandBar,
+    descriptions: choiceDescriptions.hyprlandBar,
+  },
+  lock: {
+    label: ui.hyprlandLock,
+    choices: choices.hyprlandLock,
+    descriptions: choiceDescriptions.hyprlandLock,
+  },
+}
+/** Categories where several entries can be selected at once. */
+const HYPRLAND_ADDON_GROUPS: { label: (typeof ui)['hyprlandTerminal']; addons: HyprlandAddon[] }[] =
+  [
+    { label: ui.hyprlandWallpaper, addons: ['hyprpaper', 'hyprsunset'] },
+    { label: ui.hyprlandScreenshot, addons: ['hyprshot', 'satty', 'wl-clipboard'] },
+    { label: ui.hyprlandAudio, addons: ['pavucontrol', 'pulsemixer', 'playerctl'] },
+    { label: ui.hyprlandKeyring, addons: ['gnome-keyring', 'seahorse'] },
+  ]
+
+const hyprland = computed<HyprlandExtras>(() => model.value.hyprland ?? NO_HYPRLAND_EXTRAS)
+const hyprlandCategories = computed(() =>
+  (Object.keys(HYPRLAND_CHOICES) as HyprlandCategory[]).map((category) => ({
+    category,
+    label: pick(HYPRLAND_CATEGORY_UI[category].label, props.locale),
+    selected: hyprland.value[category] as string,
+    options: (HYPRLAND_CHOICES[category] as readonly string[]).map((value) => ({
+      value,
+      label: pick(HYPRLAND_CATEGORY_UI[category].choices[value]!, props.locale),
+      description: pick(HYPRLAND_CATEGORY_UI[category].descriptions[value]!, props.locale),
+    })),
+  })),
+)
+const hyprlandAddonGroups = computed(() =>
+  HYPRLAND_ADDON_GROUPS.map((group) => ({
+    label: pick(group.label, props.locale),
+    addons: group.addons.map((addon) => ({
+      value: addon,
+      label: pick(choices.hyprlandAddons[addon], props.locale),
+      description: pick(choiceDescriptions.hyprlandAddons[addon], props.locale),
+      checked: hyprland.value.addons.includes(addon),
+    })),
+  })),
+)
+
+function commitHyprland(category: HyprlandCategory, value: string | undefined) {
+  if (!value) return
+  model.value = {
+    ...model.value,
+    hyprland: { ...hyprland.value, [category]: value } as HyprlandExtras,
+  }
+}
+
+function toggleHyprlandAddon(addon: HyprlandAddon, event: Event) {
+  const addons = hyprland.value.addons.filter((selected) => selected !== addon)
+  if ((event.currentTarget as HTMLInputElement).checked) addons.push(addon)
+  model.value = { ...model.value, hyprland: { ...hyprland.value, addons: orderAddons(addons) } }
+}
+
 const graphicsOptions = computed(() =>
   (['intel', 'amd', 'nvidia'] as const).map((value) => ({
     value,
@@ -205,6 +295,10 @@ function commitChoice(field: ChoiceField, value: string | undefined) {
   if (value === undefined) return
   const next = { ...model.value, [field]: value } as ConfigDraft
   if (field === 'subvolumeLayout' && value === 'root-only') delete next.snapper
+  if (field === 'desktop') {
+    if (value === 'hyprland') next.hyprland ??= NO_HYPRLAND_EXTRAS
+    else delete next.hyprland
+  }
   model.value = next
 }
 
@@ -625,6 +719,33 @@ function goToStep(index: number) {
           />
         </div>
 
+        <div v-if="model.desktop === 'hyprland'" class="field nested-field hyprland-field">
+          <span>{{ pick(ui.hyprlandExtras, props.locale) }}</span>
+          <small>{{ pick(ui.hyprlandExtrasHint, props.locale) }}</small>
+          <div v-for="entry in hyprlandCategories" :key="entry.category" class="field">
+            <span>{{ entry.label }}</span>
+            <ChoicePicker
+              :name="`hyprland.${entry.category}`"
+              :model-value="entry.selected"
+              :options="entry.options"
+              @update:model-value="commitHyprland(entry.category, $event)"
+            />
+          </div>
+          <div v-for="group in hyprlandAddonGroups" :key="group.label" class="field">
+            <span>{{ group.label }}</span>
+            <label v-for="addon in group.addons" :key="addon.value" class="check-option">
+              <input
+                type="checkbox"
+                :name="`hyprland.${addon.value}`"
+                :checked="addon.checked"
+                @change="toggleHyprlandAddon(addon.value, $event)"
+              />
+              <span>{{ addon.label }}</span>
+              <small>{{ addon.description }}</small>
+            </label>
+          </div>
+        </div>
+
         <div class="field nested-field reflector-field">
           <span>{{ pick(ui.reflector, props.locale) }}</span>
           <label>
@@ -941,6 +1062,45 @@ small.description {
   align-items: center;
   gap: 0.5rem;
   color: var(--fg);
+}
+
+.hyprland-field {
+  grid-column: 1 / -1;
+}
+
+.hyprland-field > .field {
+  margin-top: 0.9rem;
+}
+
+.hyprland-field .check-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.25rem 0.55rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.hyprland-field .check-option input {
+  margin: 0.15rem 0 0;
+  accent-color: var(--accent);
+}
+
+.hyprland-field .check-option:hover,
+.hyprland-field .check-option:focus-within {
+  border-color: var(--accent);
+}
+
+.hyprland-field .check-option span {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+
+.hyprland-field .check-option small {
+  grid-column: 2;
+  color: var(--muted);
 }
 
 .check-option input {

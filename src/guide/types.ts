@@ -10,6 +10,36 @@ export type SubvolumeLayout = 'root-only' | 'separated'
 export type SecureBootMode = 'none' | 'custom-db' | 'shim-mok'
 export type SnapperMode = 'none' | 'root' | 'root-home'
 export type Desktop = 'none' | 'gnome' | 'kde' | 'hyprland'
+
+export type HyprlandNotifications = 'none' | 'swaync' | 'mako'
+export type HyprlandLauncher = 'none' | 'rofi' | 'wofi'
+export type HyprlandFileManager = 'none' | 'nautilus' | 'dolphin' | 'thunar'
+export type HyprlandTerminal = 'none' | 'ghostty' | 'kitty'
+export type HyprlandBar = 'none' | 'waybar'
+export type HyprlandLock = 'none' | 'hyprlock'
+/** Independently selectable extras; each value is also its package name. */
+export type HyprlandAddon =
+  | 'hyprpaper'
+  | 'hyprsunset'
+  | 'hyprshot'
+  | 'satty'
+  | 'wl-clipboard'
+  | 'pavucontrol'
+  | 'pulsemixer'
+  | 'playerctl'
+  | 'gnome-keyring'
+  | 'seahorse'
+
+/** Hyprland ships only the compositor and a session, so every entry is opt-in. */
+export type HyprlandExtras = {
+  notifications: HyprlandNotifications
+  launcher: HyprlandLauncher
+  fileManager: HyprlandFileManager
+  terminal: HyprlandTerminal
+  bar: HyprlandBar
+  lock: HyprlandLock
+  addons: HyprlandAddon[]
+}
 export type Graphics = 'intel' | 'amd' | 'nvidia'
 export type ReflectorConfig = {
   countries: string[]
@@ -59,6 +89,8 @@ export type Config = {
   secureBoot: SecureBootMode
   snapper: SnapperMode
   desktop: Desktop
+  /** Ignored unless `desktop` is `hyprland`. */
+  hyprland: HyprlandExtras
   graphics: Graphics
   reflector: ReflectorConfig
 }
@@ -92,6 +124,10 @@ export type Context = {
   audioPackages: string[]
   desktopCommonPackages: string[]
   desktopPackages: string[]
+  /** Hyprland session software chosen by the user, empty for other desktops. */
+  hyprlandPackages: string[]
+  /** Subset of `hyprlandPackages` that ships a systemd user unit. */
+  hyprlandServices: string[]
   /** Regional suffix of the Noto CJK families, e.g. `SC`. */
   cjkVariant?: string
   displayManager?: string

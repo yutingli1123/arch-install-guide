@@ -174,10 +174,7 @@ describe('setup wizard', () => {
     await selectChoice(wrapper, 'diskSwap', 'swapfile')
     await wrapper.get('input[name="diskSwapSizeGiB"]').setValue(8)
 
-    expect(wrapper.get('input[name="zram"][value="true"]').element).toHaveProperty(
-      'checked',
-      true,
-    )
+    expect(wrapper.get('input[name="zram"][value="true"]').element).toHaveProperty('checked', true)
     expect(wrapper.get('input[name="diskSwap"][value="swapfile"]').element).toHaveProperty(
       'checked',
       true,
@@ -301,6 +298,54 @@ describe('setup wizard', () => {
     await wrapper.get('[data-action="edit"]').trigger('click')
     expect(wrapper.get('.wizard h1').text()).toBe('确认配置')
     expect(new URLSearchParams(window.location.search).get('step')).toBe('6')
+  })
+
+  it('offers the Hyprland extras only for Hyprland and saves them in the share link', async () => {
+    const wrapper = mount(App)
+    await start(wrapper)
+    await wrapper.get('select[name="timezone"]').setValue('America/Toronto')
+    await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
+    await next(wrapper)
+    await wrapper.get('select[name="keymap"]').setValue('us')
+    await next(wrapper)
+    await selectChoice(wrapper, 'subvolumeLayout', 'separated')
+    await selectChoice(wrapper, 'zram', 'false')
+    await selectChoice(wrapper, 'diskSwap', 'none')
+    await selectChoice(wrapper, 'encryption', 'none')
+    await selectChoice(wrapper, 'secureBoot', 'none')
+    await selectChoice(wrapper, 'snapper', 'none')
+    await next(wrapper)
+
+    await selectChoice(wrapper, 'desktop', 'kde')
+    expect(wrapper.find('.hyprland-field').exists()).toBe(false)
+
+    await selectChoice(wrapper, 'desktop', 'hyprland')
+    expect(wrapper.get('.hyprland-field').text()).toContain('Hyprland 只提供合成器和会话')
+    expect(parseDraft(window.location.search).hyprland).toEqual({
+      notifications: 'none',
+      launcher: 'none',
+      fileManager: 'none',
+      terminal: 'none',
+      bar: 'none',
+      lock: 'none',
+      addons: [],
+    })
+
+    await selectChoice(wrapper, 'hyprland.terminal', 'ghostty')
+    await selectChoice(wrapper, 'hyprland.bar', 'waybar')
+    await wrapper.get('input[name="hyprland.playerctl"]').setValue(true)
+    await wrapper.get('input[name="hyprland.hyprpaper"]').setValue(true)
+    await wrapper.get('input[name="hyprland.playerctl"]').setValue(false)
+
+    expect(parseDraft(window.location.search).hyprland).toMatchObject({
+      terminal: 'ghostty',
+      bar: 'waybar',
+      addons: ['hyprpaper'],
+    })
+
+    await selectChoice(wrapper, 'desktop', 'gnome')
+    expect(wrapper.find('.hyprland-field').exists()).toBe(false)
+    expect(parseDraft(window.location.search).hyprland).toBeUndefined()
   })
 
   it('restores shared configuration at its saved wizard step', () => {
