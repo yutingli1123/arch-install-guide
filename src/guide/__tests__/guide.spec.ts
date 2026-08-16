@@ -561,9 +561,7 @@ describe('renderGuide', () => {
     )
     expect(hyprland).toContain('systemctl enable bluetooth')
     expect(hyprland).not.toContain('uwsm')
-    expect(hyprland).toContain('/etc/environment.d/90-fcitx.conf')
-    expect(hyprland).toContain('XMODIFIERS=@im=fcitx')
-    expect(hyprland).toContain('QT_IM_MODULES=wayland;fcitx')
+    expect(hyprland).not.toContain('/etc/environment.d/90-fcitx.conf')
     expect(hyprland).not.toContain('SDL_IM_MODULE')
     expect(hyprland).toContain('gtk-im-module=fcitx')
     expect(hyprland).toContain('/home/user/.gtkrc-2.0')
@@ -579,10 +577,11 @@ describe('renderGuide', () => {
     expect(hyprland).toContain('/etc/systemd/user/hyprland-session.target')
     expect(hyprland).toContain('BindsTo=graphical-session.target')
     expect(hyprland).toContain('Wants=xdg-desktop-autostart.target')
+    expect(hyprland).toContain('hl.env(&quot;QT_IM_MODULES&quot;, &quot;wayland;fcitx&quot;)')
     expect(hyprland).toContain('/home/user/.config/hypr/hyprland.lua')
     expect(hyprland).toContain('local terminal    = &quot;ghostty&quot;')
     expect(hyprland).toContain(
-      'hl.exec_cmd(&quot;systemctl --user start hyprland-session.target&quot;)',
+      'dbus-update-activation-environment --systemd XCURSOR_THEME XCURSOR_SIZE XMODIFIERS QT_IM_MODULES XDG_SESSION_TYPE; systemctl --user start hyprland-session.target',
     )
     expect(hyprland).toContain('start-hyprland')
     expect(hyprland).not.toContain('systemctl enable gdm')
