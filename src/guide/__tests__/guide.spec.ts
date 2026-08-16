@@ -531,7 +531,7 @@ describe('renderGuide', () => {
 
     const hyprland = renderHtml({ ...stageOneConfig, desktop: 'hyprland', graphics: 'nvidia' })
     expect(hyprland).toContain('pacman -S nvidia-open nvidia-utils')
-    expect(hyprland).toContain('pacman -S hyprland uwsm ghostty')
+    expect(hyprland).toContain('pacman -S hyprland ghostty')
     expect(hyprland).toContain('xdg-desktop-portal-hyprland hyprpolkitagent')
     expect(hyprland).toContain('greetd greetd-regreet')
     expect(hyprland).toContain('systemctl enable greetd')
@@ -551,7 +551,7 @@ describe('renderGuide', () => {
       'pacman -S bluez bluez-utils blueman noto-fonts noto-fonts-cjk noto-fonts-extra noto-fonts-emoji fcitx5-im',
     )
     expect(hyprland).toContain('systemctl enable bluetooth')
-    expect(hyprland).not.toContain('/home/user/.config/uwsm/env')
+    expect(hyprland).not.toContain('uwsm')
     expect(hyprland).toContain('/etc/environment.d/90-fcitx.conf')
     expect(hyprland).toContain('XMODIFIERS=@im=fcitx')
     expect(hyprland).not.toContain('QT_IM_MODULES')
@@ -565,6 +565,13 @@ describe('renderGuide', () => {
     expect(hyprland).not.toContain('qt6-wayland')
     expect(hyprland).toContain('systemctl --global enable hyprpolkitagent.service')
     expect(hyprland).not.toContain('systemctl --user enable')
+    expect(hyprland).toContain('/etc/systemd/user/hyprland-session.target')
+    expect(hyprland).toContain('BindsTo=graphical-session.target')
+    expect(hyprland).toContain('/home/user/.config/hypr/hyprland.lua')
+    expect(hyprland).toContain('local terminal    = &quot;ghostty&quot;')
+    expect(hyprland).toContain(
+      'hl.exec_cmd(&quot;systemctl --user start hyprland-session.target&quot;)',
+    )
     expect(hyprland).toContain('start-hyprland')
     expect(hyprland).not.toContain('systemctl enable gdm')
     expect(hyprland).not.toContain('systemctl enable sddm')

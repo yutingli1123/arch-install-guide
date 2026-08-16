@@ -144,7 +144,6 @@ export function derive(cfg: Config): Context {
     hyprland: {
       packages: [
         'hyprland',
-        'uwsm',
         'ghostty',
         'xdg-desktop-portal-hyprland',
         'hyprpolkitagent',

@@ -132,7 +132,50 @@ vim /etc/greetd/config.toml
 command = "dbus-run-session start-hyprland -- -c /etc/greetd/hyprland.lua"
 \`\`\`
 
-ReGreet 会从会话文件中启动 Hyprland 的 UWSM 会话。`
+新建 \`/etc/systemd/user/hyprland-session.target\`：
+
+\`\`\`
+vim /etc/systemd/user/hyprland-session.target
+\`\`\`
+
+写入：
+
+\`\`\`
+[Unit]
+Description=Hyprland session
+BindsTo=graphical-session.target
+Wants=graphical-session-pre.target
+After=graphical-session-pre.target
+PropagatesStopTo=graphical-session.target
+\`\`\`
+
+复制默认配置作为该用户的 Hyprland 配置：
+
+\`\`\`
+install -d -o ${cfg.username} -g ${cfg.username} /home/${cfg.username}/.config/hypr
+install -o ${cfg.username} -g ${cfg.username} -m 644 /usr/share/hypr/hyprland.lua /home/${cfg.username}/.config/hypr/hyprland.lua
+vim /home/${cfg.username}/.config/hypr/hyprland.lua
+\`\`\`
+
+将 \`MY PROGRAMS\` 一节的 \`terminal\` 改为：
+
+\`\`\`lua
+local terminal    = "ghostty"
+\`\`\`
+
+在 \`AUTOSTART\` 一节加入：
+
+\`\`\`lua
+hl.on("hyprland.start", function()
+    hl.exec_cmd("systemctl --user start hyprland-session.target")
+end)
+
+hl.on("hyprland.shutdown", function()
+    os.execute("systemctl --user stop hyprland-session.target && sleep 0.1")
+end)
+\`\`\`
+
+登录后按 \`SUPER + Q\` 打开终端。`
           : `\n\n重启后由 \`${displayManager}\` 提供图形登录界面。`
       }`,
     },
