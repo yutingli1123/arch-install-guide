@@ -62,9 +62,7 @@ vim /etc/mkinitcpio.d/linux.preset
 - 取消注释 \`default_uki\` 和 \`fallback_uki\`。
 - 注释 \`default_image\`。
 
-\`default_uki\` 和 \`fallback_uki\` 中的路径应为 \`${espMountPoint}/EFI/Linux/\`，无需修改。
-
-${cfg.encryption.mode === 'none' ? '无需修改 `/etc/mkinitcpio.conf`：btrfs 支持已编译进内核，微码会由默认 HOOKS 中的 `microcode` 加入镜像。' : '前面配置的 systemd initramfs 会把 LUKS2 解锁逻辑一并放入 UKI。'}
+\`default_uki\` 和 \`fallback_uki\` 中的路径应为 \`${espMountPoint}/EFI/Linux/\`，无需修改。${cfg.encryption.mode === 'none' ? '' : '\n\n前面配置的 systemd initramfs 会把 LUKS2 解锁逻辑一并放入 UKI。'}
 
 重新构建：
 
@@ -73,7 +71,7 @@ mkdir -p ${espMountPoint}/EFI/Linux
 mkinitcpio -P
 \`\`\`
 
-systemd-boot 会自动枚举 \`${espMountPoint}/EFI/Linux/\` 中的镜像并生成启动菜单，常规启动项排列在 fallback 之前，因此无需创建 \`loader/entries/\` 启动项或 \`loader.conf\`。fallback 镜像不进行 autodetect 裁剪，可在常规镜像因缺少驱动而无法启动时用于恢复系统。
+systemd-boot 会自动枚举 \`${espMountPoint}/EFI/Linux/\` 中的镜像并生成启动菜单，常规启动项排列在 fallback 之前。fallback 镜像不进行 autodetect 裁剪，可在常规镜像因缺少驱动而无法启动时用于恢复系统。
 
 核对：
 

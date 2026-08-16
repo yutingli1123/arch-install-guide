@@ -34,9 +34,7 @@ pacman -S ${graphicsPackages.join(' ')}
 
 \`\`\`
 pacman -S ${audioPackages.join(' ')}
-\`\`\`
-
-PipeWire、PulseAudio 兼容服务和 WirePlumber 会在用户登录图形会话后通过 systemd 用户服务自动启动，无需在 chroot 中手动启用。\`pipewire-jack\` 是 PipeWire 自身的 JACK 协议兼容层，与独立的 \`jack2\` 二选一，避免两套音频服务器同时存在。`,
+\`\`\``,
     },
   },
   {
@@ -63,7 +61,7 @@ PipeWire、PulseAudio 兼容服务和 WirePlumber 会在用户登录图形会话
 pacman -S ${desktopCommonPackages.join(' ')}${cfg.desktop === 'hyprland' ? '\nsystemctl enable bluetooth' : ''}
 \`\`\`
 
-Fcitx 5 软件包提供 XDG 自动启动项。为 XWayland 应用设置 \`XMODIFIERS\`：
+为 XWayland 应用设置 \`XMODIFIERS\`：
 
 \`\`\`
 install -d /etc/environment.d
