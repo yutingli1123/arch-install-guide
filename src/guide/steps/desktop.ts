@@ -63,31 +63,7 @@ PipeWire、PulseAudio 兼容服务和 WirePlumber 会在用户登录图形会话
 pacman -S ${desktopCommonPackages.join(' ')}${cfg.desktop === 'hyprland' ? '\nsystemctl enable bluetooth' : ''}
 \`\`\`
 
-Fcitx 5 软件包提供 XDG 自动启动项。${
-        cfg.desktop === 'hyprland'
-          ? `Hyprland 会话由 UWSM 管理，将输入法环境变量写入该用户的 UWSM 环境文件：
-
-\`\`\`
-install -d -o ${cfg.username} -g ${cfg.username} /home/${cfg.username}/.config/uwsm
-vim /home/${cfg.username}/.config/uwsm/env
-\`\`\`
-
-写入：
-
-\`\`\`
-export XMODIFIERS=@im=fcitx
-export QT_IM_MODULES="wayland;fcitx"
-export SDL_IM_MODULE=fcitx
-\`\`\`
-
-保存后修正文件所有者：
-
-\`\`\`
-chown ${cfg.username}:${cfg.username} /home/${cfg.username}/.config/uwsm/env
-\`\`\``
-          : `为 XWayland 应用设置 \`XMODIFIERS\`${
-              cfg.desktop === 'gnome' ? '，并为 Qt 应用设置 `QT_IM_MODULES`' : ''
-            }：
+Fcitx 5 软件包提供 XDG 自动启动项。为 XWayland 应用设置 \`XMODIFIERS\`：
 
 \`\`\`
 install -d /etc/environment.d
@@ -97,9 +73,8 @@ vim /etc/environment.d/90-fcitx.conf
 写入：
 
 \`\`\`
-XMODIFIERS=@im=fcitx${cfg.desktop === 'gnome' ? '\nQT_IM_MODULES="wayland;fcitx"' : ''}
-\`\`\``
-      }`,
+XMODIFIERS=@im=fcitx
+\`\`\``,
     },
   },
   {
