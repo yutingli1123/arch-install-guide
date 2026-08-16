@@ -126,15 +126,10 @@ hl.config({
 vim /etc/greetd/config.toml
 \`\`\`
 
-写入：
+将 \`[default_session]\` 中的 \`command\` 改为：
 
 \`\`\`
-[terminal]
-vt = 1
-
-[default_session]
 command = "dbus-run-session start-hyprland -- -c /etc/greetd/hyprland.lua"
-user = "greeter"
 \`\`\`
 
 ReGreet 会从会话文件中启动 Hyprland 的 UWSM 会话。首次登录并打开 Ghostty 后执行 \`systemctl --user enable --now hyprpolkitagent.service\`，让图形程序能够请求提权认证，并在后续图形会话中自动启动认证代理。`
