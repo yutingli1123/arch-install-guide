@@ -108,6 +108,26 @@ EDITOR=vim visudo
     },
   },
   {
+    id: 'aur-helper',
+    section: 'system',
+    title: { zh: '安装 AUR 助手' },
+    body: {
+      zh: ({ cfg }) => `\`pacman\` 不管理 AUR，手动构建的包不会随 \`pacman -Syu\` 更新，交由 \`paru\` 管理才能收到后续更新。
+
+\`paru\` 自身也来自 AUR，只能手动构建。AUR 构建必须使用普通用户：
+
+\`\`\`
+install -d -o ${cfg.username} -g ${cfg.username} /tmp/paru-build
+sudo -u ${cfg.username} git clone https://aur.archlinux.org/paru.git /tmp/paru-build/paru
+cd /tmp/paru-build/paru
+sudo -u ${cfg.username} makepkg -si
+cd /
+\`\`\`
+
+此后用 \`paru -Syu\` 同时更新官方仓库和 AUR 软件包。`,
+    },
+  },
+  {
     id: 'network-service',
     section: 'system',
     title: { zh: '启用网络' },

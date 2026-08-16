@@ -163,15 +163,10 @@ Exec = /usr/local/sbin/update-sbctl-systemd-boot
       zh: ({
         cfg,
         espMountPoint,
-      }) => `从 AUR 构建 Fedora 预签名的 \`shim-signed\`。AUR 构建必须使用普通用户：
+      }) => `安装 Fedora 预签名的 \`shim-signed\`。AUR 操作必须使用普通用户：
 
 \`\`\`
-install -d -o ${cfg.username} -g ${cfg.username} /tmp/shim-build
-sudo -u ${cfg.username} git clone https://aur.archlinux.org/shim-signed.git /tmp/shim-build/shim-signed
-cd /tmp/shim-build/shim-signed
-sudo -u ${cfg.username} makepkg -s
-pacman -U ./*.pkg.tar.zst
-cd /
+sudo -u ${cfg.username} paru -S shim-signed
 pacman -Q shim-signed
 \`\`\`
 
