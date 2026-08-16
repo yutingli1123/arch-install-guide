@@ -134,6 +134,7 @@ export const choices = {
     'en_CA.UTF-8': { zh: 'English (Canada)' },
     'zh_CN.UTF-8': { zh: '简体中文' },
     'zh_TW.UTF-8': { zh: '繁體中文' },
+    'zh_HK.UTF-8': { zh: '繁體中文（香港）' },
     'de_DE.UTF-8': { zh: 'Deutsch' },
     'fr_FR.UTF-8': { zh: 'Français' },
     'es_ES.UTF-8': { zh: 'Español' },

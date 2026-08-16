@@ -174,6 +174,7 @@ describe('derive', () => {
     }
     expect(rendered).not.toContain('name=&quot;lang&quot;')
     expect(renderHtml({ ...chinese, systemLocale: 'ja_JP.UTF-8' })).toContain('Noto Serif CJK JP')
+    expect(renderHtml({ ...chinese, systemLocale: 'zh_HK.UTF-8' })).toContain('Noto Sans CJK HK')
 
     const latin = renderHtml({ ...chinese, systemLocale: 'en_US.UTF-8' })
     expect(latin).not.toContain('64-noto-cjk.conf')

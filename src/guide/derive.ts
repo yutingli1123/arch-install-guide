@@ -11,6 +11,7 @@ export function partition(disk: string, index: number): string {
 const TESSERACT_LOCALE_DATA: Record<string, string> = {
   'zh_CN.UTF-8': 'chi_sim',
   'zh_TW.UTF-8': 'chi_tra',
+  'zh_HK.UTF-8': 'chi_tra',
   'de_DE.UTF-8': 'deu',
   'de_AT.UTF-8': 'deu',
   'de_CH.UTF-8': 'deu',
@@ -71,6 +72,7 @@ const TESSERACT_LOCALE_DATA: Record<string, string> = {
 export const CJK_VARIANTS: Record<string, string> = {
   'zh_CN.UTF-8': 'SC',
   'zh_TW.UTF-8': 'TC',
+  'zh_HK.UTF-8': 'HK',
   'ja_JP.UTF-8': 'JP',
   'ko_KR.UTF-8': 'KR',
 }

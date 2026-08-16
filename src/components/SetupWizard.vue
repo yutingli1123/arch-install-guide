@@ -26,7 +26,7 @@ const canUseDetectedTimezone = TIMEZONES.includes(detectedTimezone)
 const sortedSystemLocales = [...SYSTEM_LOCALES].sort()
 const mirrorCountryCodes = MIRROR_COUNTRIES.map(([code]) => code)
 const isCjkSystemLocale = computed(() =>
-  ['zh_CN.UTF-8', 'zh_TW.UTF-8', 'ja_JP.UTF-8', 'ko_KR.UTF-8'].includes(
+  ['zh_CN.UTF-8', 'zh_TW.UTF-8', 'zh_HK.UTF-8', 'ja_JP.UTF-8', 'ko_KR.UTF-8'].includes(
     model.value.systemLocale ?? '',
   ),
 )
