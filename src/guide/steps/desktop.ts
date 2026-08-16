@@ -93,7 +93,7 @@ XMODIFIERS=@im=fcitx
       zh: ({ cfg, desktopPackages, displayManager }) => `安装 ${desktopNames[cfg.desktop]}：
 
 \`\`\`
-pacman -S ${desktopPackages.join(' ')}${cfg.desktop !== 'hyprland' ? '\nsystemctl enable bluetooth' : ''}${displayManager ? `\nsystemctl enable ${displayManager}` : ''}
+pacman -S ${desktopPackages.join(' ')}${cfg.desktop !== 'hyprland' ? '\nsystemctl enable bluetooth' : ''}${displayManager ? `\nsystemctl enable ${displayManager}` : ''}${cfg.desktop === 'hyprland' ? '\nsystemctl --global enable hyprpolkitagent.service' : ''}
 \`\`\`${
         cfg.desktop === 'hyprland'
           ? `
@@ -132,7 +132,7 @@ vim /etc/greetd/config.toml
 command = "dbus-run-session start-hyprland -- -c /etc/greetd/hyprland.lua"
 \`\`\`
 
-ReGreet 会从会话文件中启动 Hyprland 的 UWSM 会话。首次登录并打开 Ghostty 后执行 \`systemctl --user enable --now hyprpolkitagent.service\`，让图形程序能够请求提权认证，并在后续图形会话中自动启动认证代理。`
+ReGreet 会从会话文件中启动 Hyprland 的 UWSM 会话。`
           : `\n\n重启后由 \`${displayManager}\` 提供图形登录界面。`
       }`,
     },
