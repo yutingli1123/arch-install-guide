@@ -468,7 +468,7 @@ describe('renderGuide', () => {
     expect(flagship).toContain('/etc/kernel/uki.conf')
     expect(flagship).not.toContain('/etc/systemd/ukify.conf')
     expect(flagship).not.toContain('加入 <code>--ukify</code>')
-    expect(flagship).toContain('shim-signed.git')
+    expect(flagship).toContain('paru -S shim-signed')
     expect(flagship).toContain('--tpm2-pcrs=7+14')
     expect(flagship).toContain('--tpm2-public-key-pcrs=11')
     expect(flagship).toContain('sudo systemd-cryptenroll --tpm2-device=auto')
@@ -493,7 +493,7 @@ describe('renderGuide', () => {
   it('renders sbctl only for the custom-db secure boot path', () => {
     const custom = renderHtml({ ...stageOneConfig, secureBoot: 'custom-db' })
     expect(custom).toContain('sbctl enroll-keys -m')
-    expect(custom).not.toContain('shim-signed.git')
+    expect(custom).not.toContain('paru -S shim-signed')
     expect(html).not.toContain('sbctl create-keys')
   })
 
@@ -511,7 +511,8 @@ describe('renderGuide', () => {
     expect(gnome).not.toContain('QT_IM_MODULE')
     expect(gnome).not.toContain('gtk-im-module')
     expect(gnome).not.toContain('/home/user/.config/autostart')
-    expect(gnome).toContain('aur.archlinux.org/gnome-shell-extension-kimpanel-git.git')
+    expect(gnome).toContain('paru -S gnome-shell-extension-kimpanel-git')
+    expect(renderHtml(stageOneConfig)).toContain('aur.archlinux.org/paru.git')
     expect(gnome).toContain('在扩展管理中启用 Kimpanel')
     expect(gnome).not.toContain('Hidden=true')
     expect(gnome).toContain('桌面环境自带的设置应用中配置网络')

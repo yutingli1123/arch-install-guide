@@ -65,15 +65,10 @@ ${
         cfg.desktop === 'gnome'
           ? `GNOME 会把会话的输入法配置成 ibus，Fcitx 5 由自启动项拉起后取代 ibus，无需设置环境变量。
 
-从 AUR 构建 Kimpanel 扩展。AUR 构建必须使用普通用户：
+安装 Kimpanel 扩展。AUR 操作必须使用普通用户：
 
 \`\`\`
-install -d -o ${cfg.username} -g ${cfg.username} /tmp/kimpanel-build
-sudo -u ${cfg.username} git clone https://aur.archlinux.org/gnome-shell-extension-kimpanel-git.git /tmp/kimpanel-build/kimpanel
-cd /tmp/kimpanel-build/kimpanel
-sudo -u ${cfg.username} makepkg -s
-pacman -U ./*.pkg.tar.zst
-cd /
+sudo -u ${cfg.username} paru -S gnome-shell-extension-kimpanel-git
 \`\`\``
           : `为 XWayland 应用设置输入法环境变量：
 
