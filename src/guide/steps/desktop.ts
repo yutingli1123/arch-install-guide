@@ -232,7 +232,7 @@ vim /home/${cfg.username}/.config/hypr/hyprland.lua
 local terminal    = "ghostty"
 \`\`\`
 
-在 \`ENVIRONMENT\` 一节加入：
+在 \`ENVIRONMENT VARIABLES\` 一节加入：
 
 \`\`\`lua
 hl.env("XMODIFIERS", "@im=fcitx")
