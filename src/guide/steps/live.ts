@@ -54,7 +54,16 @@ iwctl station list
 iwctl station wlan0 connect SSID
 \`\`\`
 
-连接后再次执行 \`ping\` 以确认网络可用。后续步骤需要保持网络连接。`,
+连接后再次执行 \`ping\` 以确认网络可用。后续步骤需要保持网络连接。
+
+如果有第二台设备，安装介质自带的 \`sshd\` 已经在运行，可以从那台设备上 SSH 进来，在支持复制粘贴的终端里执行后续命令。使用 \`passwd\` 设置 root 密码，再用 \`ip a\` 查看当前分配到的 IP 地址：
+
+\`\`\`
+passwd
+ip a
+\`\`\`
+
+记下地址后，在第二台设备上执行 \`ssh root@<地址>\`。`,
     },
   },
   {
@@ -69,6 +78,28 @@ timedatectl
 \`\`\`
 
 \`System clock synchronized\` 应为 \`yes\`。系统时间不准确可能导致后续 pacman 签名校验失败。`,
+    },
+  },
+  {
+    id: 'mirrors',
+    section: 'live',
+    title: { zh: '选择镜像源' },
+    body: {
+      zh: ({
+        cfg,
+      }) => `使用 reflector 筛选 ${cfg.reflector.countries.join(',')} 中最近 ${cfg.reflector.ageHours} 小时内同步的 HTTPS 镜像，再按下载速度排序并保留 ${cfg.reflector.number} 个：
+
+\`\`\`
+reflector --country ${cfg.reflector.countries.join(',')} --age ${cfg.reflector.ageHours} --protocol https --sort rate --number ${cfg.reflector.number} --save /etc/pacman.d/mirrorlist
+\`\`\`
+
+检查生成的列表：
+
+\`\`\`
+cat /etc/pacman.d/mirrorlist
+\`\`\`
+
+列表中的每个 \`Server\` 地址都应以 \`https://\` 开头。安装介质中生成的 mirrorlist 会由后续的 \`pacstrap\` 复制到新系统。`,
     },
   },
 ]

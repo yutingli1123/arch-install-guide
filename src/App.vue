@@ -12,14 +12,15 @@ function firstIncompleteStep(draft: ConfigDraft): number {
   if (!draft.keymap) return 1
   if (
     !draft.subvolumeLayout ||
-    !draft.swap ||
+    draft.zram === undefined ||
+    !draft.diskSwap ||
     !draft.encryption ||
     !draft.secureBoot ||
     (draft.subvolumeLayout === 'separated' && !draft.snapper)
   )
     return 2
-  if (!draft.hostname || !draft.username || !draft.desktop) return 3
-  if (!draft.disk || !draft.cpu) return 4
+  if (!draft.hostname || !draft.username || !draft.desktop || !draft.reflector) return 3
+  if (!draft.disk || !draft.cpu || !draft.graphics) return 4
   return 5
 }
 
@@ -82,47 +83,21 @@ const summary = computed(() => {
   if (!cfg) return []
   const disabled = pick(ui.disabled, locale.value)
   const none = pick(ui.none, locale.value)
-  const items = [
-    { label: pick(ui.targetDisk, locale.value), value: cfg.disk },
-    { label: pick(ui.cpu, locale.value), value: pick(choices.cpu[cfg.cpu], locale.value) },
-    { label: pick(ui.swap, locale.value), value: pick(choices.swap[cfg.swap], locale.value) },
-    {
-      label: pick(ui.subvolumes, locale.value),
-      value: pick(choices.subvolumeLayout[cfg.subvolumeLayout], locale.value),
-    },
+  const encryptionItems = [
     {
       label: pick(ui.encryption, locale.value),
       value: cfg.encryption.mode === 'luks2' ? 'LUKS2' : disabled,
     },
-    {
-      label: pick(ui.secureBoot, locale.value),
-      value: pick(choices.secureBoot[cfg.secureBoot], locale.value),
-    },
-    {
-      label: pick(ui.snapper, locale.value),
-      value: pick(choices.snapper[cfg.snapper], locale.value),
-    },
-    {
-      label: pick(ui.desktop, locale.value),
-      value: pick(choices.desktop[cfg.desktop], locale.value),
-    },
-    { label: pick(ui.timezone, locale.value), value: cfg.timezone },
-    { label: pick(ui.systemLocale, locale.value), value: cfg.systemLocale },
-    { label: pick(ui.keymap, locale.value), value: cfg.keymap },
-    { label: pick(ui.hostname, locale.value), value: cfg.hostname },
-    { label: pick(ui.username, locale.value), value: cfg.username },
   ]
 
   if (cfg.encryption.mode === 'luks2') {
-    items.splice(5, 0, {
+    encryptionItems.push({
       label: pick(ui.unlock, locale.value),
       value: cfg.encryption.unlock.method === 'tpm2' ? 'TPM2' : pick(ui.password, locale.value),
     })
 
     if (cfg.encryption.unlock.method === 'tpm2') {
-      items.splice(
-        6,
-        0,
+      encryptionItems.push(
         {
           label: pick(ui.tpmPin, locale.value),
           value: cfg.encryption.unlock.pin ? pick(ui.enabled, locale.value) : disabled,
@@ -138,6 +113,49 @@ const summary = computed(() => {
       )
     }
   }
+
+  const items = [
+    { label: pick(ui.targetDisk, locale.value), value: cfg.disk },
+    { label: pick(ui.cpu, locale.value), value: pick(choices.cpu[cfg.cpu], locale.value) },
+    {
+      label: pick(ui.graphics, locale.value),
+      value: pick(choices.graphics[cfg.graphics], locale.value),
+    },
+    {
+      label: pick(ui.zram, locale.value),
+      value: pick(choices.zram[String(cfg.zram) as 'false' | 'true'], locale.value),
+    },
+    {
+      label: pick(ui.diskSwap, locale.value),
+      value: pick(choices.diskSwap[cfg.diskSwap], locale.value),
+    },
+    {
+      label: pick(ui.subvolumes, locale.value),
+      value: pick(choices.subvolumeLayout[cfg.subvolumeLayout], locale.value),
+    },
+    ...encryptionItems,
+    {
+      label: pick(ui.secureBoot, locale.value),
+      value: pick(choices.secureBoot[cfg.secureBoot], locale.value),
+    },
+    {
+      label: pick(ui.snapper, locale.value),
+      value: pick(choices.snapper[cfg.snapper], locale.value),
+    },
+    {
+      label: pick(ui.desktop, locale.value),
+      value: pick(choices.desktop[cfg.desktop], locale.value),
+    },
+    {
+      label: pick(ui.reflector, locale.value),
+      value: `${cfg.reflector.countries.join(',')} / ${cfg.reflector.ageHours} h / ${cfg.reflector.number}`,
+    },
+    { label: pick(ui.timezone, locale.value), value: cfg.timezone },
+    { label: pick(ui.systemLocale, locale.value), value: cfg.systemLocale },
+    { label: pick(ui.keymap, locale.value), value: cfg.keymap },
+    { label: pick(ui.hostname, locale.value), value: cfg.hostname },
+    { label: pick(ui.username, locale.value), value: cfg.username },
+  ]
 
   return items
 })

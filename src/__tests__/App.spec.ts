@@ -1,7 +1,7 @@
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it } from 'vitest'
 import App from '../App.vue'
-import { parseDraft, serializeDraft, stageOneConfig } from '../guide/config'
+import { makeTpm2Encryption, parseDraft, serializeDraft, stageOneConfig } from '../guide/config'
 
 describe('setup wizard', () => {
   beforeEach(() => window.history.replaceState(null, '', '/'))
@@ -160,6 +160,60 @@ describe('setup wizard', () => {
     ).toBeUndefined()
   })
 
+  it('allows zram and disk swap to be selected independently', async () => {
+    const wrapper = mount(App)
+    await start(wrapper)
+    await wrapper.get('select[name="timezone"]').setValue('America/Toronto')
+    await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
+    await next(wrapper)
+    await wrapper.get('select[name="keymap"]').setValue('us')
+    await next(wrapper)
+
+    expect(wrapper.find('input[name="diskSwap"][value="partition"]').exists()).toBe(false)
+    await selectChoice(wrapper, 'zram', 'true')
+    await selectChoice(wrapper, 'diskSwap', 'swapfile')
+    await wrapper.get('input[name="diskSwapSizeGiB"]').setValue(8)
+
+    expect(wrapper.get('input[name="zram"][value="true"]').element).toHaveProperty(
+      'checked',
+      true,
+    )
+    expect(wrapper.get('input[name="diskSwap"][value="swapfile"]').element).toHaveProperty(
+      'checked',
+      true,
+    )
+    expect(parseDraft(window.location.search)).toMatchObject({
+      zram: true,
+      diskSwap: 'swapfile',
+      diskSwapSizeGiB: 8,
+    })
+  })
+
+  it('keeps storage and encryption fields in order on the review page', () => {
+    const query = serializeDraft({
+      ...stageOneConfig,
+      zram: true,
+      diskSwap: 'swapfile',
+      diskSwapSizeGiB: 8,
+      encryption: makeTpm2Encryption('custom-db'),
+      secureBoot: 'custom-db',
+    })
+    window.history.replaceState(null, '', `/?${query}&step=6`)
+    const wrapper = mount(App)
+    const labels = wrapper.findAll('.review li span').map((item) => item.text())
+
+    expect(labels.slice(3, 11)).toEqual([
+      'zram',
+      '磁盘 swap',
+      '子卷布局',
+      '磁盘加密',
+      '解锁方式',
+      'TPM PIN',
+      'PCR 哈希绑定',
+      'PCR 签名策略',
+    ])
+  })
+
   it('walks through configuration, review, and the generated guide', async () => {
     const wrapper = mount(App)
     await start(wrapper)
@@ -175,7 +229,7 @@ describe('setup wizard', () => {
 
     expect(wrapper.get('form').text()).toContain('只创建 @，结构简单，但不能配置 Snapper')
     expect(wrapper.get('form').text()).toContain('在同一个 Btrfs 文件系统中')
-    expect(wrapper.get('form').text()).toContain('当前不可用：对应安装步骤尚未提供')
+    expect(wrapper.get('form').text()).not.toContain('当前不可用：对应安装步骤尚未提供')
     await selectChoice(wrapper, 'subvolumeLayout', 'root-only')
     expect(
       wrapper
@@ -184,7 +238,8 @@ describe('setup wizard', () => {
     ).toBe(true)
     expect(wrapper.find('input[name="snapper"]').exists()).toBe(false)
     expect(wrapper.get('.constraint-message').text()).toBe('单一根子卷不推荐 Snapper')
-    await selectChoice(wrapper, 'swap', 'none')
+    await selectChoice(wrapper, 'zram', 'false')
+    await selectChoice(wrapper, 'diskSwap', 'none')
     await selectChoice(wrapper, 'encryption', 'none')
     await selectChoice(wrapper, 'secureBoot', 'none')
     await next(wrapper)
@@ -194,6 +249,8 @@ describe('setup wizard', () => {
     expect((wrapper.get('input[name="username"]').element as HTMLInputElement).value).toBe('')
     await wrapper.get('input[name="username"]').setValue('alice')
     await selectChoice(wrapper, 'desktop', 'none')
+    expect(wrapper.find('input[name="mirrorSort"]').exists()).toBe(false)
+    await wrapper.get('input[name="mirrorCountries"]').setValue('CA,US')
     await next(wrapper)
 
     expect(wrapper.get('.wizard h1').text()).toBe('安装目标')
@@ -203,10 +260,13 @@ describe('setup wizard', () => {
     expect(wrapper.get('.device-prefix').text()).toBe('/dev/')
     await wrapper.get('input[name="disk"]').setValue('nvme0n1')
     await selectChoice(wrapper, 'cpu', 'amd')
+    await selectChoice(wrapper, 'graphics', 'amd')
     await next(wrapper)
 
     expect(wrapper.get('.wizard h1').text()).toBe('确认配置')
     expect(wrapper.get('.review').text()).toContain('CPUAMD')
+    expect(wrapper.get('.review').text()).toContain('显卡AMD')
+    expect(wrapper.get('.review').text()).toContain('镜像源CA,US / 12 h / 10')
     expect(wrapper.get('.review').text()).toContain('子卷布局单一根子卷')
     expect(wrapper.get('.review').text()).toContain('时区Asia/Shanghai')
     expect(wrapper.get('.review').text()).toContain('系统语言zh_CN.UTF-8')
@@ -219,6 +279,8 @@ describe('setup wizard', () => {
     expect(params.has('config')).toBe(false)
     expect(params.has('cpu')).toBe(false)
     expect(saved.cpu).toBe('amd')
+    expect(saved.graphics).toBe('amd')
+    expect(saved.reflector).toEqual({ countries: ['CA', 'US'], ageHours: 12, number: 10 })
     expect(saved.subvolumeLayout).toBe('root-only')
     expect(saved.snapper).toBeUndefined()
     expect(saved.username).toBe('alice')
@@ -294,7 +356,8 @@ describe('generated guide', () => {
     await openGuide(wrapper)
     const summary = wrapper.get('.config-summary').text()
 
-    expect(summary).toContain('swap 无')
+    expect(summary).toContain('zram 关闭')
+    expect(summary).toContain('磁盘 swap 无')
     expect(summary).toContain('子卷布局 标准分离子卷')
     expect(summary).toContain('磁盘加密 关闭')
     expect(summary).toContain('安全启动 关闭')
@@ -334,7 +397,8 @@ async function openGuide(wrapper: VueWrapper) {
   await wrapper.get('select[name="keymap"]').setValue('us')
   await next(wrapper)
   await selectChoice(wrapper, 'subvolumeLayout', 'separated')
-  await selectChoice(wrapper, 'swap', 'none')
+  await selectChoice(wrapper, 'zram', 'false')
+  await selectChoice(wrapper, 'diskSwap', 'none')
   await selectChoice(wrapper, 'encryption', 'none')
   await selectChoice(wrapper, 'secureBoot', 'none')
   await selectChoice(wrapper, 'snapper', 'none')
@@ -342,9 +406,11 @@ async function openGuide(wrapper: VueWrapper) {
   await wrapper.get('input[name="hostname"]').setValue('archlinux')
   await wrapper.get('input[name="username"]').setValue('user')
   await selectChoice(wrapper, 'desktop', 'none')
+  await wrapper.get('input[name="mirrorCountries"]').setValue('CA')
   await next(wrapper)
   await wrapper.get('input[name="disk"]').setValue('nvme0n1')
   await selectChoice(wrapper, 'cpu', 'intel')
+  await selectChoice(wrapper, 'graphics', 'intel')
   await next(wrapper)
   await next(wrapper)
 }

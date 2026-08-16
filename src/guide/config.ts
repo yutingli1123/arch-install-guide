@@ -1,9 +1,6 @@
 import type { Config, ConfigDraft, Encryption, Tpm2Preset } from './types'
 
 export type ConfigChoice =
-  | 'swap.zram'
-  | 'swap.swapfile'
-  | 'swap.partition'
   | 'encryption.password'
   | 'encryption.tpm2'
   | 'secureBoot.custom-db'
@@ -101,6 +98,88 @@ export const SYSTEM_LOCALES = [
 
 export const KEYMAPS = ['us', 'uk', 'de-latin1', 'fr-latin9', 'es', 'it', 'jp106', 'ru'] as const
 
+export const MIRROR_COUNTRIES = [
+  ['AL', 'Albania'],
+  ['AR', 'Argentina'],
+  ['AM', 'Armenia'],
+  ['AU', 'Australia'],
+  ['AT', 'Austria'],
+  ['AZ', 'Azerbaijan'],
+  ['BD', 'Bangladesh'],
+  ['BY', 'Belarus'],
+  ['BE', 'Belgium'],
+  ['BR', 'Brazil'],
+  ['BG', 'Bulgaria'],
+  ['KH', 'Cambodia'],
+  ['CA', 'Canada'],
+  ['CL', 'Chile'],
+  ['CN', 'China'],
+  ['CO', 'Colombia'],
+  ['HR', 'Croatia'],
+  ['CZ', 'Czechia'],
+  ['DK', 'Denmark'],
+  ['EC', 'Ecuador'],
+  ['EE', 'Estonia'],
+  ['FI', 'Finland'],
+  ['FR', 'France'],
+  ['GE', 'Georgia'],
+  ['DE', 'Germany'],
+  ['GR', 'Greece'],
+  ['HK', 'Hong Kong'],
+  ['HU', 'Hungary'],
+  ['IS', 'Iceland'],
+  ['IN', 'India'],
+  ['ID', 'Indonesia'],
+  ['IR', 'Iran'],
+  ['IL', 'Israel'],
+  ['IT', 'Italy'],
+  ['JP', 'Japan'],
+  ['KZ', 'Kazakhstan'],
+  ['KE', 'Kenya'],
+  ['LV', 'Latvia'],
+  ['LT', 'Lithuania'],
+  ['LU', 'Luxembourg'],
+  ['MY', 'Malaysia'],
+  ['MU', 'Mauritius'],
+  ['MX', 'Mexico'],
+  ['MD', 'Moldova'],
+  ['MA', 'Morocco'],
+  ['NP', 'Nepal'],
+  ['NL', 'Netherlands'],
+  ['NC', 'New Caledonia'],
+  ['NZ', 'New Zealand'],
+  ['MK', 'North Macedonia'],
+  ['NO', 'Norway'],
+  ['PY', 'Paraguay'],
+  ['PH', 'Philippines'],
+  ['PL', 'Poland'],
+  ['PT', 'Portugal'],
+  ['RO', 'Romania'],
+  ['RU', 'Russia'],
+  ['RE', 'Réunion'],
+  ['SA', 'Saudi Arabia'],
+  ['RS', 'Serbia'],
+  ['SG', 'Singapore'],
+  ['SK', 'Slovakia'],
+  ['SI', 'Slovenia'],
+  ['ZA', 'South Africa'],
+  ['KR', 'South Korea'],
+  ['ES', 'Spain'],
+  ['SE', 'Sweden'],
+  ['CH', 'Switzerland'],
+  ['TW', 'Taiwan'],
+  ['TH', 'Thailand'],
+  ['TN', 'Tunisia'],
+  ['TR', 'Türkiye'],
+  ['UA', 'Ukraine'],
+  ['AE', 'United Arab Emirates'],
+  ['GB', 'United Kingdom'],
+  ['US', 'United States'],
+  ['UZ', 'Uzbekistan'],
+  ['VN', 'Vietnam'],
+] as const
+const MIRROR_COUNTRY_CODES = MIRROR_COUNTRIES.map(([code]) => code)
+
 /**
  * A complete fixture for the stage-one guide and its tests. The setup wizard
  * does not use these values as defaults.
@@ -109,7 +188,9 @@ export const stageOneConfig: Config = {
   disk: '/dev/nvme0n1',
   cpu: 'intel',
   espSize: '1G',
-  swap: 'none',
+  zram: false,
+  diskSwap: 'none',
+  diskSwapSizeGiB: null,
   subvolumeLayout: 'separated',
   mountOptions: ['compress=zstd', 'noatime'],
   timezone: 'America/Toronto',
@@ -121,12 +202,12 @@ export const stageOneConfig: Config = {
   secureBoot: 'none',
   snapper: 'none',
   desktop: 'none',
+  graphics: 'intel',
+  reflector: { countries: ['CA'], ageHours: 12, number: 10 },
 }
 
 /** Stamped into the rendered guide so a printed copy carries its own expiry. */
 export const VERIFIED_AGAINST = '2026-08'
-
-const NOT_IMPLEMENTED = '对应安装步骤尚未提供'
 
 const TPM2_PRESETS: Record<
   Tpm2Preset,
@@ -156,13 +237,7 @@ export function validate(config: ConfigDraft): Availability {
   const snapperReason = config.subvolumeLayout === 'root-only' ? '需要标准分离子卷布局' : undefined
 
   return {
-    'swap.zram': NOT_IMPLEMENTED,
-    'swap.swapfile': NOT_IMPLEMENTED,
-    'swap.partition': NOT_IMPLEMENTED,
     ...(snapperReason ? { 'snapper.root': snapperReason, 'snapper.root-home': snapperReason } : {}),
-    'desktop.gnome': NOT_IMPLEMENTED,
-    'desktop.kde': NOT_IMPLEMENTED,
-    'desktop.hyprland': NOT_IMPLEMENTED,
   }
 }
 
@@ -176,18 +251,14 @@ const SAFE = {
 export function parseDraft(search: string): ConfigDraft {
   const outer = new URLSearchParams(search)
   const compact = outer.get('c')
-  const legacy = outer.get('config')
-  const params =
-    compact !== null
-      ? decodeCompactConfig(compact)
-      : legacy !== null
-        ? decodeLegacyConfig(legacy)
-        : new URLSearchParams()
+  const params = compact !== null ? decodeCompactConfig(compact) : new URLSearchParams()
   const draft: ConfigDraft = {}
   if (!params) return draft
   const disk = safeValue(params.get('disk'), SAFE.disk)
   const cpu = listedValue(params.get('cpu'), ['intel', 'amd'] as const)
-  const swap = listedValue(params.get('swap'), ['none'] as const)
+  const zramValue = listedValue(params.get('zram'), ['false', 'true'] as const)
+  const diskSwapValue = listedValue(params.get('diskSwap'), ['none', 'swapfile'] as const)
+  const diskSwapSizeGiB = sizedValue(params.get('diskSwapSize'))
   const subvolumeLayout = listedValue(params.get('layout'), ['root-only', 'separated'] as const)
   const encryption = parseEncryption(params)
   const secureBoot = listedValue(params.get('secureBoot'), [
@@ -196,7 +267,9 @@ export function parseDraft(search: string): ConfigDraft {
     'shim-mok',
   ] as const)
   const snapper = listedValue(params.get('snapper'), ['none', 'root', 'root-home'] as const)
-  const desktop = listedValue(params.get('desktop'), ['none'] as const)
+  const desktop = listedValue(params.get('desktop'), ['none', 'gnome', 'kde', 'hyprland'] as const)
+  const graphics = listedValue(params.get('graphics'), ['intel', 'amd', 'nvidia'] as const)
+  const reflector = parseReflector(params)
   const timezone = listedValue(params.get('timezone'), TIMEZONES)
   const systemLocale = listedValue(params.get('locale'), SYSTEM_LOCALES)
   const keymap = listedValue(params.get('keymap'), KEYMAPS)
@@ -205,12 +278,16 @@ export function parseDraft(search: string): ConfigDraft {
 
   if (disk) draft.disk = disk
   if (cpu) draft.cpu = cpu
-  if (swap) draft.swap = swap
+  if (zramValue) draft.zram = zramValue === 'true'
+  if (diskSwapValue) draft.diskSwap = diskSwapValue
+  if (diskSwapSizeGiB) draft.diskSwapSizeGiB = diskSwapSizeGiB
   if (subvolumeLayout) draft.subvolumeLayout = subvolumeLayout
   if (encryption) draft.encryption = encryption
   if (secureBoot) draft.secureBoot = secureBoot
   if (snapper) draft.snapper = snapper
   if (desktop) draft.desktop = desktop
+  if (graphics) draft.graphics = graphics
+  if (reflector) draft.reflector = reflector
   if (timezone) draft.timezone = timezone
   if (systemLocale) draft.systemLocale = systemLocale
   if (keymap) draft.keymap = keymap
@@ -232,6 +309,27 @@ function parseEncryption(params: URLSearchParams): Encryption | undefined {
   return preset && pin ? makeTpm2Encryption(preset, pin === '1') : undefined
 }
 
+function parseReflector(params: URLSearchParams): Config['reflector'] | undefined {
+  const countries = params.get('mirrorCountries')?.split(',').filter(Boolean)
+  const ageHours = Number(params.get('mirrorAge'))
+  const number = Number(params.get('mirrorNumber'))
+  return countries?.length &&
+    countries.every((country) => MIRROR_COUNTRY_CODES.includes(country as never)) &&
+    Number.isInteger(ageHours) &&
+    ageHours >= 1 &&
+    ageHours <= 168 &&
+    Number.isInteger(number) &&
+    number >= 1 &&
+    number <= 50
+    ? { countries, ageHours, number }
+    : undefined
+}
+
+function sizedValue(value: string | null): number | undefined {
+  const size = Number(value)
+  return Number.isInteger(size) && size >= 1 && size <= 1024 ? size : undefined
+}
+
 /** Writes only choices the user has actually made. */
 export function serializeDraft(draft: ConfigDraft): string {
   const encoded = encodeCompactConfig(draft)
@@ -247,7 +345,9 @@ export function completeConfig(draft: ConfigDraft): Config | null {
   if (
     draft.disk === undefined ||
     draft.cpu === undefined ||
-    draft.swap === undefined ||
+    draft.zram === undefined ||
+    draft.diskSwap === undefined ||
+    (draft.diskSwap === 'swapfile' && draft.diskSwapSizeGiB === undefined) ||
     draft.subvolumeLayout === undefined ||
     draft.timezone === undefined ||
     draft.systemLocale === undefined ||
@@ -257,12 +357,29 @@ export function completeConfig(draft: ConfigDraft): Config | null {
     draft.encryption === undefined ||
     draft.secureBoot === undefined ||
     (draft.subvolumeLayout === 'separated' && draft.snapper === undefined) ||
-    draft.desktop === undefined
+    draft.desktop === undefined ||
+    draft.graphics === undefined ||
+    draft.reflector === undefined
   ) {
     return null
   }
 
   const preset = tpm2Preset(draft.encryption)
+  if (
+    draft.reflector.countries.length === 0 ||
+    new Set(draft.reflector.countries).size !== draft.reflector.countries.length ||
+    !draft.reflector.countries.every((country) =>
+      MIRROR_COUNTRY_CODES.includes(country as never),
+    ) ||
+    !Number.isInteger(draft.reflector.ageHours) ||
+    draft.reflector.ageHours < 1 ||
+    draft.reflector.ageHours > 168 ||
+    !Number.isInteger(draft.reflector.number) ||
+    draft.reflector.number < 1 ||
+    draft.reflector.number > 50
+  ) {
+    return null
+  }
   if (draft.encryption.mode === 'luks2' && draft.encryption.unlock.method === 'tpm2') {
     if (!preset) return null
     const requiredSecureBoot = TPM2_PRESETS[preset].secureBoot
@@ -273,7 +390,9 @@ export function completeConfig(draft: ConfigDraft): Config | null {
     disk: draft.disk,
     cpu: draft.cpu,
     espSize: '1G',
-    swap: draft.swap,
+    zram: draft.zram,
+    diskSwap: draft.diskSwap,
+    diskSwapSizeGiB: draft.diskSwap === 'swapfile' ? draft.diskSwapSizeGiB! : null,
     subvolumeLayout: draft.subvolumeLayout,
     mountOptions: ['compress=zstd', 'noatime'],
     timezone: draft.timezone,
@@ -285,6 +404,8 @@ export function completeConfig(draft: ConfigDraft): Config | null {
     secureBoot: draft.secureBoot,
     snapper: draft.subvolumeLayout === 'root-only' ? 'none' : draft.snapper!,
     desktop: draft.desktop,
+    graphics: draft.graphics,
+    reflector: draft.reflector,
   }
 }
 
@@ -320,15 +441,16 @@ function decodeBase64Url(value: string): Uint8Array | null {
   }
 }
 
-/** Enum order is part of the v1 URL format. Append only; never reorder existing entries. */
+/** Enum order is part of the URL format. */
 const COMPACT_ENUMS = {
   cpu: ['intel', 'amd'],
-  swap: ['none', 'zram', 'swapfile', 'partition'],
+  diskSwap: ['none', 'swapfile'],
   layout: ['root-only', 'separated'],
   encryption: ['none', 'luks2'],
   secureBoot: ['none', 'custom-db', 'shim-mok'],
   snapper: ['none', 'root', 'root-home'],
   desktop: ['none', 'gnome', 'kde', 'hyprland'],
+  graphics: ['intel', 'amd', 'nvidia'],
   locale: SYSTEM_LOCALES,
   keymap: KEYMAPS,
 } as const
@@ -336,7 +458,7 @@ const COMPACT_ENUMS = {
 function encodeCompactConfig(draft: ConfigDraft): string | null {
   // Byte 0 is the format version; bytes 1-2 are the field-presence bitmap.
   let mask = 0
-  const bytes = [2, 0, 0]
+  const bytes = [1, 0, 0]
   const include = (bit: number, write: () => void) => {
     mask |= 1 << bit
     write()
@@ -354,7 +476,14 @@ function encodeCompactConfig(draft: ConfigDraft): string | null {
 
   if (draft.disk !== undefined) include(0, () => writeText(draft.disk!.replace(/^\/dev\//, '')))
   if (draft.cpu !== undefined) include(1, () => writeEnum(draft.cpu!, COMPACT_ENUMS.cpu))
-  if (draft.swap !== undefined) include(2, () => writeEnum(draft.swap!, COMPACT_ENUMS.swap))
+  if (draft.diskSwap !== undefined)
+    include(2, () => {
+      writeEnum(draft.diskSwap!, COMPACT_ENUMS.diskSwap)
+      if (draft.diskSwap === 'swapfile') {
+        const size = draft.diskSwapSizeGiB ?? 0
+        bytes.push(size & 0xff, size >> 8)
+      }
+    })
   if (draft.subvolumeLayout !== undefined)
     include(3, () => writeEnum(draft.subvolumeLayout!, COMPACT_ENUMS.layout))
   if (draft.encryption !== undefined)
@@ -383,6 +512,16 @@ function encodeCompactConfig(draft: ConfigDraft): string | null {
   if (draft.keymap !== undefined) include(10, () => writeEnum(draft.keymap!, COMPACT_ENUMS.keymap))
   if (draft.hostname !== undefined) include(11, () => writeText(draft.hostname!))
   if (draft.username !== undefined) include(12, () => writeText(draft.username!))
+  if (draft.graphics !== undefined)
+    include(13, () => writeEnum(draft.graphics!, COMPACT_ENUMS.graphics))
+  if (draft.reflector !== undefined)
+    include(14, () => {
+      bytes.push(draft.reflector!.countries.length)
+      for (const country of draft.reflector!.countries) writeEnum(country, MIRROR_COUNTRY_CODES)
+      bytes.push(draft.reflector!.ageHours)
+      bytes.push(draft.reflector!.number)
+    })
+  if (draft.zram !== undefined) include(15, () => bytes.push(draft.zram ? 1 : 0))
   if (mask === 0) return null
 
   bytes[1] = mask & 0xff
@@ -392,10 +531,9 @@ function encodeCompactConfig(draft: ConfigDraft): string | null {
 
 function decodeCompactConfig(value: string): URLSearchParams | null {
   const bytes = decodeBase64Url(value)
-  if (!bytes || bytes.length < 3 || (bytes[0] !== 1 && bytes[0] !== 2)) return null
-  const version = bytes[0]
+  if (!bytes || bytes.length < 3 || bytes[0] !== 1) return null
   const mask = bytes[1]! | (bytes[2]! << 8)
-  if ((mask & ~0x1fff) !== 0) return null
+  if ((mask & ~0xffff) !== 0) return null
 
   let cursor = 3
   const params = new URLSearchParams()
@@ -423,7 +561,7 @@ function decodeCompactConfig(value: string): URLSearchParams | null {
     const mode = readEnum(COMPACT_ENUMS.encryption)
     if (!mode) return false
     params.set('encryption', mode)
-    if (version === 1 || mode === 'none') return true
+    if (mode === 'none') return true
     const unlock = bytes[cursor++]
     if (unlock === 0) {
       params.set('unlock', 'password')
@@ -437,11 +575,56 @@ function decodeCompactConfig(value: string): URLSearchParams | null {
     params.set('tpmPin', String(pin))
     return true
   }
+  const readDiskSwap = () => {
+    if ((mask & (1 << 2)) === 0) return true
+    const diskSwap = readEnum(COMPACT_ENUMS.diskSwap)
+    if (!diskSwap) return false
+    params.set('diskSwap', diskSwap)
+    if (diskSwap === 'none') return true
+    const low = bytes[cursor++]
+    const high = bytes[cursor++]
+    if (low === undefined || high === undefined) return false
+    const size = low | (high << 8)
+    if (size > 1024) return false
+    if (size > 0) params.set('diskSwapSize', String(size))
+    return true
+  }
+  const readReflector = () => {
+    if ((mask & (1 << 14)) === 0) return true
+    const countryCount = bytes[cursor++]
+    if (
+      countryCount === undefined ||
+      countryCount < 1 ||
+      countryCount > MIRROR_COUNTRY_CODES.length
+    )
+      return false
+    const countries: string[] = []
+    for (let index = 0; index < countryCount; index += 1) {
+      const country = readEnum(MIRROR_COUNTRY_CODES)
+      if (!country || countries.includes(country)) return false
+      countries.push(country)
+    }
+    const ageHours = bytes[cursor++]
+    const number = bytes[cursor++]
+    if (!ageHours || ageHours > 168 || number === undefined || number < 1 || number > 50)
+      return false
+    params.set('mirrorCountries', countries.join(','))
+    params.set('mirrorAge', String(ageHours))
+    params.set('mirrorNumber', String(number))
+    return true
+  }
+  const readZram = () => {
+    if ((mask & (1 << 15)) === 0) return true
+    const zram = bytes[cursor++]
+    if (zram !== 0 && zram !== 1) return false
+    params.set('zram', String(zram === 1))
+    return true
+  }
 
   const valid =
     read(0, 'disk', readText, '/dev/') &&
     read(1, 'cpu', () => readEnum(COMPACT_ENUMS.cpu)) &&
-    read(2, 'swap', () => readEnum(COMPACT_ENUMS.swap)) &&
+    readDiskSwap() &&
     read(3, 'layout', () => readEnum(COMPACT_ENUMS.layout)) &&
     readEncryption() &&
     read(5, 'secureBoot', () => readEnum(COMPACT_ENUMS.secureBoot)) &&
@@ -451,13 +634,10 @@ function decodeCompactConfig(value: string): URLSearchParams | null {
     read(9, 'locale', () => readEnum(COMPACT_ENUMS.locale)) &&
     read(10, 'keymap', () => readEnum(COMPACT_ENUMS.keymap)) &&
     read(11, 'hostname', readText) &&
-    read(12, 'user', readText)
+    read(12, 'user', readText) &&
+    read(13, 'graphics', () => readEnum(COMPACT_ENUMS.graphics)) &&
+    readReflector() &&
+    readZram()
 
   return valid && cursor === bytes.length ? params : null
-}
-
-function decodeLegacyConfig(value: string): URLSearchParams | null {
-  if (!value.startsWith('v1.')) return null
-  const bytes = decodeBase64Url(value.slice(3))
-  return bytes ? new URLSearchParams(new TextDecoder().decode(bytes)) : null
 }

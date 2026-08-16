@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import ChoicePicker from '@/components/ChoicePicker.vue'
 import {
   KEYMAPS,
+  MIRROR_COUNTRIES,
   SYSTEM_LOCALES,
   TIMEZONES,
   makeTpm2Encryption,
@@ -23,6 +24,7 @@ const step = defineModel<number>('step', { required: true })
 const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 const canUseDetectedTimezone = TIMEZONES.includes(detectedTimezone)
 const sortedSystemLocales = [...SYSTEM_LOCALES].sort()
+const mirrorCountryCodes = MIRROR_COUNTRIES.map(([code]) => code)
 const isCjkSystemLocale = computed(() =>
   ['zh_CN.UTF-8', 'zh_TW.UTF-8', 'ja_JP.UTF-8', 'ko_KR.UTF-8'].includes(
     model.value.systemLocale ?? '',
@@ -68,18 +70,24 @@ const subvolumeOptions = computed(() => [
     description: pick(choiceDescriptions.subvolumeLayout.separated, props.locale),
   },
 ])
-const swapOptions = computed(() => [
+const zramOptions = computed(() =>
+  (['false', 'true'] as const).map((value) => ({
+    value,
+    label: pick(choices.zram[value], props.locale),
+    description: pick(choiceDescriptions.zram[value], props.locale),
+  })),
+)
+const diskSwapOptions = computed(() => [
   {
     value: 'none',
-    label: pick(choices.swap.none, props.locale),
-    description: pick(choiceDescriptions.swap.none, props.locale),
+    label: pick(choices.diskSwap.none, props.locale),
+    description: pick(choiceDescriptions.diskSwap.none, props.locale),
   },
-  ...(['zram', 'swapfile', 'partition'] as const).map((value) => ({
-    value,
-    label: pick(choices.swap[value], props.locale),
-    description: pick(choiceDescriptions.swap[value], props.locale),
-    disabledReason: unavailableReason(`swap.${value}`),
-  })),
+  {
+    value: 'swapfile',
+    label: pick(choices.diskSwap.swapfile, props.locale),
+    description: pick(choiceDescriptions.diskSwap.swapfile, props.locale),
+  },
 ])
 const encryptionOptions = computed(() => [
   {
@@ -152,9 +160,18 @@ const desktopOptions = computed(() => [
     disabledReason: unavailableReason(`desktop.${value}`),
   })),
 ])
-
+const graphicsOptions = computed(() =>
+  (['intel', 'amd', 'nvidia'] as const).map((value) => ({
+    value,
+    label: pick(choices.graphics[value], props.locale),
+    description: pick(choiceDescriptions.graphics[value], props.locale),
+  })),
+)
 type TextField = 'hostname' | 'username'
-type ChoiceField = Exclude<keyof ConfigDraft, 'encryption'>
+type ChoiceField = Exclude<
+  keyof ConfigDraft,
+  'encryption' | 'reflector' | 'zram' | 'diskSwap' | 'diskSwapSizeGiB'
+>
 type SelectField = 'timezone' | 'systemLocale' | 'keymap'
 
 function commitText(field: TextField, event: Event) {
@@ -201,6 +218,25 @@ function commitEncryption(value: string | undefined) {
   }
 }
 
+function commitZram(value: string | undefined) {
+  if (!value) return
+  model.value = { ...model.value, zram: value === 'true' }
+}
+
+function commitDiskSwap(value: string | undefined) {
+  if (!value) return
+  model.value = {
+    ...model.value,
+    diskSwap: value as ConfigDraft['diskSwap'],
+    diskSwapSizeGiB: value === 'swapfile' ? model.value.diskSwapSizeGiB : null,
+  }
+}
+
+function commitDiskSwapSize(event: Event) {
+  const size = Number((event.currentTarget as HTMLInputElement).value)
+  model.value = { ...model.value, diskSwapSizeGiB: size }
+}
+
 function commitTpm2Preset(value: string | undefined) {
   if (!value) return
   const preset = value as Tpm2Preset
@@ -241,6 +277,61 @@ function commitSecureBoot(value: string | undefined) {
     next.encryption = makeTpm2Encryption('minimal', pin)
   }
   model.value = next
+}
+
+function commitReflectorCountries(event: Event) {
+  const input = event.currentTarget as HTMLInputElement
+  const countries = [
+    ...new Set(
+      input.value
+        .toUpperCase()
+        .split(',')
+        .map((country) => country.trim())
+        .filter(Boolean),
+    ),
+  ]
+  input.setCustomValidity(
+    countries.length > 0 &&
+      countries.every((country) => mirrorCountryCodes.includes(country as never))
+      ? ''
+      : '请输入有效的 ISO 国家代码，并用英文逗号分隔',
+  )
+  if (!input.reportValidity()) {
+    input.value = model.value.reflector?.countries.join(',') ?? ''
+    return
+  }
+  model.value = {
+    ...model.value,
+    reflector: {
+      countries,
+      ageHours: model.value.reflector?.ageHours ?? 12,
+      number: model.value.reflector?.number ?? 10,
+    },
+  }
+}
+
+function commitReflectorAge(event: Event) {
+  const ageHours = Number((event.currentTarget as HTMLInputElement).value)
+  model.value = {
+    ...model.value,
+    reflector: {
+      countries: model.value.reflector?.countries ?? [],
+      ageHours,
+      number: model.value.reflector?.number ?? 10,
+    },
+  }
+}
+
+function commitReflectorNumber(event: Event) {
+  const number = Number((event.currentTarget as HTMLInputElement).value)
+  model.value = {
+    ...model.value,
+    reflector: {
+      countries: model.value.reflector?.countries ?? [],
+      ageHours: model.value.reflector?.ageHours ?? 12,
+      number,
+    },
+  }
 }
 
 function advance(event: Event) {
@@ -319,6 +410,16 @@ function goToStep(index: number) {
             @update:model-value="commitChoice('cpu', $event)"
           />
         </div>
+
+        <div class="field">
+          <span>{{ pick(ui.graphics, props.locale) }}</span>
+          <ChoicePicker
+            name="graphics"
+            :model-value="model.graphics"
+            :options="graphicsOptions"
+            @update:model-value="commitChoice('graphics', $event)"
+          />
+        </div>
       </fieldset>
 
       <fieldset v-if="step === 2">
@@ -333,13 +434,35 @@ function goToStep(index: number) {
         </div>
 
         <div class="field">
-          <span>{{ pick(ui.swap, props.locale) }}</span>
+          <span>{{ pick(ui.zram, props.locale) }}</span>
           <ChoicePicker
-            name="swap"
-            :model-value="model.swap"
-            :options="swapOptions"
-            @update:model-value="commitChoice('swap', $event)"
+            name="zram"
+            :model-value="model.zram === undefined ? undefined : String(model.zram)"
+            :options="zramOptions"
+            @update:model-value="commitZram"
           />
+        </div>
+
+        <div class="field">
+          <span>{{ pick(ui.diskSwap, props.locale) }}</span>
+          <ChoicePicker
+            name="diskSwap"
+            :model-value="model.diskSwap"
+            :options="diskSwapOptions"
+            @update:model-value="commitDiskSwap"
+          />
+          <label v-if="model.diskSwap === 'swapfile'" class="nested-field">
+            <span>容量（GiB）</span>
+            <input
+              name="diskSwapSizeGiB"
+              required
+              type="number"
+              min="1"
+              max="1024"
+              :value="model.diskSwapSizeGiB ?? ''"
+              @change="commitDiskSwapSize"
+            />
+          </label>
         </div>
 
         <div class="field encryption-field">
@@ -500,6 +623,45 @@ function goToStep(index: number) {
             :options="desktopOptions"
             @update:model-value="commitChoice('desktop', $event)"
           />
+        </div>
+
+        <div class="field nested-field reflector-field">
+          <span>{{ pick(ui.reflector, props.locale) }}</span>
+          <label>
+            <span>{{ pick(ui.mirrorCountry, props.locale) }}</span>
+            <input
+              name="mirrorCountries"
+              required
+              placeholder="CA,US"
+              :value="model.reflector?.countries.join(',') ?? ''"
+              @change="commitReflectorCountries"
+            />
+            <small>{{ pick(ui.mirrorCountryHint, props.locale) }}</small>
+          </label>
+          <label>
+            <span>{{ pick(ui.mirrorAge, props.locale) }}</span>
+            <input
+              name="mirrorAge"
+              required
+              type="number"
+              min="1"
+              max="168"
+              :value="model.reflector?.ageHours ?? 12"
+              @change="commitReflectorAge"
+            />
+          </label>
+          <label>
+            <span>{{ pick(ui.mirrorNumber, props.locale) }}</span>
+            <input
+              name="mirrorNumber"
+              required
+              type="number"
+              min="1"
+              max="50"
+              :value="model.reflector?.number ?? 10"
+              @change="commitReflectorNumber"
+            />
+          </label>
         </div>
       </fieldset>
 

@@ -62,11 +62,7 @@ cryptsetup open ${rootDevice} ${luksName}
     section: 'disk',
     title: { zh: '格式化' },
     body: {
-      zh: ({
-        cfg,
-        espDevice,
-        rootFsDevice,
-      }) => `将 ESP 格式化为 UEFI 固件普遍支持的 FAT32 文件系统，并在${cfg.encryption.mode === 'luks2' ? '已打开的 LUKS 映射' : '根分区'}上创建 btrfs：
+      zh: ({ cfg, espDevice, rootFsDevice }) => `将 ESP 格式化为 UEFI 固件普遍支持的 FAT32 文件系统，并在${cfg.encryption.mode === 'luks2' ? '已打开的 LUKS 映射' : '根分区'}上创建 btrfs：
 
 \`\`\`
 mkfs.fat -F 32 ${espDevice}
@@ -93,7 +89,7 @@ umount /mnt
 | --- | --- |
 ${subvolumes.map((s) => `| \`${s.name}\` | \`${s.mountPoint}\` |`).join('\n')}
 
-${cfg.subvolumeLayout === 'separated' ? '\`@log\`、\`@pkg\` 和 \`@boot\` 均不包含在 \`@\` 的快照中。此布局可以不配置快照，也可以配置 snapper。' : '此布局只创建根子卷，不支持配置 snapper 快照。'}`,
+${cfg.subvolumeLayout === 'separated' ? '\`@log\`、\`@pkg\` 和 \`@boot\` 均不包含在 \`@\` 的快照中。此布局可以不配置快照，也可以配置 snapper。' : ''}`,
     },
   },
   {
@@ -116,7 +112,8 @@ ${cfg.subvolumeLayout === 'separated' ? '\`@log\`、\`@pkg\` 和 \`@boot\` 均�
 mount -o subvol=${rootSubvolume.name},${mountOptions} ${rootFsDevice} /mnt
 ${nestedSubvolumes
   .map(
-    (s) => `mount --mkdir -o subvol=${s.name},${mountOptions} ${rootFsDevice} /mnt${s.mountPoint}`,
+    (s) =>
+      `mount --mkdir -o subvol=${s.name},${(s.mountOptions ?? cfg.mountOptions).join(',')} ${rootFsDevice} /mnt${s.mountPoint}`,
   )
   .join('\n')}
 mount --mkdir -o noatime,umask=0077 ${espDevice} /mnt${espMountPoint}

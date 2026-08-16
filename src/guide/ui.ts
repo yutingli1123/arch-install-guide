@@ -38,7 +38,8 @@ export const ui = {
   none: { zh: '无' },
   targetDisk: { zh: '目标磁盘' },
   cpu: { zh: 'CPU' },
-  swap: { zh: 'swap' },
+  zram: { zh: 'zram' },
+  diskSwap: { zh: '磁盘 swap' },
   subvolumes: { zh: '子卷布局' },
   encryption: { zh: '磁盘加密' },
   unlock: { zh: '解锁方式' },
@@ -54,6 +55,12 @@ export const ui = {
   snapper: { zh: 'snapper' },
   snapperUnsupportedRootOnly: { zh: '单一根子卷不推荐 Snapper' },
   desktop: { zh: '桌面环境' },
+  graphics: { zh: '显卡' },
+  reflector: { zh: '镜像源' },
+  mirrorCountry: { zh: '国家代码' },
+  mirrorCountryHint: { zh: '可填写多个 ISO 国家代码，用英文逗号分隔，例如 CA,US。' },
+  mirrorAge: { zh: '最近同步（小时）' },
+  mirrorNumber: { zh: '保留数量' },
   timezone: { zh: '时区' },
   timezoneHint: { zh: '选择安装后系统使用的时区。' },
   detectedTimezone: { zh: (timezone: string) => `检测到当前时区：${timezone}` },
@@ -78,11 +85,13 @@ export const choices = {
     intel: { zh: 'Intel' },
     amd: { zh: 'AMD' },
   },
-  swap: {
+  zram: {
+    false: { zh: '关闭' },
+    true: { zh: '开启' },
+  },
+  diskSwap: {
     none: { zh: '无' },
-    zram: { zh: 'zram' },
     swapfile: { zh: 'swapfile' },
-    partition: { zh: '独立分区' },
   },
   subvolumeLayout: {
     'root-only': { zh: '单一根子卷（结构简单）' },
@@ -113,6 +122,11 @@ export const choices = {
     gnome: { zh: 'GNOME' },
     kde: { zh: 'KDE Plasma' },
     hyprland: { zh: 'Hyprland' },
+  },
+  graphics: {
+    intel: { zh: 'Intel' },
+    amd: { zh: 'AMD' },
+    nvidia: { zh: 'NVIDIA' },
   },
   systemLocale: {
     'en_US.UTF-8': { zh: 'English (United States)' },
@@ -197,11 +211,13 @@ export const choiceDescriptions = {
     intel: { zh: '安装 Intel 处理器所需的 intel-ucode 微码包。' },
     amd: { zh: '安装 AMD 处理器所需的 amd-ucode 微码包。' },
   },
-  swap: {
-    none: { zh: '不配置交换空间；内存耗尽时系统无法将不活跃页面换出。' },
-    zram: { zh: '在内存中创建压缩交换设备，不占用磁盘空间。' },
-    swapfile: { zh: '在 Btrfs 文件系统中使用专门配置的交换文件。' },
-    partition: { zh: '在目标磁盘上划分一个专用交换分区。' },
+  zram: {
+    false: { zh: '不使用 zram。' },
+    true: { zh: '使用 zram，在内存中创建压缩 swap。' },
+  },
+  diskSwap: {
+    none: { zh: '不配置磁盘 swap。' },
+    swapfile: { zh: '在 Btrfs 文件系统中配置 swapfile。' },
   },
   subvolumeLayout: {
     'root-only': { zh: '只创建 @，结构简单，但不能配置 Snapper。' },
@@ -234,5 +250,10 @@ export const choiceDescriptions = {
     gnome: { zh: '安装 GNOME 桌面环境。' },
     kde: { zh: '安装 KDE Plasma 桌面环境。' },
     hyprland: { zh: '安装 Hyprland Wayland 合成器。' },
+  },
+  graphics: {
+    intel: { zh: '安装 Mesa、Intel Vulkan 驱动和现代 Intel 核显的视频加速驱动。' },
+    amd: { zh: '安装 Mesa、AMD Vulkan 驱动和 Mesa 视频加速驱动。' },
+    nvidia: { zh: '安装 NVIDIA 开放内核模块和用户空间驱动，适用于 Turing 及更新架构。' },
   },
 } satisfies Record<string, Record<string, Localized<string>>>

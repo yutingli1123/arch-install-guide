@@ -2,6 +2,49 @@ import type { Step } from '../types'
 
 export const storageSteps: Step[] = [
   {
+    id: 'zram',
+    section: 'storage',
+    title: { zh: '配置 zram' },
+    when: (cfg) => cfg.zram,
+    body: {
+      zh: () => `新建 zram-generator 配置：
+
+\`\`\`
+vim /etc/systemd/zram-generator.conf
+\`\`\`
+
+写入：
+
+\`\`\`
+[zram0]
+zram-size = ram / 2
+compression-algorithm = zstd
+swap-priority = 100
+\`\`\`
+
+重启后 systemd 会创建容量为物理内存一半的压缩交换设备 \`/dev/zram0\`。`,
+    },
+  },
+  {
+    id: 'swapfile',
+    section: 'storage',
+    title: { zh: '创建 swapfile' },
+    when: (cfg) => cfg.diskSwap === 'swapfile',
+    body: {
+      zh: ({
+        cfg,
+      }) => `在独立的 \`@swap\` 子卷中创建 ${cfg.diskSwapSizeGiB} GiB swapfile：
+
+\`\`\`
+btrfs filesystem mkswapfile --size ${cfg.diskSwapSizeGiB}g --uuid clear /swap/swapfile
+swapon /swap/swapfile
+echo '/swap/swapfile none swap defaults 0 0' >> /etc/fstab
+\`\`\`
+
+\`@swap\` 不会包含在根子卷快照中。\`--uuid clear\` 避免 swapfile 被误识别为可挂载文件系统。`,
+    },
+  },
+  {
     id: 'initramfs-encryption',
     section: 'storage',
     title: { zh: '启用 systemd initramfs 解锁' },

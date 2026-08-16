@@ -57,6 +57,144 @@ describe('derive', () => {
     expect(derive({ ...stageOneConfig, cpu: 'intel' }).packages).not.toContain('amd-ucode')
   })
 
+  it('describes every base and conditional package by its actual purpose', () => {
+    const rendered = renderHtml({
+      ...stageOneConfig,
+      zram: true,
+      snapper: 'root-home',
+      encryption: makeTpm2Encryption('custom-db'),
+      secureBoot: 'custom-db',
+    })
+    expect(rendered).toContain('以 Root 权限执行命令')
+    expect(rendered).not.toContain('以管理员权限执行命令')
+    expect(rendered).toContain('编辑配置文件')
+    expect(rendered).toContain('配置 zram')
+    expect(rendered).toContain('创建和打开 LUKS2 加密卷')
+    expect(rendered).toContain('管理 btrfs 快照')
+    expect(rendered).toContain('管理网络连接')
+    expect(rendered).toContain('管理自定义 Secure Boot 密钥并签名 EFI 文件')
+    expect(rendered).toContain('生成 UKI，并按配置创建 Secure Boot 或 PCR 11 签名')
+    expect(rendered).not.toContain('后续步骤要用')
+    expect(rendered).not.toContain('装完之后的联网')
+  })
+
+  it('derives graphics and desktop packages independently from storage', () => {
+    const kdeOnAmd = derive({ ...stageOneConfig, graphics: 'amd', desktop: 'kde' })
+    expect(kdeOnAmd.graphicsPackages).toEqual(['mesa', 'vulkan-radeon', 'libva-mesa-driver'])
+    expect(kdeOnAmd.desktopPackages).toEqual([
+      'plasma-meta',
+      'sddm',
+      'konsole',
+      'dolphin',
+      'qt6-multimedia-ffmpeg',
+      'tesseract-data-eng',
+    ])
+    expect(kdeOnAmd.audioPackages).not.toContain('pavucontrol')
+    expect(kdeOnAmd.displayManager).toBe('sddm')
+
+    const kdeChinese = derive({ ...stageOneConfig, desktop: 'kde', systemLocale: 'zh_CN.UTF-8' })
+    expect(kdeChinese.desktopPackages).toEqual(
+      expect.arrayContaining(['tesseract-data-eng', 'tesseract-data-chi_sim']),
+    )
+    const kdeFrenchCanadian = derive({
+      ...stageOneConfig,
+      desktop: 'kde',
+      systemLocale: 'fr_CA.UTF-8',
+    })
+    expect(kdeFrenchCanadian.desktopPackages).toEqual(
+      expect.arrayContaining(['tesseract-data-eng', 'tesseract-data-fra']),
+    )
+
+    const headless = derive({ ...stageOneConfig, desktop: 'none' })
+    expect(headless.desktopPackages).toEqual([])
+    expect(headless.audioPackages).toEqual([])
+    expect(headless.desktopCommonPackages).toEqual([])
+    expect(headless.displayManager).toBeUndefined()
+
+    const hyprland = derive({ ...stageOneConfig, desktop: 'hyprland' })
+    expect(hyprland.displayManager).toBe('greetd')
+    expect(hyprland.desktopPackages).toEqual(
+      expect.arrayContaining(['ghostty', 'hyprpolkitagent', 'greetd', 'greetd-regreet']),
+    )
+    expect(hyprland.audioPackages).toEqual([
+      'pipewire',
+      'pipewire-audio',
+      'pipewire-alsa',
+      'pipewire-pulse',
+      'pipewire-jack',
+      'wireplumber',
+      'pavucontrol',
+    ])
+    expect(hyprland.desktopCommonPackages).toEqual([
+      'bluez',
+      'bluez-utils',
+      'blueman',
+      'noto-fonts',
+      'noto-fonts-cjk',
+      'noto-fonts-extra',
+      'noto-fonts-emoji',
+      'fcitx5-im',
+    ])
+
+    const gnomeChinese = derive({
+      ...stageOneConfig,
+      desktop: 'gnome',
+      systemLocale: 'zh_CN.UTF-8',
+    })
+    expect(gnomeChinese.audioPackages).not.toContain('pavucontrol')
+    expect(gnomeChinese.desktopCommonPackages).toContain('fcitx5-chinese-addons')
+    expect(gnomeChinese.desktopCommonPackages).not.toContain('bluez')
+    expect(gnomeChinese.desktopCommonPackages).not.toContain('bluez-utils')
+    expect(gnomeChinese.desktopCommonPackages).not.toContain('blueman')
+
+    const kdeJapanese = derive({
+      ...stageOneConfig,
+      desktop: 'kde',
+      systemLocale: 'ja_JP.UTF-8',
+    })
+    expect(kdeJapanese.desktopCommonPackages).toContain('fcitx5-mozc')
+    expect(kdeJapanese.desktopCommonPackages).not.toContain('bluez')
+    expect(kdeJapanese.desktopCommonPackages).not.toContain('bluez-utils')
+    expect(kdeJapanese.desktopCommonPackages).not.toContain('blueman')
+  })
+
+  it('adds zram-generator and renders its configuration only for zram', () => {
+    const zram = { ...stageOneConfig, zram: true }
+    expect(derive(zram).packages).toContain('zram-generator')
+    expect(renderHtml(zram)).toContain('zram-size = ram / 2')
+    expect(renderHtml(stageOneConfig)).not.toContain('/etc/systemd/zram-generator.conf')
+  })
+
+  it('creates a dedicated uncompressed subvolume for a btrfs swapfile', () => {
+    const swapfile = { ...stageOneConfig, diskSwap: 'swapfile' as const, diskSwapSizeGiB: 8 }
+    const context = derive(swapfile)
+    expect(context.subvolumes[context.subvolumes.length - 1]).toEqual({
+      name: '@swap',
+      mountPoint: '/swap',
+      mountOptions: ['noatime'],
+    })
+    const rendered = renderHtml(swapfile)
+    expect(rendered).toContain('mount --mkdir -o subvol=@swap,noatime')
+    expect(rendered).toContain('btrfs filesystem mkswapfile --size 8g --uuid clear')
+    expect(rendered).toContain('/swap/swapfile none swap defaults 0 0')
+    expect(completeConfig(parseDraft(serializeDraft(swapfile)))).toEqual(swapfile)
+  })
+
+  it('configures zram and a disk swapfile together', () => {
+    const combined = {
+      ...stageOneConfig,
+      zram: true,
+      diskSwap: 'swapfile' as const,
+      diskSwapSizeGiB: 8,
+    }
+    const rendered = renderHtml(combined)
+
+    expect(derive(combined).packages).toContain('zram-generator')
+    expect(rendered).toContain('swap-priority = 100')
+    expect(rendered).toContain('/swap/swapfile none swap defaults 0 0')
+    expect(completeConfig(parseDraft(serializeDraft(combined)))).toEqual(combined)
+  })
+
   it('derives encrypted storage and snapshot mount points from the final configuration', () => {
     const context = derive({
       ...stageOneConfig,
@@ -96,9 +234,31 @@ describe('configuration', () => {
       keymap: 'de-latin1',
       hostname: 'workstation',
       username: 'alice',
+      graphics: 'nvidia',
+      desktop: 'hyprland',
+      reflector: { countries: ['GB', 'FR'], ageHours: 6, number: 7 },
     }
 
     expect(completeConfig(parseDraft(serializeDraft(config)))).toEqual(config)
+  })
+
+  it('keeps reflector freshness filtering independent from rate sorting', () => {
+    const config = {
+      ...stageOneConfig,
+      reflector: { countries: ['CA', 'US'], ageHours: 6, number: 12 },
+    }
+    const rendered = renderHtml(config)
+    expect(rendered).toContain(
+      'reflector --country CA,US --age 6 --protocol https --sort rate --number 12',
+    )
+    expect(rendered).not.toContain('--sort age')
+    expect(completeConfig(parseDraft(serializeDraft(config)))).toEqual(config)
+    expect(
+      completeConfig({
+        ...config,
+        reflector: { ...config.reflector, countries: ['CA', 'CA'] },
+      }),
+    ).toBeNull()
   })
 
   it('keeps an untouched draft empty and serializes only explicit choices', () => {
@@ -107,7 +267,7 @@ describe('configuration', () => {
     expect(serializeDraft({ cpu: 'amd' })).toMatch(/^c=[A-Za-z0-9_-]+$/)
     expect(serializeDraft({ cpu: 'amd' })).not.toContain('cpu')
     expect(parseDraft(serializeDraft({ cpu: 'amd' }))).toEqual({ cpu: 'amd' })
-    expect(parseDraft('?config=v1.Y3B1PWFtZA')).toEqual({ cpu: 'amd' })
+    expect(parseDraft('?config=v1.Y3B1PWFtZA')).toEqual({})
     expect(completeConfig({})).toBeNull()
   })
 
@@ -115,7 +275,8 @@ describe('configuration', () => {
     const query = serializeDraft({
       disk: '/dev/nvme0n1',
       cpu: 'amd',
-      swap: 'none',
+      zram: false,
+      diskSwap: 'none',
       subvolumeLayout: 'root-only',
       encryption: { mode: 'none' },
       secureBoot: 'none',
@@ -278,7 +439,9 @@ describe('renderGuide', () => {
     expect(encrypted.indexOf('sgdisk')).toBeLessThan(encrypted.indexOf('cryptsetup luksFormat'))
     expect(encrypted).toContain('mkfs.btrfs -f /dev/mapper/cryptroot')
     expect(encrypted).toContain('rd.luks.name=$(blkid -s UUID -o value /dev/nvme0n1p2)=cryptroot')
-    expect(encrypted).toContain('在 <code>HOOKS</code> 行的 <code>block</code> 后添加 <code>sd-encrypt</code>')
+    expect(encrypted).toContain(
+      '在 <code>HOOKS</code> 行的 <code>block</code> 后添加 <code>sd-encrypt</code>',
+    )
     expect(encrypted).toContain('block sd-encrypt filesystems')
     expect(encrypted).not.toContain('HOOKS=(base systemd autodetect')
     expect(encrypted).not.toContain('systemd-cryptenroll --tpm2-device=auto')
@@ -310,7 +473,8 @@ describe('renderGuide', () => {
     expect(flagship).toContain('--tpm2-public-key-pcrs=11')
     expect(flagship).toContain('sudo systemd-cryptenroll --tpm2-device=auto')
     expect(flagship).toContain('sudo systemd-cryptenroll /dev/nvme0n1p2')
-    expect(flagship).toContain('sudo bootctl status')
+    expect(flagship).not.toContain('sudo bootctl status')
+    expect(flagship).toContain('sudo bootctl --print-loader-path')
     expect(flagship).toContain('至此，TPM2 解锁配置完成')
     expect(flagship).not.toContain('sudo pacman -Syu')
   })
@@ -331,6 +495,97 @@ describe('renderGuide', () => {
     expect(custom).toContain('sbctl enroll-keys -m')
     expect(custom).not.toContain('shim-signed.git')
     expect(html).not.toContain('sbctl create-keys')
+  })
+
+  it('renders reflector, graphics, and each desktop path without changing storage', () => {
+    const gnome = renderHtml({ ...stageOneConfig, desktop: 'gnome', graphics: 'intel' })
+    expect(gnome).toContain(
+      'reflector --country CA --age 12 --protocol https --sort rate --number 10',
+    )
+    expect(gnome).toContain('pacman -S mesa vulkan-intel intel-media-driver')
+    expect(gnome).toContain('pacman -S gnome')
+    expect(gnome).not.toContain('pavucontrol')
+    expect(gnome).toContain('systemctl enable gdm')
+    expect(gnome).not.toContain('/etc/environment.d/90-fcitx.conf')
+    expect(gnome).not.toContain('XMODIFIERS')
+    expect(gnome).not.toContain('QT_IM_MODULE')
+    expect(gnome).not.toContain('gtk-im-module')
+    expect(gnome).not.toContain('/home/user/.config/autostart')
+    expect(gnome).toContain('aur.archlinux.org/gnome-shell-extension-kimpanel-git.git')
+    expect(gnome).toContain('在扩展管理中启用 Kimpanel')
+    expect(gnome).not.toContain('Hidden=true')
+    expect(gnome).toContain('桌面环境自带的设置应用中配置网络')
+    expect(gnome).not.toContain('nmtui')
+
+    const kde = renderHtml({ ...stageOneConfig, desktop: 'kde', graphics: 'amd' })
+    expect(kde).toContain('pacman -S plasma-meta sddm konsole dolphin')
+    expect(kde).toContain('systemctl enable sddm')
+    expect(kde.indexOf('pacman -S plasma-meta')).toBeLessThan(kde.indexOf('systemctl enable bluetooth'))
+    expect(kde).toContain(
+      'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse pipewire-jack wireplumber',
+    )
+    expect(kde).not.toContain('pavucontrol')
+    expect(kde).toContain('/etc/environment.d/90-fcitx.conf')
+    expect(kde).toContain('XMODIFIERS=@im=fcitx')
+    expect(kde).not.toContain('QT_IM_MODULE=fcitx')
+    expect(kde).toContain('QT_IM_MODULES=wayland;fcitx')
+    expect(kde).toContain('gtk-im-module=fcitx')
+    expect(kde).toContain('Hidden=true')
+    expect(kde).not.toContain('Kimpanel')
+    expect(kde).toContain('/home/user/.config/autostart')
+    expect(kde).toContain('系统设置 → 虚拟键盘')
+    expect(kde).toContain('桌面环境自带的设置应用中配置网络')
+    expect(kde).not.toContain('nmtui')
+
+    const hyprland = renderHtml({ ...stageOneConfig, desktop: 'hyprland', graphics: 'nvidia' })
+    expect(hyprland).toContain('pacman -S nvidia-open nvidia-utils')
+    expect(hyprland).toContain('pacman -S hyprland ghostty')
+    expect(hyprland).toContain('xdg-desktop-portal-hyprland hyprpolkitagent')
+    expect(hyprland).toContain('greetd greetd-regreet')
+    expect(hyprland).toContain('systemctl enable greetd')
+    expect(hyprland).toContain(
+      'command = &quot;dbus-run-session start-hyprland -- -c /etc/greetd/hyprland.lua&quot;',
+    )
+    expect(hyprland).toContain('hl.on(&quot;hyprland.start&quot;, function()')
+    expect(hyprland).toContain(
+      "hl.exec_cmd(&quot;regreet; hyprctl dispatch 'hl.dsp.exit()'&quot;)",
+    )
+    expect(hyprland).not.toContain('/etc/greetd/hyprland.conf')
+    expect(hyprland).toContain('使用 <code>nmtui</code> 进行配置')
+    expect(hyprland).toContain(
+      'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse pipewire-jack wireplumber pavucontrol',
+    )
+    expect(hyprland).toContain(
+      'pacman -S bluez bluez-utils blueman noto-fonts noto-fonts-cjk noto-fonts-extra noto-fonts-emoji fcitx5-im',
+    )
+    expect(hyprland).toContain('systemctl enable bluetooth')
+    expect(hyprland).not.toContain('uwsm')
+    expect(hyprland).toContain('/etc/environment.d/90-fcitx.conf')
+    expect(hyprland).toContain('XMODIFIERS=@im=fcitx')
+    expect(hyprland).toContain('QT_IM_MODULES=wayland;fcitx')
+    expect(hyprland).not.toContain('SDL_IM_MODULE')
+    expect(hyprland).toContain('gtk-im-module=fcitx')
+    expect(hyprland).toContain('/home/user/.gtkrc-2.0')
+    expect(hyprland).not.toContain('QT_IM_MODULE=fcitx')
+    expect(hyprland).not.toContain('GTK_IM_MODULE=fcitx')
+    expect(hyprland).not.toContain('系统设置 → 虚拟键盘')
+    expect(hyprland).not.toContain('不要全局设置')
+    expect(hyprland).not.toContain('polkit-kde-agent')
+    expect(hyprland).not.toContain('qt5-wayland')
+    expect(hyprland).not.toContain('qt6-wayland')
+    expect(hyprland).toContain('systemctl --global enable hyprpolkitagent.service')
+    expect(hyprland).not.toContain('systemctl --user enable')
+    expect(hyprland).toContain('/etc/systemd/user/hyprland-session.target')
+    expect(hyprland).toContain('BindsTo=graphical-session.target')
+    expect(hyprland).toContain('Wants=xdg-desktop-autostart.target')
+    expect(hyprland).toContain('/home/user/.config/hypr/hyprland.lua')
+    expect(hyprland).toContain('local terminal    = &quot;ghostty&quot;')
+    expect(hyprland).toContain(
+      'hl.exec_cmd(&quot;systemctl --user start hyprland-session.target&quot;)',
+    )
+    expect(hyprland).toContain('start-hyprland')
+    expect(hyprland).not.toContain('systemctl enable gdm')
+    expect(hyprland).not.toContain('systemctl enable sddm')
   })
 })
 
