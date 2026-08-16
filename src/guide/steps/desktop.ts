@@ -173,9 +173,7 @@ end)
 hl.on("hyprland.shutdown", function()
     os.execute("systemctl --user stop hyprland-session.target && sleep 0.1")
 end)
-\`\`\`
-
-登录后按 \`SUPER + Q\` 打开终端。`
+\`\`\``
           : `\n\n重启后由 \`${displayManager}\` 提供图形登录界面。`
       }`,
     },
