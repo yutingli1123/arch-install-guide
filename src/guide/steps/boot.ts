@@ -153,9 +153,7 @@ Description = Updating the sbctl-signed systemd-boot copy
 When = PostTransaction
 Depends = sbctl
 Exec = /usr/local/sbin/update-sbctl-systemd-boot
-\`\`\`
-
-\`sbctl sign -s <路径>\` 只在首次注册文件时需要指定路径；上面命令行里已经用 \`-s\` 把这两份 ESP 文件存进了 sbctl 的数据库，之后 \`sbctl sign-all\` 会直接对数据库里记录的路径按当前内容重新签名，不用再重复指定文件。`,
+\`\`\``,
     },
   },
   {
