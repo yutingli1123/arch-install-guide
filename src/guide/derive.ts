@@ -167,7 +167,7 @@ export function derive(cfg: Config): Context {
           ...(cfg.desktop === 'hyprland' ? ['pavucontrol'] : []),
         ]
   const inputMethodEngine = cfg.systemLocale.startsWith('zh_')
-    ? 'fcitx5-rime'
+    ? 'fcitx5-chinese-addons'
     : cfg.systemLocale.startsWith('ja_')
       ? 'fcitx5-mozc'
       : cfg.systemLocale.startsWith('ko_')

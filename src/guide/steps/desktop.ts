@@ -51,7 +51,7 @@ PipeWire、PulseAudio 兼容服务和 WirePlumber 会在用户登录图形会话
           : '安装 Fcitx 5、GTK/Qt 前端和配置工具'
       }${
         cfg.systemLocale.startsWith('zh_')
-          ? '；当前中文 locale 同时安装 Rime 输入引擎'
+          ? '；当前中文 locale 同时安装拼音输入引擎'
           : cfg.systemLocale.startsWith('ja_')
             ? '；当前日文 locale 同时安装 Mozc 输入引擎'
             : cfg.systemLocale.startsWith('ko_')

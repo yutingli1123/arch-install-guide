@@ -142,7 +142,7 @@ describe('derive', () => {
       systemLocale: 'zh_CN.UTF-8',
     })
     expect(gnomeChinese.audioPackages).not.toContain('pavucontrol')
-    expect(gnomeChinese.desktopCommonPackages).toContain('fcitx5-rime')
+    expect(gnomeChinese.desktopCommonPackages).toContain('fcitx5-chinese-addons')
     expect(gnomeChinese.desktopCommonPackages).not.toContain('bluez')
     expect(gnomeChinese.desktopCommonPackages).not.toContain('bluez-utils')
     expect(gnomeChinese.desktopCommonPackages).not.toContain('blueman')
