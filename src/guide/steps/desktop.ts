@@ -87,7 +87,7 @@ export SDL_IM_MODULE=fcitx
 chown ${cfg.username}:${cfg.username} /home/${cfg.username}/.config/uwsm/env
 \`\`\``
           : `为 XWayland 应用设置 \`XMODIFIERS\`${
-              cfg.desktop === 'gnome' ? '，并为 Qt 应用设置 `QT_IM_MODULE`' : ''
+              cfg.desktop === 'gnome' ? '，并为 Qt 应用设置 `QT_IM_MODULE` 和 `QT_IM_MODULES`' : ''
             }：
 
 \`\`\`
@@ -98,7 +98,7 @@ vim /etc/environment.d/90-fcitx.conf
 写入：
 
 \`\`\`
-XMODIFIERS=@im=fcitx${cfg.desktop === 'gnome' ? '\nQT_IM_MODULE=fcitx' : ''}
+XMODIFIERS=@im=fcitx${cfg.desktop === 'gnome' ? '\nQT_IM_MODULE=fcitx\nQT_IM_MODULES="wayland;fcitx"' : ''}
 \`\`\``
       }`,
     },

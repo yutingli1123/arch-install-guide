@@ -483,6 +483,7 @@ describe('renderGuide', () => {
     expect(gnome).toContain('systemctl enable gdm')
     expect(gnome).toContain('/etc/environment.d/90-fcitx.conf')
     expect(gnome).toContain('QT_IM_MODULE=fcitx')
+    expect(gnome).toContain('QT_IM_MODULES=&quot;wayland;fcitx&quot;')
 
     const kde = renderHtml({ ...stageOneConfig, desktop: 'kde', graphics: 'amd' })
     expect(kde).toContain('pacman -S plasma-meta sddm konsole dolphin')
