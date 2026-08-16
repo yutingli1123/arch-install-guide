@@ -158,6 +158,29 @@ describe('derive', () => {
     expect(kdeJapanese.desktopCommonPackages).not.toContain('blueman')
   })
 
+  it('gives every generic family a Latin tail and a regional CJK head', () => {
+    const chinese = { ...stageOneConfig, desktop: 'gnome' as const, systemLocale: 'zh_CN.UTF-8' }
+    const rendered = renderHtml(chinese)
+
+    expect(derive(chinese).cjkVariant).toBe('SC')
+    expect(rendered).toContain('/etc/fonts/conf.d/64-noto-cjk.conf')
+    for (const family of ['Noto Sans', 'Noto Serif', 'Noto Sans Mono']) {
+      expect(rendered).toContain(
+        `mode=&quot;append_last&quot; binding=&quot;strong&quot;&gt;&lt;string&gt;${family}&lt;`,
+      )
+      expect(rendered).toContain(
+        `mode=&quot;prepend&quot; binding=&quot;weak&quot;&gt;&lt;string&gt;${family} CJK SC&lt;`,
+      )
+    }
+    expect(rendered).not.toContain('name=&quot;lang&quot;')
+    expect(renderHtml({ ...chinese, systemLocale: 'ja_JP.UTF-8' })).toContain('Noto Serif CJK JP')
+
+    const latin = renderHtml({ ...chinese, systemLocale: 'en_US.UTF-8' })
+    expect(latin).not.toContain('64-noto-cjk.conf')
+    expect(derive({ ...chinese, desktop: 'none' }).cjkVariant).toBeUndefined()
+    expect(renderHtml({ ...chinese, desktop: 'none' })).not.toContain('64-noto-cjk.conf')
+  })
+
   it('adds zram-generator and renders its configuration only for zram', () => {
     const zram = { ...stageOneConfig, zram: true }
     expect(derive(zram).packages).toContain('zram-generator')
@@ -521,7 +544,9 @@ describe('renderGuide', () => {
     const kde = renderHtml({ ...stageOneConfig, desktop: 'kde', graphics: 'amd' })
     expect(kde).toContain('pacman -S plasma-meta sddm konsole dolphin')
     expect(kde).toContain('systemctl enable sddm')
-    expect(kde.indexOf('pacman -S plasma-meta')).toBeLessThan(kde.indexOf('systemctl enable bluetooth'))
+    expect(kde.indexOf('pacman -S plasma-meta')).toBeLessThan(
+      kde.indexOf('systemctl enable bluetooth'),
+    )
     expect(kde).toContain(
       'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse pipewire-jack wireplumber',
     )
@@ -548,9 +573,7 @@ describe('renderGuide', () => {
       'command = &quot;dbus-run-session start-hyprland -- -c /etc/greetd/hyprland.lua&quot;',
     )
     expect(hyprland).toContain('hl.on(&quot;hyprland.start&quot;, function()')
-    expect(hyprland).toContain(
-      "hl.exec_cmd(&quot;regreet; hyprctl dispatch 'hl.dsp.exit()'&quot;)",
-    )
+    expect(hyprland).toContain("hl.exec_cmd(&quot;regreet; hyprctl dispatch 'hl.dsp.exit()'&quot;)")
     expect(hyprland).not.toContain('/etc/greetd/hyprland.conf')
     expect(hyprland).toContain('使用 <code>nmtui</code> 进行配置')
     expect(hyprland).toContain(

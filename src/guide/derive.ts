@@ -67,6 +67,14 @@ const TESSERACT_LOCALE_DATA: Record<string, string> = {
   vi_VN: 'vie',
 }
 
+/** systemLocale -> the Noto CJK regional variant used as the default CJK face. */
+export const CJK_VARIANTS: Record<string, string> = {
+  'zh_CN.UTF-8': 'SC',
+  'zh_TW.UTF-8': 'TC',
+  'ja_JP.UTF-8': 'JP',
+  'ko_KR.UTF-8': 'KR',
+}
+
 const BASE_PACKAGES = [
   'base',
   'base-devel',
@@ -218,6 +226,7 @@ export function derive(cfg: Config): Context {
     audioPackages,
     desktopCommonPackages,
     desktopPackages: desktop.packages,
+    cjkVariant: cfg.desktop === 'none' ? undefined : CJK_VARIANTS[cfg.systemLocale],
     displayManager: 'displayManager' in desktop ? desktop.displayManager : undefined,
   }
 }

@@ -92,6 +92,8 @@ export type Context = {
   audioPackages: string[]
   desktopCommonPackages: string[]
   desktopPackages: string[]
+  /** Regional suffix of the Noto CJK families, e.g. `SC`. */
+  cjkVariant?: string
   displayManager?: string
 }
 
