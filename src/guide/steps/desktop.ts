@@ -61,7 +61,10 @@ pacman -S ${audioPackages.join(' ')}
 pacman -S ${desktopCommonPackages.join(' ')}${cfg.desktop === 'hyprland' ? '\nsystemctl enable bluetooth' : ''}
 \`\`\`
 
-为 XWayland 应用设置 \`XMODIFIERS\`：
+${
+        cfg.desktop === 'gnome'
+          ? 'GNOME 会把会话的输入法配置成 ibus，Fcitx 5 由自启动项拉起后取代 ibus，无需额外配置。'
+          : `为 XWayland 应用设置输入法环境变量：
 
 \`\`\`
 install -d /etc/environment.d
@@ -72,7 +75,53 @@ vim /etc/environment.d/90-fcitx.conf
 
 \`\`\`
 XMODIFIERS=@im=fcitx
-\`\`\``,
+QT_IM_MODULES=wayland;fcitx
+\`\`\`
+
+GTK 应用改用配置文件指定输入法模块，只作用于 X11/XWayland 下的 GTK 程序：
+
+\`\`\`
+install -d -o ${cfg.username} -g ${cfg.username} /home/${cfg.username}/.config/gtk-3.0
+vim /home/${cfg.username}/.config/gtk-3.0/settings.ini
+\`\`\`
+
+写入：
+
+\`\`\`ini
+[Settings]
+gtk-im-module=fcitx
+\`\`\`
+
+如果要运行 GTK2 程序，另建 \`/home/${cfg.username}/.gtkrc-2.0\`：
+
+\`\`\`
+vim /home/${cfg.username}/.gtkrc-2.0
+\`\`\`
+
+写入：
+
+\`\`\`
+gtk-im-module="fcitx"
+\`\`\`
+
+修正这两个文件的所有者：
+
+\`\`\`
+chown ${cfg.username}:${cfg.username} /home/${cfg.username}/.config/gtk-3.0/settings.ini /home/${cfg.username}/.gtkrc-2.0
+\`\`\`${
+              cfg.desktop === 'kde'
+                ? `
+
+KDE 下 Fcitx 5 由 KWin 启动，屏蔽 XDG 自启动项：
+
+\`\`\`
+install -d -o ${cfg.username} -g ${cfg.username} /home/${cfg.username}/.config/autostart
+install -o ${cfg.username} -g ${cfg.username} -m 644 /etc/xdg/autostart/org.fcitx.Fcitx5.desktop /home/${cfg.username}/.config/autostart/
+echo 'Hidden=true' >> /home/${cfg.username}/.config/autostart/org.fcitx.Fcitx5.desktop
+\`\`\``
+                : ''
+            }`
+      }`,
     },
   },
   {
@@ -146,6 +195,7 @@ Description=Hyprland session
 BindsTo=graphical-session.target
 Wants=graphical-session-pre.target
 After=graphical-session-pre.target
+Wants=xdg-desktop-autostart.target
 PropagatesStopTo=graphical-session.target
 \`\`\`
 
