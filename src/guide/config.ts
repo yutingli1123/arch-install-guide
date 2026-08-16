@@ -35,6 +35,7 @@ export const SYSTEM_LOCALES = [
   'en_CA.UTF-8',
   'zh_CN.UTF-8',
   'zh_TW.UTF-8',
+  'zh_HK.UTF-8',
   'de_DE.UTF-8',
   'fr_FR.UTF-8',
   'es_ES.UTF-8',

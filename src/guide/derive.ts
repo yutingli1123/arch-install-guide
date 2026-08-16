@@ -11,6 +11,7 @@ export function partition(disk: string, index: number): string {
 const TESSERACT_LOCALE_DATA: Record<string, string> = {
   'zh_CN.UTF-8': 'chi_sim',
   'zh_TW.UTF-8': 'chi_tra',
+  'zh_HK.UTF-8': 'chi_tra',
   'de_DE.UTF-8': 'deu',
   'de_AT.UTF-8': 'deu',
   'de_CH.UTF-8': 'deu',
@@ -65,6 +66,15 @@ const TESSERACT_LOCALE_DATA: Record<string, string> = {
   'uk_UA.UTF-8': 'ukr',
   ur_PK: 'urd',
   vi_VN: 'vie',
+}
+
+/** systemLocale -> the Noto CJK regional variant used as the default CJK face. */
+export const CJK_VARIANTS: Record<string, string> = {
+  'zh_CN.UTF-8': 'SC',
+  'zh_TW.UTF-8': 'TC',
+  'zh_HK.UTF-8': 'HK',
+  'ja_JP.UTF-8': 'JP',
+  'ko_KR.UTF-8': 'KR',
 }
 
 const BASE_PACKAGES = [
@@ -218,6 +228,7 @@ export function derive(cfg: Config): Context {
     audioPackages,
     desktopCommonPackages,
     desktopPackages: desktop.packages,
+    cjkVariant: cfg.desktop === 'none' ? undefined : CJK_VARIANTS[cfg.systemLocale],
     displayManager: 'displayManager' in desktop ? desktop.displayManager : undefined,
   }
 }

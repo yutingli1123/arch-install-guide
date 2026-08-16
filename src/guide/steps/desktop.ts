@@ -1,3 +1,4 @@
+import { CJK_VARIANTS } from '../derive'
 import type { Step } from '../types'
 
 const desktopNames = {
@@ -132,6 +133,53 @@ echo 'Hidden=true' >> /home/${cfg.username}/.config/autostart/org.fcitx.Fcitx5.d
                 : ''
             }`
       }`,
+    },
+  },
+  {
+    id: 'cjk-font-priority',
+    section: 'desktop',
+    title: { zh: '设置字体优先级' },
+    when: (cfg) => cfg.desktop !== 'none' && cfg.systemLocale in CJK_VARIANTS,
+    body: {
+      zh: ({ cjkVariant }) => `新建 \`/etc/fonts/conf.d/64-noto-cjk.conf\`：
+
+\`\`\`
+vim /etc/fonts/conf.d/64-noto-cjk.conf
+\`\`\`
+
+写入：
+
+\`\`\`xml
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+<fontconfig>
+  <match target="pattern">
+    <test qual="any" name="family"><string>sans-serif</string></test>
+    <edit name="family" mode="append_last" binding="strong"><string>Noto Sans</string></edit>
+  </match>
+  <match target="pattern">
+    <test qual="any" name="family"><string>serif</string></test>
+    <edit name="family" mode="append_last" binding="strong"><string>Noto Serif</string></edit>
+  </match>
+  <match target="pattern">
+    <test qual="any" name="family"><string>monospace</string></test>
+    <edit name="family" mode="append_last" binding="strong"><string>Noto Sans Mono</string></edit>
+  </match>
+
+  <match target="pattern">
+    <test qual="any" name="family"><string>sans-serif</string></test>
+    <edit name="family" mode="prepend" binding="weak"><string>Noto Sans CJK ${cjkVariant}</string></edit>
+  </match>
+  <match target="pattern">
+    <test qual="any" name="family"><string>serif</string></test>
+    <edit name="family" mode="prepend" binding="weak"><string>Noto Serif CJK ${cjkVariant}</string></edit>
+  </match>
+  <match target="pattern">
+    <test qual="any" name="family"><string>monospace</string></test>
+    <edit name="family" mode="prepend" binding="weak"><string>Noto Sans Mono CJK ${cjkVariant}</string></edit>
+  </match>
+</fontconfig>
+\`\`\``,
     },
   },
   {
