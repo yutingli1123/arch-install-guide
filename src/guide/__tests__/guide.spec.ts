@@ -87,9 +87,23 @@ describe('derive', () => {
       'konsole',
       'dolphin',
       'qt6-multimedia-ffmpeg',
+      'tesseract-data-eng',
     ])
     expect(kdeOnAmd.audioPackages).not.toContain('pavucontrol')
     expect(kdeOnAmd.displayManager).toBe('sddm')
+
+    const kdeChinese = derive({ ...stageOneConfig, desktop: 'kde', systemLocale: 'zh_CN.UTF-8' })
+    expect(kdeChinese.desktopPackages).toEqual(
+      expect.arrayContaining(['tesseract-data-eng', 'tesseract-data-chi_sim']),
+    )
+    const kdeFrenchCanadian = derive({
+      ...stageOneConfig,
+      desktop: 'kde',
+      systemLocale: 'fr_CA.UTF-8',
+    })
+    expect(kdeFrenchCanadian.desktopPackages).toEqual(
+      expect.arrayContaining(['tesseract-data-eng', 'tesseract-data-fra']),
+    )
 
     const headless = derive({ ...stageOneConfig, desktop: 'none' })
     expect(headless.desktopPackages).toEqual([])
@@ -493,8 +507,10 @@ describe('renderGuide', () => {
     expect(gnome).not.toContain('pavucontrol')
     expect(gnome).toContain('systemctl enable gdm')
     expect(gnome).toContain('/etc/environment.d/90-fcitx.conf')
-    expect(gnome).toContain('QT_IM_MODULE=fcitx')
+    expect(gnome).not.toContain('QT_IM_MODULE=fcitx')
     expect(gnome).toContain('QT_IM_MODULES=&quot;wayland;fcitx&quot;')
+    expect(gnome).toContain('桌面环境自带的设置应用中配置网络')
+    expect(gnome).not.toContain('nmtui')
 
     const kde = renderHtml({ ...stageOneConfig, desktop: 'kde', graphics: 'amd' })
     expect(kde).toContain('pacman -S plasma-meta sddm konsole dolphin')
@@ -508,6 +524,8 @@ describe('renderGuide', () => {
     expect(kde).toContain('XMODIFIERS=@im=fcitx')
     expect(kde).not.toContain('QT_IM_MODULE=fcitx')
     expect(kde).toContain('系统设置 → 虚拟键盘')
+    expect(kde).toContain('桌面环境自带的设置应用中配置网络')
+    expect(kde).not.toContain('nmtui')
 
     const hyprland = renderHtml({ ...stageOneConfig, desktop: 'hyprland', graphics: 'nvidia' })
     expect(hyprland).toContain('pacman -S nvidia-open nvidia-utils')
@@ -523,6 +541,7 @@ describe('renderGuide', () => {
       "hl.exec_cmd(&quot;regreet; hyprctl dispatch 'hl.dsp.exit()'&quot;)",
     )
     expect(hyprland).not.toContain('/etc/greetd/hyprland.conf')
+    expect(hyprland).toContain('使用 <code>nmtui</code> 进行配置')
     expect(hyprland).toContain(
       'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse pipewire-jack wireplumber pavucontrol',
     )

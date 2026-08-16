@@ -30,7 +30,11 @@ reboot
 ping -c 3 archlinux.org
 \`\`\`
 
-如果网络不通，请使用 \`nmtui\` 进行配置。
+如果网络不通，请${
+        cfg.desktop === 'gnome' || cfg.desktop === 'kde'
+          ? '在桌面环境自带的设置应用中配置网络'
+          : '使用 `nmtui` 进行配置'
+      }。
 
 至此，最小系统应当能够启动和联网，并可使用普通用户登录。${cfg.snapper === 'none' ? '当前未配置快照。' : ''}`,
     },
