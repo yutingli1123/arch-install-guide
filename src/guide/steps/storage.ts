@@ -33,11 +33,9 @@ swap-priority = 100
     body: {
       zh: ({
         cfg,
-      }) => `在独立的 \`@swap\` 子卷中关闭写时复制和压缩，再创建 ${cfg.diskSwapSizeGiB} GiB swapfile：
+      }) => `在独立的 \`@swap\` 子卷中创建 ${cfg.diskSwapSizeGiB} GiB swapfile：
 
 \`\`\`
-btrfs property set /swap compression none
-chattr +C /swap
 btrfs filesystem mkswapfile --size ${cfg.diskSwapSizeGiB}g --uuid clear /swap/swapfile
 swapon /swap/swapfile
 echo '/swap/swapfile none swap defaults 0 0' >> /etc/fstab
