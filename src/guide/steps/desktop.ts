@@ -36,16 +36,18 @@ pacman -S ${graphicsPackages.join(' ')}
 pacman -S ${audioPackages.join(' ')}
 \`\`\`
 
-PipeWire、PulseAudio 兼容服务和 WirePlumber 会在用户登录图形会话后通过 systemd 用户服务自动启动，无需在 chroot 中手动启用。`,
+PipeWire、PulseAudio 兼容服务和 WirePlumber 会在用户登录图形会话后通过 systemd 用户服务自动启动，无需在 chroot 中手动启用。
+
+\`jack\` 虚拟包由 \`jack2\` 或 \`pipewire-jack\` 二选一提供；命令里显式带上 \`pipewire-jack\`，用 PipeWire 自身的 JACK 兼容层，避免装 \`jack2\` 造成两套音频服务器冲突，也避免安装时弹出选择提示。`,
     },
   },
   {
     id: 'desktop-common',
     section: 'desktop',
-    title: { zh: '安装蓝牙与输入法' },
+    title: { zh: '安装蓝牙、字体与输入法' },
     when: (cfg) => cfg.desktop !== 'none',
     body: {
-      zh: ({ cfg, desktopCommonPackages }) => `${
+      zh: ({ cfg, desktopCommonPackages }) => `安装 Noto 字体家族（含 CJK、emoji）。${
         cfg.desktop === 'hyprland'
           ? '安装 BlueZ 蓝牙后端与工具、Blueman 管理界面、Fcitx 5、GTK/Qt 前端和配置工具'
           : `安装 Fcitx 5、GTK/Qt 前端和配置工具。${desktopNames[cfg.desktop]} 的软件包已经通过自身蓝牙管理组件依赖 BlueZ，无需重复列出`
@@ -165,7 +167,11 @@ user = "greeter"
 \`\`\`
 
 ReGreet 会从会话文件中启动 Hyprland 的 UWSM 会话。首次登录并打开 Ghostty 后执行 \`systemctl --user enable --now hyprpolkitagent.service\`，让图形程序能够请求提权认证，并在后续图形会话中自动启动认证代理。`
-          : `\n\n重启后由 \`${displayManager}\` 提供图形登录界面。`
+          : `${
+              cfg.desktop === 'kde'
+                ? '\n\n`plasma-meta` 依赖 `qt6-multimedia-backend` 虚拟包，由多个软件包提供；命令里显式带上 `qt6-multimedia-ffmpeg` 避免安装时弹出选择提示。`ttf-font` 虚拟包已由前面装好的 `noto-fonts` 满足，不会再弹出提示。'
+                : ''
+            }\n\n重启后由 \`${displayManager}\` 提供图形登录界面。`
       }`,
     },
   },

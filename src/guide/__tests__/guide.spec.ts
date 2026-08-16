@@ -81,7 +81,13 @@ describe('derive', () => {
   it('derives graphics and desktop packages independently from storage', () => {
     const kdeOnAmd = derive({ ...stageOneConfig, graphics: 'amd', desktop: 'kde' })
     expect(kdeOnAmd.graphicsPackages).toEqual(['mesa', 'vulkan-radeon', 'libva-mesa-driver'])
-    expect(kdeOnAmd.desktopPackages).toEqual(['plasma-meta', 'sddm', 'konsole', 'dolphin'])
+    expect(kdeOnAmd.desktopPackages).toEqual([
+      'plasma-meta',
+      'sddm',
+      'konsole',
+      'dolphin',
+      'qt6-multimedia-ffmpeg',
+    ])
     expect(kdeOnAmd.audioPackages).not.toContain('pavucontrol')
     expect(kdeOnAmd.displayManager).toBe('sddm')
 
@@ -101,6 +107,7 @@ describe('derive', () => {
       'pipewire-audio',
       'pipewire-alsa',
       'pipewire-pulse',
+      'pipewire-jack',
       'wireplumber',
       'pavucontrol',
     ])
@@ -108,6 +115,10 @@ describe('derive', () => {
       'bluez',
       'bluez-utils',
       'blueman',
+      'noto-fonts',
+      'noto-fonts-cjk',
+      'noto-fonts-extra',
+      'noto-fonts-emoji',
       'fcitx5-im',
     ])
 
@@ -490,7 +501,7 @@ describe('renderGuide', () => {
     expect(kde).toContain('systemctl enable sddm')
     expect(kde.indexOf('pacman -S plasma-meta')).toBeLessThan(kde.indexOf('systemctl enable bluetooth'))
     expect(kde).toContain(
-      'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse wireplumber',
+      'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse pipewire-jack wireplumber',
     )
     expect(kde).not.toContain('pavucontrol')
     expect(kde).toContain('/etc/environment.d/90-fcitx.conf')
@@ -513,10 +524,10 @@ describe('renderGuide', () => {
     )
     expect(hyprland).not.toContain('/etc/greetd/hyprland.conf')
     expect(hyprland).toContain(
-      'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse wireplumber pavucontrol',
+      'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse pipewire-jack wireplumber pavucontrol',
     )
     expect(hyprland).toContain(
-      'pacman -S bluez bluez-utils blueman fcitx5-im',
+      'pacman -S bluez bluez-utils blueman noto-fonts noto-fonts-cjk noto-fonts-extra noto-fonts-emoji fcitx5-im',
     )
     expect(hyprland).toContain('systemctl enable bluetooth')
     expect(hyprland).toContain('/home/user/.config/uwsm/env')

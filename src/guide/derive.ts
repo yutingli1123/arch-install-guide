@@ -67,7 +67,10 @@ export function derive(cfg: Config): Context {
   const desktop = {
     none: { packages: [] },
     gnome: { packages: ['gnome'], displayManager: 'gdm' },
-    kde: { packages: ['plasma-meta', 'sddm', 'konsole', 'dolphin'], displayManager: 'sddm' },
+    kde: {
+      packages: ['plasma-meta', 'sddm', 'konsole', 'dolphin', 'qt6-multimedia-ffmpeg'],
+      displayManager: 'sddm',
+    },
     hyprland: {
       packages: [
         'hyprland',
@@ -89,6 +92,7 @@ export function derive(cfg: Config): Context {
           'pipewire-audio',
           'pipewire-alsa',
           'pipewire-pulse',
+          'pipewire-jack',
           'wireplumber',
           ...(cfg.desktop === 'hyprland' ? ['pavucontrol'] : []),
         ]
@@ -104,6 +108,10 @@ export function derive(cfg: Config): Context {
       ? []
       : [
           ...(cfg.desktop === 'hyprland' ? ['bluez', 'bluez-utils', 'blueman'] : []),
+          'noto-fonts',
+          'noto-fonts-cjk',
+          'noto-fonts-extra',
+          'noto-fonts-emoji',
           'fcitx5-im',
           ...(inputMethodEngine ? [inputMethodEngine] : []),
         ]
