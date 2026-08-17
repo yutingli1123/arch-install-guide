@@ -18,12 +18,7 @@ export type HyprlandTerminal = 'ghostty' | 'kitty'
 export type HyprlandBar = 'none' | 'waybar'
 export type HyprlandLock = 'none' | 'hyprlock'
 /** Independently selectable extras; each value is also its package name. */
-export type HyprlandAddon =
-  | 'hyprpaper'
-  | 'hyprsunset'
-  | 'hyprshot'
-  | 'gnome-keyring'
-  | 'seahorse'
+export type HyprlandAddon = 'hyprpaper' | 'hyprsunset' | 'hyprshot' | 'gnome-keyring' | 'seahorse'
 
 /**
  * Hyprland ships only the compositor and a session. A terminal, launcher and
@@ -136,15 +131,18 @@ export type Context = {
   displayManager?: string
 }
 
-export type Body = (ctx: Context) => string
+/** Prose is translated; a command block is written once and rendered as is. */
+export type Block = { prose: Localized<string> } | { cmd: string; lang?: string }
+
+export type Body = (ctx: Context) => Block[]
 
 export type Step = {
   id: string
   /** Section this step belongs to, used for grouping in the rendered guide. */
   section: string
   title: Localized<string>
-  /** Markdown. Fenced blocks render as copyable command blocks. */
-  body: Localized<Body>
+  /** Prose blocks are markdown; command blocks render as copyable blocks. */
+  body: Body
   /** Omitted means the step is always included. */
   when?: (cfg: Config) => boolean
 }

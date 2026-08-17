@@ -34,7 +34,14 @@ export function renderGuide(cfg: Config, locale: Locale): RenderedSection[] {
       id: step.id,
       number,
       title: pick(step.title, locale),
-      html: md.render(pick(step.body, locale)(ctx)),
+      html: step
+        .body(ctx)
+        .map((block) =>
+          'cmd' in block
+            ? md.render(`\`\`\`${block.lang ?? ''}\n${block.cmd}\n\`\`\``)
+            : md.render(pick(block.prose, locale)),
+        )
+        .join(''),
     }
 
     const last = sections[sections.length - 1]

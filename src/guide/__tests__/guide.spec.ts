@@ -577,7 +577,9 @@ describe('renderGuide', () => {
 
     const hyprland = renderHtml({ ...stageOneConfig, desktop: 'hyprland', graphics: 'nvidia' })
     expect(hyprland).toContain('pacman -S nvidia-open nvidia-utils')
-    expect(hyprland).toContain('pacman -S hyprland xdg-desktop-portal-hyprland wl-clipboard playerctl')
+    expect(hyprland).toContain(
+      'pacman -S hyprland xdg-desktop-portal-hyprland wl-clipboard playerctl',
+    )
     expect(hyprland).toContain('greetd greetd-regreet')
     expect(hyprland).toContain('systemctl enable greetd')
     expect(hyprland).toContain(
@@ -644,13 +646,7 @@ describe('hyprland extras', () => {
     fileManager: 'thunar',
     bar: 'waybar',
     lock: 'hyprlock',
-    addons: [
-      'hyprpaper',
-      'hyprsunset',
-      'hyprshot',
-      'gnome-keyring',
-      'seahorse',
-    ],
+    addons: ['hyprpaper', 'hyprsunset', 'hyprshot', 'gnome-keyring', 'seahorse'],
   })
 
   it('installs one package set per selection and enables only the services it ships', () => {
@@ -693,7 +689,9 @@ describe('hyprland extras', () => {
     expect(rendered).toContain('local terminal    = &quot;ghostty&quot;')
     expect(rendered).toContain('local fileManager = &quot;thunar&quot;')
     expect(rendered).toContain('local menu        = &quot;rofi -show drun&quot;')
-    expect(rendered).toContain('hl.bind(&quot;SHIFT + PRINT&quot;, hl.dsp.exec_cmd(&quot;hyprshot -m region&quot;))')
+    expect(rendered).toContain(
+      'hl.bind(&quot;SHIFT + PRINT&quot;, hl.dsp.exec_cmd(&quot;hyprshot -m region&quot;))',
+    )
     expect(rendered).toContain(
       '/usr/share/hypr/hyprlock.conf /home/user/.config/hypr/hyprlock.conf',
     )
