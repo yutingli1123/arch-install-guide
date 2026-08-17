@@ -16,7 +16,7 @@ import {
   type ConfigChoice,
 } from '@/guide/config'
 import type { ConfigDraft, HyprlandAddon, HyprlandExtras, Locale, Tpm2Preset } from '@/guide/types'
-import { choiceDescriptions, choices, pick, ui } from '@/guide/ui'
+import { choiceDescriptions, choices, hyprlandAddonGroups, pick, ui } from '@/guide/ui'
 
 const props = defineProps<{
   locale: Locale
@@ -202,13 +202,6 @@ const HYPRLAND_CATEGORY_UI: Record<HyprlandCategory, HyprlandCategoryUi> = {
     descriptions: choiceDescriptions.hyprlandLock,
   },
 }
-/** Categories where several entries can be selected at once. */
-const HYPRLAND_ADDON_GROUPS: { label: (typeof ui)['hyprlandTerminal']; addons: HyprlandAddon[] }[] =
-  [
-    { label: ui.hyprlandWallpaper, addons: ['hyprpaper', 'hyprsunset'] },
-    { label: ui.hyprlandScreenshot, addons: ['hyprshot', 'wl-clipboard'] },
-    { label: ui.hyprlandKeyring, addons: ['gnome-keyring', 'seahorse'] },
-  ]
 
 const hyprland = computed<Partial<HyprlandExtras>>(() => model.value.hyprland ?? NEW_HYPRLAND_DRAFT)
 const hyprlandCategories = computed(() =>
@@ -223,8 +216,8 @@ const hyprlandCategories = computed(() =>
     })),
   })),
 )
-const hyprlandAddonGroups = computed(() =>
-  HYPRLAND_ADDON_GROUPS.map((group) => ({
+const addonGroups = computed(() =>
+  hyprlandAddonGroups.map((group) => ({
     label: pick(group.label, props.locale),
     addons: group.addons.map((addon) => ({
       value: addon,
@@ -773,7 +766,7 @@ function goToStep(index: number) {
               @update:model-value="commitHyprland(entry.category, $event)"
             />
           </div>
-          <div v-for="group in hyprlandAddonGroups" :key="group.label" class="field">
+          <div v-for="group in addonGroups" :key="group.label" class="field">
             <span>{{ group.label }}</span>
             <label v-for="addon in group.addons" :key="addon.value" class="check-option">
               <input

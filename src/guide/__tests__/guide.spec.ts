@@ -699,7 +699,7 @@ describe('hyprland extras', () => {
     expect(rendered).toContain(
       '/usr/share/hypr/hyprlock.conf /home/user/.config/hypr/hyprlock.conf',
     )
-    expect(rendered).toContain('preload = /usr/share/hypr/wall2.png')
+    expect(rendered).toContain('path = /usr/share/hypr/wall2.png')
     expect(rendered).toContain('session    optional     pam_gnome_keyring.so auto_start')
     expect(rendered).toContain('登录后按 <code>SUPER + Q</code> 打开终端')
     expect(rendered).not.toContain('paru -S walker')

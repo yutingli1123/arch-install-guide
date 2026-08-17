@@ -1,4 +1,4 @@
-import type { Locale, Localized } from './types'
+import type { HyprlandAddon, Locale, Localized } from './types'
 
 export function pick<T>(value: Localized<T>, locale: Locale): T {
   return value[locale] ?? value.zh
@@ -343,3 +343,10 @@ export const choiceDescriptions = {
     seahorse: { zh: '密钥环的图形管理界面。' },
   },
 } satisfies Record<string, Record<string, Localized<string>>>
+
+/** Multi-select Hyprland categories, shared by the wizard and the configuration summary. */
+export const hyprlandAddonGroups: { label: Localized<string>; addons: HyprlandAddon[] }[] = [
+  { label: ui.hyprlandWallpaper, addons: ['hyprpaper', 'hyprsunset'] },
+  { label: ui.hyprlandScreenshot, addons: ['hyprshot', 'wl-clipboard'] },
+  { label: ui.hyprlandKeyring, addons: ['gnome-keyring', 'seahorse'] },
+]

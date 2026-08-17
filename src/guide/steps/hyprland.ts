@@ -152,11 +152,13 @@ hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("loginctl lock-session"))
 vim /home/${cfg.username}/.config/hypr/hyprpaper.conf
 \`\`\`
 
-写入（\`wallpaper\` 的显示器留空表示应用到全部显示器）：
+写入（\`monitor\` 留空表示应用到全部显示器）：
 
 \`\`\`
-preload = /usr/share/hypr/wall2.png
-wallpaper = , /usr/share/hypr/wall2.png
+wallpaper {
+    monitor =
+    path = /usr/share/hypr/wall2.png
+}
 \`\`\`
 
 修正所有者：

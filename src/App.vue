@@ -11,7 +11,7 @@ import {
 } from './guide/config'
 import { selectSteps } from './guide/render'
 import type { ConfigDraft, Locale } from './guide/types'
-import { choices, pick, ui } from './guide/ui'
+import { choices, hyprlandAddonGroups, pick, ui } from './guide/ui'
 
 function firstIncompleteStep(draft: ConfigDraft): number {
   if (!draft.timezone || !draft.systemLocale) return 0
@@ -162,17 +162,37 @@ const summary = computed(() => {
     ...(cfg.hyprland
       ? [
           {
-            label: pick(ui.hyprlandExtras, locale.value),
-            value: [
-              cfg.hyprland.terminal,
-              cfg.hyprland.launcher,
-              cfg.hyprland.fileManager,
-              ...[cfg.hyprland.notifications, cfg.hyprland.bar, cfg.hyprland.lock].filter(
-                (selected) => selected !== 'none',
-              ),
-              ...cfg.hyprland.addons,
-            ].join(' '),
+            label: pick(ui.hyprlandTerminal, locale.value),
+            value: pick(choices.hyprlandTerminal[cfg.hyprland.terminal], locale.value),
           },
+          {
+            label: pick(ui.hyprlandLauncher, locale.value),
+            value: pick(choices.hyprlandLauncher[cfg.hyprland.launcher], locale.value),
+          },
+          {
+            label: pick(ui.hyprlandFileManager, locale.value),
+            value: pick(choices.hyprlandFileManager[cfg.hyprland.fileManager], locale.value),
+          },
+          {
+            label: pick(ui.hyprlandNotifications, locale.value),
+            value: pick(choices.hyprlandNotifications[cfg.hyprland.notifications], locale.value),
+          },
+          {
+            label: pick(ui.hyprlandBar, locale.value),
+            value: pick(choices.hyprlandBar[cfg.hyprland.bar], locale.value),
+          },
+          {
+            label: pick(ui.hyprlandLock, locale.value),
+            value: pick(choices.hyprlandLock[cfg.hyprland.lock], locale.value),
+          },
+          ...hyprlandAddonGroups.map((group) => ({
+            label: pick(group.label, locale.value),
+            value:
+              group.addons
+                .filter((addon) => cfg.hyprland!.addons.includes(addon))
+                .map((addon) => pick(choices.hyprlandAddons[addon], locale.value))
+                .join('、') || none,
+          })),
         ]
       : []),
     {
