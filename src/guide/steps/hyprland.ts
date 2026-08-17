@@ -182,7 +182,7 @@ hl.bind("SHIFT + PRINT", hl.dsp.exec_cmd("hyprshot -m region"))
 hl.bind("CTRL + PRINT",  hl.dsp.exec_cmd("hyprshot -m window"))
 \`\`\`
 
-截图保存在 \`~/Pictures\`，同时写入剪贴板。`,
+截图保存到 \`XDG_PICTURES_DIR\` 指向的目录，未设置时保存到 \`~\`，同时写入剪贴板。`,
     },
   },
   {
