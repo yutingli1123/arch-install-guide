@@ -3,8 +3,16 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import App from '../App.vue'
 import { makeTpm2Encryption, parseDraft, serializeDraft, stageOneConfig } from '../guide/config'
 
+/** Interface language follows the browser, so every assertion on wording has to pin it first. */
+function useBrowserLanguages(...languages: string[]) {
+  Object.defineProperty(navigator, 'languages', { value: languages, configurable: true })
+}
+
 describe('setup wizard', () => {
-  beforeEach(() => window.history.replaceState(null, '', '/'))
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/')
+    useBrowserLanguages('zh-CN')
+  })
 
   it('opens on a welcome page and reveals configuration only after starting', async () => {
     const wrapper = mount(App)
@@ -383,9 +391,11 @@ describe('setup wizard', () => {
   })
 
   it('starts in the browser language without writing it into the link', () => {
+    useBrowserLanguages('en-US')
     const wrapper = mount(App)
-    // jsdom reports en-US, so detection lands on English.
+
     expect(wrapper.get('button[name="language"] span:not(.ghost)').text()).toBe('English')
+    expect(wrapper.get('.welcome').text()).toContain('Generate an Arch Linux installation guide')
     expect(window.location.search).toBe('')
   })
 

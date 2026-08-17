@@ -17,7 +17,14 @@ import {
   validate,
   type ConfigChoice,
 } from '@/guide/config'
-import type { ConfigDraft, HyprlandAddon, HyprlandExtras, Locale, Tpm2Preset } from '@/guide/types'
+import type {
+  ConfigDraft,
+  HyprlandAddon,
+  HyprlandExtras,
+  Locale,
+  Localized,
+  Tpm2Preset,
+} from '@/guide/types'
 import { choiceDescriptions, choices, hyprlandAddonGroups, localeNames, pick, ui } from '@/guide/ui'
 
 const props = defineProps<{
@@ -49,7 +56,7 @@ const unavailable = computed(() => validate(model.value))
 const reason = (choice: ConfigChoice) => unavailable.value[choice]
 const unavailableReason = (choice: ConfigChoice) => {
   const message = reason(choice)
-  return message ? `${pick(ui.unavailable, props.locale)}：${message}` : undefined
+  return message ? pick(ui.unavailable, props.locale)(pick(message, props.locale)) : undefined
 }
 
 const cpuOptions = computed(() => [
@@ -168,9 +175,9 @@ const desktopOptions = computed(() => [
 ])
 type HyprlandCategory = keyof typeof HYPRLAND_CHOICES
 type HyprlandCategoryUi = {
-  label: (typeof ui)['hyprlandTerminal']
-  choices: Record<string, (typeof ui)['hyprlandTerminal']>
-  descriptions: Record<string, (typeof ui)['hyprlandTerminal']>
+  label: Localized<string>
+  choices: Record<string, Localized<string>>
+  descriptions: Record<string, Localized<string>>
 }
 const HYPRLAND_CATEGORY_UI: Record<HyprlandCategory, HyprlandCategoryUi> = {
   notifications: {
@@ -382,7 +389,7 @@ function commitReflectorCountries(event: Event) {
     countries.length > 0 &&
       countries.every((country) => mirrorCountryCodes.includes(country as never))
       ? ''
-      : '请输入有效的 ISO 国家代码，并用英文逗号分隔',
+      : pick(ui.mirrorCountryInvalid, props.locale),
   )
   if (!input.reportValidity()) {
     input.value = model.value.reflector?.countries.join(',') ?? ''
@@ -552,7 +559,7 @@ function goToStep(index: number) {
             @update:model-value="commitDiskSwap"
           />
           <label v-if="model.diskSwap === 'swapfile'" class="nested-field">
-            <span>容量（GiB）</span>
+            <span>{{ pick(ui.diskSwapSize, props.locale) }}</span>
             <input
               name="diskSwapSizeGiB"
               required

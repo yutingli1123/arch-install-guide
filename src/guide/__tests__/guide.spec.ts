@@ -345,7 +345,7 @@ describe('configuration', () => {
     expect(draft.disk).toBeUndefined()
     expect(draft.timezone).toBeUndefined()
     expect(draft.username).toBeUndefined()
-    expect(validate(draft)['snapper.root']).toBe('需要标准分离子卷布局')
+    expect(validate(draft)['snapper.root']?.zh).toBe('需要标准分离子卷布局')
     expect(parseDraft('?c=invalid!')).toEqual({})
     expect(parseDraft('?cpu=amd&layout=root-only')).toEqual({})
   })

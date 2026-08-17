@@ -210,7 +210,7 @@ const summary = computed(() => {
               group.addons
                 .filter((addon) => cfg.hyprland!.addons.includes(addon))
                 .map((addon) => pick(choices.hyprlandAddons[addon], locale.value))
-                .join('、') || none,
+                .join(pick(ui.listSeparator, locale.value)) || none,
           })),
         ]
       : []),

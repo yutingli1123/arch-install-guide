@@ -4,8 +4,10 @@ import type {
   Encryption,
   HyprlandAddon,
   HyprlandExtras,
+  Localized,
   Tpm2Preset,
 } from './types'
+import { ui } from './ui'
 
 export type ConfigChoice =
   | 'encryption.password'
@@ -18,7 +20,7 @@ export type ConfigChoice =
   | 'desktop.kde'
   | 'desktop.hyprland'
 
-export type Availability = Partial<Record<ConfigChoice, string>>
+export type Availability = Partial<Record<ConfigChoice, Localized<string>>>
 
 const intl = Intl as typeof Intl & { supportedValuesOf?: (key: 'timeZone') => string[] }
 export const TIMEZONES = [
@@ -297,7 +299,8 @@ export function makeTpm2Encryption(preset: Tpm2Preset, pin = true): Encryption {
 
 /** Returns the choices that the current guide cannot safely generate. */
 export function validate(config: ConfigDraft): Availability {
-  const snapperReason = config.subvolumeLayout === 'root-only' ? '需要标准分离子卷布局' : undefined
+  const snapperReason =
+    config.subvolumeLayout === 'root-only' ? ui.snapperRequiresSeparated : undefined
 
   return {
     ...(snapperReason ? { 'snapper.root': snapperReason, 'snapper.root-home': snapperReason } : {}),
