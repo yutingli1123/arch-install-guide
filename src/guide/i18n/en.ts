@@ -67,7 +67,7 @@ export const prose = {
   'live.boot-mode.title': 'Confirm the UEFI boot mode',
   'live.keymap.title': 'Keyboard layout',
   'live.network.title': 'Connect to the network',
-  'live.clock.title': 'Set the clock',
+  'live.clock.title': 'Check the clock',
   'live.mirrors.title': 'Select mirrors',
   'disk.identify-disk.title': 'Confirm the target disk',
   'disk.partition.title': 'Partition',
@@ -144,7 +144,7 @@ export const prose = {
   'package.git': 'Version control, clones repositories',
   'package.secure-boot-tools': 'Creates UEFI boot entries, imports the MOK, and signs EFI files',
   'install.fstab.uuid':
-    '`-U` uses UUIDs rather than device names, so the right filesystems still mount after moving a slot or adding a disk.\n\nInspect the generated file and confirm that every subvolume carries the correct `subvol=` option and mount options:',
+    '`-U` uses UUIDs rather than device names, so the right filesystems still mount after the disk changes slots or another disk is added.\n\nInspect the generated file and confirm that every subvolume carries the correct `subvol=` option and mount options:',
   'install.fstab.check':
     'A wrong fstab can leave the system unable to boot, so check it carefully before continuing.',
 
@@ -191,7 +191,7 @@ export const prose = {
         : 'configure it with `nmtui`'
     }.`,
   'finish.post-install.done': ({ cfg }: Context) =>
-    `At this point the minimal system boots, reaches the network, and accepts a login from the regular user.${cfg.snapper === 'none' ? ' No snapshots are configured.' : ''}`,
+    `At this point the minimal system should boot, reach the network, and accept a login from the regular user.${cfg.snapper === 'none' ? ' No snapshots are configured.' : ''}`,
   'finish.secure-boot-shim-verify.expect':
     'The three commands should confirm that Secure Boot is enabled, that the MOK is enrolled, and that `/EFI/systemd/grubx64.efi` is listed.',
   'finish.tpm2-enroll.intro': ({ cfg }: Context) =>
@@ -283,7 +283,7 @@ export const prose = {
     `The paths in \`default_uki\` and \`fallback_uki\` should read \`${espMountPoint}/EFI/Linux/\` and need no change.${cfg.encryption.mode === 'none' ? '' : '\n\nThe systemd initramfs configured earlier puts the LUKS2 unlocking logic into the UKI as well.'}`,
   'boot.uki.rebuild': 'Rebuild:',
   'boot.uki.menu': ({ espMountPoint }: Context) =>
-    `systemd-boot enumerates the images in \`${espMountPoint}/EFI/Linux/\` automatically and builds the boot menu, listing the regular entry ahead of the fallback. The fallback image skips the autodetect trimming, so it can bring the system back when the regular image fails to boot for a missing driver.`,
+    `systemd-boot enumerates the images in \`${espMountPoint}/EFI/Linux/\` automatically and builds the boot menu, listing the regular entry ahead of the fallback. The fallback image skips the autodetect trimming, so it can bring the system back when the regular image fails to boot because a driver is missing.`,
   'boot.uki.check': 'Check:',
   'boot.uki.entries':
     'Two `type #2` entries should appear, pointing at the two images under `EFI/Linux/`.',
@@ -590,7 +590,7 @@ export const choiceDescriptions = {
       'The Xfce file manager, installed with GVfs, SMB support, thumbnails, removable media, and archive plugins.',
   },
   hyprlandTerminal: {
-    ghostty: 'GPU rendered, configured entirely from a plain config file.',
+    ghostty: 'GPU rendered; configuration changes take effect immediately.',
     kitty: 'GPU rendered, with built-in splits and an image protocol.',
   },
   hyprlandBar: {
