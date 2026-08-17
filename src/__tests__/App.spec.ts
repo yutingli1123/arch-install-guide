@@ -323,23 +323,29 @@ describe('setup wizard', () => {
     expect(wrapper.get('.hyprland-field').text()).toContain('Hyprland 只提供合成器和会话')
     expect(parseDraft(window.location.search).hyprland).toEqual({
       notifications: 'none',
-      launcher: 'none',
-      fileManager: 'none',
-      terminal: 'none',
       bar: 'none',
       lock: 'none',
       addons: [],
     })
+    expect(wrapper.find('input[name="hyprland.terminal"][value="none"]').exists()).toBe(false)
+    expect(wrapper.find('input[name="hyprland.launcher"][value="none"]').exists()).toBe(false)
+    expect(wrapper.find('input[name="hyprland.fileManager"][value="none"]').exists()).toBe(false)
 
     await selectChoice(wrapper, 'hyprland.terminal', 'ghostty')
+    await selectChoice(wrapper, 'hyprland.launcher', 'walker')
+    await selectChoice(wrapper, 'hyprland.fileManager', 'thunar')
     await selectChoice(wrapper, 'hyprland.bar', 'waybar')
-    await wrapper.get('input[name="hyprland.playerctl"]').setValue(true)
+    await wrapper.get('input[name="hyprland.wl-clipboard"]').setValue(true)
     await wrapper.get('input[name="hyprland.hyprpaper"]').setValue(true)
-    await wrapper.get('input[name="hyprland.playerctl"]').setValue(false)
+    await wrapper.get('input[name="hyprland.wl-clipboard"]').setValue(false)
 
-    expect(parseDraft(window.location.search).hyprland).toMatchObject({
+    expect(parseDraft(window.location.search).hyprland).toEqual({
+      notifications: 'none',
+      launcher: 'walker',
+      fileManager: 'thunar',
       terminal: 'ghostty',
       bar: 'waybar',
+      lock: 'none',
       addons: ['hyprpaper'],
     })
 

@@ -1,20 +1,29 @@
 import type { Config, HyprlandAddon, Step } from '../types'
 
-const selected = (cfg: Config) => cfg.desktop === 'hyprland'
 const hasAddon = (cfg: Config, addon: HyprlandAddon) =>
-  selected(cfg) && cfg.hyprland.addons.includes(addon)
+  cfg.hyprland?.addons.includes(addon) ?? false
 
-/** Command the launcher choice binds to; both need an explicit application mode. */
-const LAUNCHER_COMMANDS = { rofi: 'rofi -show drun', wofi: 'wofi --show drun' }
+/** Command the launcher choice binds to; rofi and wofi need an explicit application mode. */
+const LAUNCHER_COMMANDS = {
+  hyprlauncher: 'hyprlauncher',
+  rofi: 'rofi -show drun',
+  wofi: 'wofi --show drun',
+  walker: 'walker',
+}
 
 export const hyprlandSteps: Step[] = [
   {
     id: 'hyprland-extras',
     section: 'hyprland',
     title: { zh: '安装配套软件' },
-    when: (cfg) => selected(cfg) && cfg.hyprland.addons.length + chosenCategories(cfg) > 0,
+    when: (cfg) => cfg.hyprland !== null,
     body: {
-      zh: ({ hyprlandPackages, hyprlandServices }) => `安装所选的 Hyprland 配套软件：
+      zh: ({
+        cfg,
+        hyprlandPackages,
+        hyprlandServices,
+        hyprlandAurPackages,
+      }) => `安装所选的 Hyprland 配套软件：
 
 \`\`\`
 pacman -S ${hyprlandPackages.join(' ')}${
@@ -23,36 +32,71 @@ pacman -S ${hyprlandPackages.join(' ')}${
           : ''
       }
 \`\`\`
+${
+  hyprlandServices.length
+    ? `\n\`--global\` 为所有用户启用这些用户服务，它们随 \`hyprland-session.target\` 启动。\n`
+    : ''
+}${
+        hyprlandAurPackages.length
+          ? `
+以下软件包以普通用户构建：
 
-以上软件包均来自官方仓库。${
-        hyprlandServices.length
-          ? `\`--global\` 为所有用户启用这些用户服务，它们随 \`hyprland-session.target\` 启动。`
+\`\`\`
+sudo -u ${cfg.username} paru -S ${hyprlandAurPackages.join(' ')}
+\`\`\`
+`
           : ''
       }`,
+    },
+  },
+  {
+    id: 'hyprland-elephant',
+    section: 'hyprland',
+    title: { zh: '启用 Elephant 服务' },
+    when: (cfg) => cfg.hyprland?.launcher === 'walker',
+    body: {
+      zh: () => `Walker 自身不检索数据，启动前 Elephant 必须已在用户会话中运行。它需要用户会话的环境变量，因此作为用户服务启用，而不是系统服务。
+
+新建 \`/etc/systemd/user/elephant.service\`：
+
+\`\`\`
+vim /etc/systemd/user/elephant.service
+\`\`\`
+
+写入：
+
+\`\`\`
+[Unit]
+Description=Elephant data provider
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/elephant
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target
+\`\`\`
+
+启用：
+
+\`\`\`
+systemctl --global enable elephant.service
+\`\`\`
+
+Walker 的每个数据源都是独立的 \`elephant-*\` 软件包，上一步只装了应用列表。计算、文件、剪贴板、窗口等其余数据源按需另装，各自的运行时依赖由对应软件包声明。`,
     },
   },
   {
     id: 'hyprland-programs',
     section: 'hyprland',
     title: { zh: '设置默认程序' },
-    when: (cfg) =>
-      selected(cfg) &&
-      (cfg.hyprland.terminal !== 'none' ||
-        cfg.hyprland.fileManager !== 'none' ||
-        cfg.hyprland.launcher !== 'none'),
+    when: (cfg) => cfg.hyprland !== null,
     body: {
       zh: ({ cfg }) => {
-        const { terminal, fileManager, launcher } = cfg.hyprland
-        const lines = [
-          terminal === 'none' ? '' : `local terminal    = "${terminal}"`,
-          fileManager === 'none' ? '' : `local fileManager = "${fileManager}"`,
-          launcher === 'none' ? '' : `local menu        = "${LAUNCHER_COMMANDS[launcher]}"`,
-        ].filter(Boolean)
-        const missing = [
-          terminal === 'none' ? '`SUPER + Q`' : '',
-          fileManager === 'none' ? '`SUPER + E`' : '',
-          launcher === 'none' ? '`SUPER + R`' : '',
-        ].filter(Boolean)
+        const { terminal, fileManager, launcher } = cfg.hyprland!
 
         return `编辑 \`/home/${cfg.username}/.config/hypr/hyprland.lua\`：
 
@@ -60,15 +104,15 @@ pacman -S ${hyprlandPackages.join(' ')}${
 vim /home/${cfg.username}/.config/hypr/hyprland.lua
 \`\`\`
 
-把 \`MY PROGRAMS\` 一节中对应的行改为：
+把 \`MY PROGRAMS\` 一节改为：
 
 \`\`\`lua
-${lines.join('\n')}
-\`\`\`${
-          missing.length
-            ? `\n\n${missing.join('、')} 仍指向默认配置里未安装的程序，按下不会有反应；可以在 \`KEYBINDINGS\` 一节删除对应的 \`hl.bind\`。`
-            : ''
-        }`
+local terminal    = "${terminal}"
+local fileManager = "${fileManager}"
+local menu        = "${LAUNCHER_COMMANDS[launcher]}"
+\`\`\`
+
+这三行分别对应 \`SUPER + Q\`、\`SUPER + E\` 和 \`SUPER + R\`。`
       },
     },
   },
@@ -76,7 +120,7 @@ ${lines.join('\n')}
     id: 'hyprland-lock',
     section: 'hyprland',
     title: { zh: '配置锁屏与空闲' },
-    when: (cfg) => selected(cfg) && cfg.hyprland.lock !== 'none',
+    when: (cfg) => cfg.hyprland?.lock === 'hyprlock',
     body: {
       zh: ({ cfg }) => `复制 Hyprlock 与 Hypridle 的示例配置：
 
@@ -128,21 +172,15 @@ chown ${cfg.username}:${cfg.username} /home/${cfg.username}/.config/hypr/hyprpap
     title: { zh: '配置截图快捷键' },
     when: (cfg) => hasAddon(cfg, 'hyprshot'),
     body: {
-      zh: ({ cfg }) => {
-        const region = cfg.hyprland.addons.includes('satty')
-          ? 'hyprshot -m region --raw | satty --filename -'
-          : 'hyprshot -m region'
-
-        return `在 \`/home/${cfg.username}/.config/hypr/hyprland.lua\` 的 \`KEYBINDINGS\` 一节加入：
+      zh: ({ cfg }) => `在 \`/home/${cfg.username}/.config/hypr/hyprland.lua\` 的 \`KEYBINDINGS\` 一节加入：
 
 \`\`\`lua
 hl.bind("PRINT",         hl.dsp.exec_cmd("hyprshot -m output"))
-hl.bind("SHIFT + PRINT", hl.dsp.exec_cmd("${region}"))
+hl.bind("SHIFT + PRINT", hl.dsp.exec_cmd("hyprshot -m region"))
 hl.bind("CTRL + PRINT",  hl.dsp.exec_cmd("hyprshot -m window"))
 \`\`\`
 
-截图保存在 \`~/Pictures\`，同时写入剪贴板。`
-      },
+截图保存在 \`~/Pictures\`，同时写入剪贴板。`,
     },
   },
   {
@@ -165,17 +203,10 @@ session    optional     pam_gnome_keyring.so auto_start
 \`\`\`
 
 登录密码将同时解锁默认密钥环。缺少这两行时密钥环仍可使用，但每次访问都要单独输入密码。${
-        cfg.hyprland.addons.includes('seahorse')
+        cfg.hyprland!.addons.includes('seahorse')
           ? '\n\nSeahorse 提供查看和管理已存密码的图形界面。'
           : ''
       }`,
     },
   },
 ]
-
-function chosenCategories(cfg: Config): number {
-  const { notifications, launcher, fileManager, terminal, bar, lock } = cfg.hyprland
-  return [notifications, launcher, fileManager, terminal, bar, lock].filter(
-    (choice) => choice !== 'none',
-  ).length
-}

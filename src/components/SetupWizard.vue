@@ -6,7 +6,7 @@ import {
   HYPRLAND_CHOICES,
   KEYMAPS,
   MIRROR_COUNTRIES,
-  NO_HYPRLAND_EXTRAS,
+  NEW_HYPRLAND_DRAFT,
   SYSTEM_LOCALES,
   TIMEZONES,
   makeTpm2Encryption,
@@ -206,17 +206,16 @@ const HYPRLAND_CATEGORY_UI: Record<HyprlandCategory, HyprlandCategoryUi> = {
 const HYPRLAND_ADDON_GROUPS: { label: (typeof ui)['hyprlandTerminal']; addons: HyprlandAddon[] }[] =
   [
     { label: ui.hyprlandWallpaper, addons: ['hyprpaper', 'hyprsunset'] },
-    { label: ui.hyprlandScreenshot, addons: ['hyprshot', 'satty', 'wl-clipboard'] },
-    { label: ui.hyprlandAudio, addons: ['pavucontrol', 'pulsemixer', 'playerctl'] },
+    { label: ui.hyprlandScreenshot, addons: ['hyprshot', 'wl-clipboard'] },
     { label: ui.hyprlandKeyring, addons: ['gnome-keyring', 'seahorse'] },
   ]
 
-const hyprland = computed<HyprlandExtras>(() => model.value.hyprland ?? NO_HYPRLAND_EXTRAS)
+const hyprland = computed<Partial<HyprlandExtras>>(() => model.value.hyprland ?? NEW_HYPRLAND_DRAFT)
 const hyprlandCategories = computed(() =>
   (Object.keys(HYPRLAND_CHOICES) as HyprlandCategory[]).map((category) => ({
     category,
     label: pick(HYPRLAND_CATEGORY_UI[category].label, props.locale),
-    selected: hyprland.value[category] as string,
+    selected: hyprland.value[category] as string | undefined,
     options: (HYPRLAND_CHOICES[category] as readonly string[]).map((value) => ({
       value,
       label: pick(HYPRLAND_CATEGORY_UI[category].choices[value]!, props.locale),
@@ -231,7 +230,7 @@ const hyprlandAddonGroups = computed(() =>
       value: addon,
       label: pick(choices.hyprlandAddons[addon], props.locale),
       description: pick(choiceDescriptions.hyprlandAddons[addon], props.locale),
-      checked: hyprland.value.addons.includes(addon),
+      checked: hyprland.value.addons?.includes(addon) ?? false,
     })),
   })),
 )
@@ -240,12 +239,12 @@ function commitHyprland(category: HyprlandCategory, value: string | undefined) {
   if (!value) return
   model.value = {
     ...model.value,
-    hyprland: { ...hyprland.value, [category]: value } as HyprlandExtras,
+    hyprland: { ...hyprland.value, [category]: value } as Partial<HyprlandExtras>,
   }
 }
 
 function toggleHyprlandAddon(addon: HyprlandAddon, event: Event) {
-  const addons = hyprland.value.addons.filter((selected) => selected !== addon)
+  const addons = (hyprland.value.addons ?? []).filter((selected) => selected !== addon)
   if ((event.currentTarget as HTMLInputElement).checked) addons.push(addon)
   model.value = { ...model.value, hyprland: { ...hyprland.value, addons: orderAddons(addons) } }
 }
@@ -296,7 +295,7 @@ function commitChoice(field: ChoiceField, value: string | undefined) {
   const next = { ...model.value, [field]: value } as ConfigDraft
   if (field === 'subvolumeLayout' && value === 'root-only') delete next.snapper
   if (field === 'desktop') {
-    if (value === 'hyprland') next.hyprland ??= NO_HYPRLAND_EXTRAS
+    if (value === 'hyprland') next.hyprland ??= NEW_HYPRLAND_DRAFT
     else delete next.hyprland
   }
   model.value = next
@@ -719,70 +718,74 @@ function goToStep(index: number) {
           />
         </div>
 
-        <div v-if="model.desktop === 'hyprland'" class="field nested-field hyprland-field">
-          <span>{{ pick(ui.hyprlandExtras, props.locale) }}</span>
-          <small>{{ pick(ui.hyprlandExtrasHint, props.locale) }}</small>
-          <div v-for="entry in hyprlandCategories" :key="entry.category" class="field">
-            <span>{{ entry.label }}</span>
-            <ChoicePicker
-              :name="`hyprland.${entry.category}`"
-              :model-value="entry.selected"
-              :options="entry.options"
-              @update:model-value="commitHyprland(entry.category, $event)"
-            />
-          </div>
-          <div v-for="group in hyprlandAddonGroups" :key="group.label" class="field">
-            <span>{{ group.label }}</span>
-            <label v-for="addon in group.addons" :key="addon.value" class="check-option">
+        <div class="field reflector-field">
+          <span>{{ pick(ui.reflector, props.locale) }}</span>
+          <div class="field nested-field">
+            <label>
+              <span>{{ pick(ui.mirrorCountry, props.locale) }}</span>
               <input
-                type="checkbox"
-                :name="`hyprland.${addon.value}`"
-                :checked="addon.checked"
-                @change="toggleHyprlandAddon(addon.value, $event)"
+                name="mirrorCountries"
+                required
+                placeholder="CA,US"
+                :value="model.reflector?.countries.join(',') ?? ''"
+                @change="commitReflectorCountries"
               />
-              <span>{{ addon.label }}</span>
-              <small>{{ addon.description }}</small>
+              <small>{{ pick(ui.mirrorCountryHint, props.locale) }}</small>
+            </label>
+            <label>
+              <span>{{ pick(ui.mirrorAge, props.locale) }}</span>
+              <input
+                name="mirrorAge"
+                required
+                type="number"
+                min="1"
+                max="168"
+                :value="model.reflector?.ageHours ?? 12"
+                @change="commitReflectorAge"
+              />
+            </label>
+            <label>
+              <span>{{ pick(ui.mirrorNumber, props.locale) }}</span>
+              <input
+                name="mirrorNumber"
+                required
+                type="number"
+                min="1"
+                max="50"
+                :value="model.reflector?.number ?? 10"
+                @change="commitReflectorNumber"
+              />
             </label>
           </div>
         </div>
 
-        <div class="field nested-field reflector-field">
-          <span>{{ pick(ui.reflector, props.locale) }}</span>
-          <label>
-            <span>{{ pick(ui.mirrorCountry, props.locale) }}</span>
-            <input
-              name="mirrorCountries"
-              required
-              placeholder="CA,US"
-              :value="model.reflector?.countries.join(',') ?? ''"
-              @change="commitReflectorCountries"
-            />
-            <small>{{ pick(ui.mirrorCountryHint, props.locale) }}</small>
-          </label>
-          <label>
-            <span>{{ pick(ui.mirrorAge, props.locale) }}</span>
-            <input
-              name="mirrorAge"
-              required
-              type="number"
-              min="1"
-              max="168"
-              :value="model.reflector?.ageHours ?? 12"
-              @change="commitReflectorAge"
-            />
-          </label>
-          <label>
-            <span>{{ pick(ui.mirrorNumber, props.locale) }}</span>
-            <input
-              name="mirrorNumber"
-              required
-              type="number"
-              min="1"
-              max="50"
-              :value="model.reflector?.number ?? 10"
-              @change="commitReflectorNumber"
-            />
-          </label>
+        <div v-if="model.desktop === 'hyprland'" class="field hyprland-field">
+          <span>{{ pick(ui.hyprlandExtras, props.locale) }}</span>
+          <small>{{ pick(ui.hyprlandExtrasHint, props.locale) }}</small>
+          <div class="field nested-field">
+            <div v-for="entry in hyprlandCategories" :key="entry.category" class="field">
+              <span>{{ entry.label }}</span>
+              <ChoicePicker
+                :name="`hyprland.${entry.category}`"
+                :model-value="entry.selected"
+                :options="entry.options"
+                @update:model-value="commitHyprland(entry.category, $event)"
+              />
+            </div>
+            <div v-for="group in hyprlandAddonGroups" :key="group.label" class="field">
+              <span>{{ group.label }}</span>
+              <label v-for="addon in group.addons" :key="addon.value" class="check-option">
+                <input
+                  type="checkbox"
+                  :name="`hyprland.${addon.value}`"
+                  :checked="addon.checked"
+                  @change="toggleHyprlandAddon(addon.value, $event)"
+                />
+                <span>{{ addon.label }}</span>
+                <small>{{ addon.description }}</small>
+              </label>
+            </div>
+          </div>
         </div>
       </fieldset>
 
@@ -1048,6 +1051,15 @@ small.description {
   color: var(--faint);
 }
 
+/** Title row plus a box that fills the rest, so it ends level with the field beside it. */
+.reflector-field {
+  grid-template-rows: auto 1fr;
+}
+
+.reflector-field .nested-field {
+  margin-top: 0;
+}
+
 .nested-field {
   margin-top: 0.5rem;
   padding: 0.8rem;
@@ -1068,7 +1080,7 @@ small.description {
   grid-column: 1 / -1;
 }
 
-.hyprland-field > .field {
+.hyprland-field .nested-field > .field + .field {
   margin-top: 0.9rem;
 }
 

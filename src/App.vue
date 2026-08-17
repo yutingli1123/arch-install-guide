@@ -2,7 +2,13 @@
 import { computed, ref, watch } from 'vue'
 import GuideDoc from './components/GuideDoc.vue'
 import SetupWizard from './components/SetupWizard.vue'
-import { VERIFIED_AGAINST, completeConfig, parseDraft, serializeDraft } from './guide/config'
+import {
+  VERIFIED_AGAINST,
+  completeConfig,
+  completeHyprland,
+  parseDraft,
+  serializeDraft,
+} from './guide/config'
 import { selectSteps } from './guide/render'
 import type { ConfigDraft, Locale } from './guide/types'
 import { choices, pick, ui } from './guide/ui'
@@ -23,7 +29,7 @@ function firstIncompleteStep(draft: ConfigDraft): number {
     !draft.hostname ||
     !draft.username ||
     !draft.desktop ||
-    (draft.desktop === 'hyprland' && !draft.hyprland) ||
+    (draft.desktop === 'hyprland' && !completeHyprland(draft.hyprland)) ||
     !draft.reflector
   )
     return 3
@@ -153,19 +159,19 @@ const summary = computed(() => {
       label: pick(ui.desktop, locale.value),
       value: pick(choices.desktop[cfg.desktop], locale.value),
     },
-    ...(cfg.desktop === 'hyprland'
+    ...(cfg.hyprland
       ? [
           {
             label: pick(ui.hyprlandExtras, locale.value),
-            value:
-              [
-                ...(
-                  ['terminal', 'launcher', 'fileManager', 'notifications', 'bar', 'lock'] as const
-                )
-                  .map((category) => cfg.hyprland[category])
-                  .filter((selected) => selected !== 'none'),
-                ...cfg.hyprland.addons,
-              ].join(' ') || none,
+            value: [
+              cfg.hyprland.terminal,
+              cfg.hyprland.launcher,
+              cfg.hyprland.fileManager,
+              ...[cfg.hyprland.notifications, cfg.hyprland.bar, cfg.hyprland.lock].filter(
+                (selected) => selected !== 'none',
+              ),
+              ...cfg.hyprland.addons,
+            ].join(' '),
           },
         ]
       : []),

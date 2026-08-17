@@ -108,7 +108,7 @@ const SUBVOLUME_LAYOUTS = {
 } satisfies Record<SubvolumeLayout, [Subvolume, ...Subvolume[]]>
 
 /** A file manager only integrates with the rest of the system through these. */
-const FILE_MANAGER_PACKAGES: Record<Exclude<HyprlandFileManager, 'none'>, string[]> = {
+const FILE_MANAGER_PACKAGES: Record<HyprlandFileManager, string[]> = {
   nautilus: ['nautilus', 'gvfs-smb', 'sushi'],
   dolphin: ['dolphin', 'ffmpegthumbs', 'kdegraphics-thumbnailers'],
   thunar: [
@@ -132,11 +132,14 @@ const HYPRLAND_SERVICE_PACKAGES = [
   'hyprsunset',
 ]
 
+/** Walker itself holds no data; launching applications needs the matching elephant provider. */
+const WALKER_AUR_PACKAGES = ['walker', 'elephant', 'elephant-desktopapplications']
+
 function hyprlandPackages(extras: HyprlandExtras): string[] {
   return [
-    ...(extras.terminal === 'none' ? [] : [extras.terminal]),
-    ...(extras.launcher === 'none' ? [] : [extras.launcher]),
-    ...(extras.fileManager === 'none' ? [] : FILE_MANAGER_PACKAGES[extras.fileManager]),
+    extras.terminal,
+    ...(extras.launcher === 'walker' ? [] : [extras.launcher]),
+    ...FILE_MANAGER_PACKAGES[extras.fileManager],
     ...(extras.notifications === 'none' ? [] : [extras.notifications]),
     ...(extras.bar === 'none' ? [] : [extras.bar]),
     ...(extras.lock === 'none' ? [] : ['hyprlock', 'hypridle']),
@@ -147,6 +150,9 @@ function hyprlandPackages(extras: HyprlandExtras): string[] {
 export function derive(cfg: Config): Context {
   if (cfg.subvolumeLayout === 'root-only' && cfg.snapper !== 'none') {
     throw new Error('snapper requires the separated subvolume layout')
+  }
+  if (cfg.desktop !== 'hyprland' && cfg.hyprland) {
+    throw new Error('hyprland extras require the hyprland desktop')
   }
   if (cfg.encryption.mode === 'luks2' && cfg.encryption.unlock.method === 'tpm2') {
     const { hashPcrs, signedPcrs } = cfg.encryption.unlock
@@ -253,7 +259,7 @@ export function derive(cfg: Config): Context {
     packages.push('systemd-ukify')
   }
 
-  const hyprland = cfg.desktop === 'hyprland' ? hyprlandPackages(cfg.hyprland) : []
+  const hyprland = cfg.hyprland ? hyprlandPackages(cfg.hyprland) : []
 
   return {
     cfg,
@@ -273,6 +279,7 @@ export function derive(cfg: Config): Context {
     desktopCommonPackages,
     desktopPackages: desktop.packages,
     hyprlandPackages: hyprland,
+    hyprlandAurPackages: cfg.hyprland?.launcher === 'walker' ? WALKER_AUR_PACKAGES : [],
     hyprlandServices: hyprland.filter((name) => HYPRLAND_SERVICE_PACKAGES.includes(name)),
     cjkVariant: cfg.desktop === 'none' ? undefined : CJK_VARIANTS[cfg.systemLocale],
     displayManager: 'displayManager' in desktop ? desktop.displayManager : undefined,

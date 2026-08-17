@@ -262,6 +262,15 @@ describe('configuration', () => {
       username: 'alice',
       graphics: 'nvidia',
       desktop: 'hyprland',
+      hyprland: {
+        notifications: 'mako',
+        launcher: 'wofi',
+        fileManager: 'dolphin',
+        terminal: 'kitty',
+        bar: 'waybar',
+        lock: 'hyprlock',
+        addons: ['hyprshot', 'wl-clipboard'],
+      },
       reflector: { countries: ['GB', 'FR'], ageHours: 6, number: 7 },
     }
 
@@ -616,31 +625,34 @@ describe('renderGuide', () => {
 })
 
 describe('hyprland extras', () => {
-  const full: Config = {
+  const hyprland = (extras: Partial<Config['hyprland']> = {}): Config => ({
     ...stageOneConfig,
     desktop: 'hyprland',
     hyprland: {
-      notifications: 'swaync',
+      notifications: 'none',
       launcher: 'rofi',
-      fileManager: 'thunar',
+      fileManager: 'nautilus',
       terminal: 'ghostty',
-      bar: 'waybar',
-      lock: 'hyprlock',
-      addons: [
-        'hyprpaper',
-        'hyprsunset',
-        'hyprshot',
-        'satty',
-        'wl-clipboard',
-        'pavucontrol',
-        'pulsemixer',
-        'playerctl',
-        'gnome-keyring',
-        'seahorse',
-      ],
+      bar: 'none',
+      lock: 'none',
+      addons: [],
+      ...extras,
     },
-  }
-  const bare: Config = { ...stageOneConfig, desktop: 'hyprland' }
+  })
+  const full = hyprland({
+    notifications: 'swaync',
+    fileManager: 'thunar',
+    bar: 'waybar',
+    lock: 'hyprlock',
+    addons: [
+      'hyprpaper',
+      'hyprsunset',
+      'hyprshot',
+      'wl-clipboard',
+      'gnome-keyring',
+      'seahorse',
+    ],
+  })
 
   it('installs one package set per selection and enables only the services it ships', () => {
     const context = derive(full)
@@ -662,11 +674,7 @@ describe('hyprland extras', () => {
       'hyprpaper',
       'hyprsunset',
       'hyprshot',
-      'satty',
       'wl-clipboard',
-      'pavucontrol',
-      'pulsemixer',
-      'playerctl',
       'gnome-keyring',
       'seahorse',
     ])
@@ -677,6 +685,7 @@ describe('hyprland extras', () => {
       'hyprpaper',
       'hyprsunset',
     ])
+    expect(context.hyprlandAurPackages).toEqual([])
 
     const rendered = renderHtml(full)
     expect(rendered).toContain('pacman -S ghostty rofi thunar gvfs gvfs-smb')
@@ -686,72 +695,102 @@ describe('hyprland extras', () => {
     expect(rendered).toContain('local terminal    = &quot;ghostty&quot;')
     expect(rendered).toContain('local fileManager = &quot;thunar&quot;')
     expect(rendered).toContain('local menu        = &quot;rofi -show drun&quot;')
-    expect(rendered).toContain('hyprshot -m region --raw | satty --filename -')
+    expect(rendered).toContain('hl.bind(&quot;SHIFT + PRINT&quot;, hl.dsp.exec_cmd(&quot;hyprshot -m region&quot;))')
     expect(rendered).toContain(
       '/usr/share/hypr/hyprlock.conf /home/user/.config/hypr/hyprlock.conf',
     )
     expect(rendered).toContain('preload = /usr/share/hypr/wall2.png')
     expect(rendered).toContain('session    optional     pam_gnome_keyring.so auto_start')
     expect(rendered).toContain('登录后按 <code>SUPER + Q</code> 打开终端')
+    expect(rendered).not.toContain('paru -S walker')
   })
 
-  it('generates no extra package, service, or step when nothing is selected', () => {
-    const rendered = renderHtml(bare)
+  it('requires a terminal, launcher and file manager, and nothing beyond them', () => {
+    const minimal = hyprland()
+    const rendered = renderHtml(minimal)
 
-    expect(derive(bare).hyprlandPackages).toEqual([])
-    expect(selectSteps(bare).filter((step) => step.section === 'hyprland')).toEqual([])
-    expect(rendered).toContain('pacman -S hyprland xdg-desktop-portal-hyprland')
-    expect(rendered).not.toContain('systemctl --global enable waybar.service')
-    expect(rendered).not.toContain('local terminal')
+    expect(derive(minimal).hyprlandPackages).toEqual([
+      'ghostty',
+      'rofi',
+      'nautilus',
+      'gvfs-smb',
+      'sushi',
+    ])
+    expect(
+      selectSteps(minimal)
+        .filter((step) => step.section === 'hyprland')
+        .map((s) => s.id),
+    ).toEqual(['hyprland-extras', 'hyprland-programs'])
+    expect(rendered).toContain('pacman -S ghostty rofi nautilus gvfs-smb sushi')
+    expect(rendered).not.toContain('systemctl --global enable swaync')
     expect(rendered).not.toContain('hyprpaper.conf')
     expect(rendered).not.toContain('pam_gnome_keyring.so')
-    expect(rendered).not.toContain('登录后按 <code>SUPER + Q</code> 打开终端')
+
+    // The wizard cannot skip these three, so the guide is never generated without them.
+    for (const category of ['terminal', 'launcher', 'fileManager'] as const) {
+      const { [category]: _missing, ...rest } = minimal.hyprland!
+      expect(completeConfig({ ...minimal, hyprland: rest })).toBeNull()
+    }
+    expect(completeConfig({ ...minimal, hyprland: undefined })).toBeNull()
   })
 
   it('keeps each selection independent of the others', () => {
-    const barOnly: Config = { ...bare, hyprland: { ...bare.hyprland, bar: 'waybar' } }
+    const barOnly = hyprland({ bar: 'waybar' })
     const rendered = renderHtml(barOnly)
 
-    expect(derive(barOnly).hyprlandPackages).toEqual(['waybar'])
-    expect(rendered).toContain('pacman -S waybar')
+    expect(derive(barOnly).hyprlandPackages).toContain('waybar')
     expect(rendered).toContain('systemctl --global enable waybar.service')
-    expect(rendered).not.toContain('local terminal')
     expect(rendered).not.toContain('hyprlock')
 
-    const screenshotOnly: Config = {
-      ...bare,
-      hyprland: { ...bare.hyprland, addons: ['hyprshot'] },
-    }
-    const withoutSatty = renderHtml(screenshotOnly)
-    expect(withoutSatty).toContain('hl.bind(&quot;SHIFT + PRINT&quot;')
-    expect(withoutSatty).not.toContain('satty')
+    const screenshot = renderHtml(hyprland({ addons: ['hyprshot'] }))
+    expect(screenshot).toContain('hl.bind(&quot;SHIFT + PRINT&quot;')
+    expect(screenshot).not.toContain('hyprpaper.conf')
   })
 
-  it('names the keybinds left without a program', () => {
-    const launcherOnly: Config = { ...bare, hyprland: { ...bare.hyprland, launcher: 'wofi' } }
-    const rendered = renderHtml(launcherOnly)
+  it('installs walker and elephant from the AUR and runs elephant as a user service', () => {
+    const walker = hyprland({ launcher: 'walker' })
+    const context = derive(walker)
+    const rendered = renderHtml(walker)
 
-    expect(rendered).toContain('local menu        = &quot;wofi --show drun&quot;')
-    expect(rendered).toContain('<code>SUPER + Q</code>、<code>SUPER + E</code> 仍指向默认配置')
+    expect(context.hyprlandPackages).not.toContain('walker')
+    expect(context.hyprlandAurPackages).toEqual([
+      'walker',
+      'elephant',
+      'elephant-desktopapplications',
+    ])
+    expect(rendered).toContain('sudo -u user paru -S walker elephant elephant-desktopapplications')
+    expect(rendered).toContain('/etc/systemd/user/elephant.service')
+    expect(rendered).toContain('systemctl --global enable elephant.service')
+    expect(rendered).toContain('local menu        = &quot;walker&quot;')
+    expect(renderHtml(hyprland())).not.toContain('elephant')
+
+    const hyprlauncher = hyprland({ launcher: 'hyprlauncher' })
+    expect(derive(hyprlauncher).hyprlandPackages).toContain('hyprlauncher')
+    expect(derive(hyprlauncher).hyprlandAurPackages).toEqual([])
+    expect(renderHtml(hyprlauncher)).toContain('local menu        = &quot;hyprlauncher&quot;')
+    expect(renderHtml(hyprlauncher)).not.toContain('paru -S walker')
   })
 
   it('round-trips selections through the share link and drops them for other desktops', () => {
     expect(completeConfig(parseDraft(serializeDraft(full)))).toEqual(full)
-    expect(parseDraft(serializeDraft(full)).hyprland).toEqual(full.hyprland)
-
-    const gnome: Config = { ...full, desktop: 'gnome' }
-    expect(parseDraft(serializeDraft(gnome)).hyprland).toBeUndefined()
-    expect(completeConfig(parseDraft(serializeDraft(gnome)))?.hyprland).toEqual(
-      stageOneConfig.hyprland,
+    expect(parseDraft(serializeDraft(hyprland({ launcher: 'walker' }))).hyprland?.launcher).toBe(
+      'walker',
     )
-    expect(renderHtml(gnome)).not.toContain('pacman -S ghostty rofi')
 
-    // The wizard has to answer the categories before the guide can be generated.
-    const { hyprland: _hyprland, ...withoutExtras } = full
-    expect(completeConfig(withoutExtras)).toBeNull()
-    expect(
-      completeConfig({ ...full, hyprland: { ...full.hyprland, addons: ['satty', 'satty'] } }),
-    ).toBeNull()
+    // A half-answered wizard page still has to survive a reload.
+    const partial = { desktop: 'hyprland' as const, hyprland: { terminal: 'kitty' as const } }
+    expect(parseDraft(serializeDraft(partial)).hyprland).toEqual({
+      terminal: 'kitty',
+      addons: [],
+    })
+
+    const gnome = completeConfig(parseDraft(serializeDraft({ ...full, desktop: 'gnome' })))
+    expect(parseDraft(serializeDraft({ ...full, desktop: 'gnome' })).hyprland).toBeUndefined()
+    expect(gnome?.hyprland).toBeNull()
+    expect(renderHtml(gnome!)).not.toContain('pacman -S ghostty rofi')
+    expect(() => derive({ ...full, desktop: 'gnome' })).toThrow(
+      'hyprland extras require the hyprland desktop',
+    )
   })
 })
 

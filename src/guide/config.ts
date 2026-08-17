@@ -109,9 +109,9 @@ export const KEYMAPS = ['us', 'uk', 'de-latin1', 'fr-latin9', 'es', 'it', 'jp106
 /** Single-choice Hyprland categories. Enum order is part of the URL format. */
 export const HYPRLAND_CHOICES = {
   notifications: ['none', 'swaync', 'mako'],
-  launcher: ['none', 'rofi', 'wofi'],
-  fileManager: ['none', 'nautilus', 'dolphin', 'thunar'],
-  terminal: ['none', 'ghostty', 'kitty'],
+  launcher: ['hyprlauncher', 'rofi', 'wofi', 'walker'],
+  fileManager: ['nautilus', 'dolphin', 'thunar'],
+  terminal: ['ghostty', 'kitty'],
   bar: ['none', 'waybar'],
   lock: ['none', 'hyprlock'],
 } as const satisfies { [K in keyof Omit<HyprlandExtras, 'addons'>]: readonly HyprlandExtras[K][] }
@@ -121,30 +121,44 @@ export const HYPRLAND_ADDONS = [
   'hyprpaper',
   'hyprsunset',
   'hyprshot',
-  'satty',
   'wl-clipboard',
-  'pavucontrol',
-  'pulsemixer',
-  'playerctl',
   'gnome-keyring',
   'seahorse',
 ] as const satisfies readonly HyprlandAddon[]
 
-export const NO_HYPRLAND_EXTRAS: HyprlandExtras = {
+/** Categories that carry a `none` option start there; the rest wait for an answer. */
+export const NEW_HYPRLAND_DRAFT: Partial<HyprlandExtras> = {
   notifications: 'none',
-  launcher: 'none',
-  fileManager: 'none',
-  terminal: 'none',
   bar: 'none',
   lock: 'none',
   addons: [],
 }
 
 const HYPRLAND_CATEGORIES = Object.keys(HYPRLAND_CHOICES) as (keyof typeof HYPRLAND_CHOICES)[]
+/** Index 0 stands for a category the user has not answered yet. */
+const HYPRLAND_URL_VALUES = Object.fromEntries(
+  HYPRLAND_CATEGORIES.map((category) => [category, ['', ...HYPRLAND_CHOICES[category]]]),
+) as Record<(typeof HYPRLAND_CATEGORIES)[number], string[]>
 
 /** Keeps a selection comparable and encodable regardless of the order it was clicked in. */
 export function orderAddons(addons: readonly HyprlandAddon[]): HyprlandAddon[] {
   return HYPRLAND_ADDONS.filter((addon) => addons.includes(addon))
+}
+
+/** Returns null while a mandatory category is unanswered or an addon is unknown. */
+export function completeHyprland(
+  draft: Partial<HyprlandExtras> | null | undefined,
+): HyprlandExtras | null {
+  const addons = draft?.addons ?? []
+  if (
+    !draft ||
+    HYPRLAND_CATEGORIES.some((category) => draft[category] === undefined) ||
+    new Set(addons).size !== addons.length ||
+    !addons.every(isAddon)
+  ) {
+    return null
+  }
+  return { ...(draft as HyprlandExtras), addons: orderAddons(addons) }
 }
 
 export const MIRROR_COUNTRIES = [
@@ -251,7 +265,7 @@ export const stageOneConfig: Config = {
   secureBoot: 'none',
   snapper: 'none',
   desktop: 'none',
-  hyprland: NO_HYPRLAND_EXTRAS,
+  hyprland: null,
   graphics: 'intel',
   reflector: { countries: ['CA'], ageHours: 12, number: 10 },
 }
@@ -350,13 +364,15 @@ export function parseDraft(search: string): ConfigDraft {
   return draft
 }
 
-function parseHyprland(params: URLSearchParams): HyprlandExtras | undefined {
+function parseHyprland(params: URLSearchParams): Partial<HyprlandExtras> | undefined {
   const selected = params.get('hypr')?.split(',')
   if (selected?.length !== HYPRLAND_CATEGORIES.length) return undefined
 
-  const extras = { ...NO_HYPRLAND_EXTRAS }
+  const extras: Partial<HyprlandExtras> = { addons: [] }
   for (const [index, category] of HYPRLAND_CATEGORIES.entries()) {
-    const value = listedValue(selected[index] ?? null, HYPRLAND_CHOICES[category])
+    const raw = selected[index] ?? ''
+    if (raw === '') continue
+    const value = listedValue(raw, HYPRLAND_CHOICES[category])
     if (!value) return undefined
     Object.assign(extras, { [category]: value })
   }
@@ -434,15 +450,14 @@ export function completeConfig(draft: ConfigDraft): Config | null {
     draft.secureBoot === undefined ||
     (draft.subvolumeLayout === 'separated' && draft.snapper === undefined) ||
     draft.desktop === undefined ||
-    (draft.desktop === 'hyprland' && draft.hyprland === undefined) ||
     draft.graphics === undefined ||
     draft.reflector === undefined
   ) {
     return null
   }
 
-  const addons = draft.hyprland?.addons ?? []
-  if (new Set(addons).size !== addons.length || !addons.every(isAddon)) return null
+  const hyprland = completeHyprland(draft.hyprland)
+  if (draft.desktop === 'hyprland' && !hyprland) return null
 
   const preset = tpm2Preset(draft.encryption)
   if (
@@ -484,10 +499,7 @@ export function completeConfig(draft: ConfigDraft): Config | null {
     secureBoot: draft.secureBoot,
     snapper: draft.subvolumeLayout === 'root-only' ? 'none' : draft.snapper!,
     desktop: draft.desktop,
-    hyprland:
-      draft.desktop === 'hyprland'
-        ? { ...draft.hyprland!, addons: orderAddons(draft.hyprland!.addons) }
-        : NO_HYPRLAND_EXTRAS,
+    hyprland: draft.desktop === 'hyprland' ? hyprland : null,
     graphics: draft.graphics,
     reflector: draft.reflector,
   }
@@ -606,14 +618,14 @@ function encodeCompactConfig(draft: ConfigDraft): string | null {
       bytes.push(draft.reflector!.number)
     })
   if (draft.zram !== undefined) include(15, () => bytes.push(draft.zram ? 1 : 0))
-  if (draft.hyprland !== undefined)
+  if (draft.hyprland)
     include(16, () => {
       const extras = draft.hyprland!
       for (const category of HYPRLAND_CATEGORIES) {
-        writeEnum(extras[category], HYPRLAND_CHOICES[category])
+        writeEnum(extras[category] ?? '', HYPRLAND_URL_VALUES[category])
       }
       let addons = 0
-      for (const addon of extras.addons) {
+      for (const addon of extras.addons ?? []) {
         const index = HYPRLAND_ADDONS.indexOf(addon)
         if (index < 0) throw new RangeError('compact config enum is unknown')
         addons |= 1 << index
@@ -715,8 +727,8 @@ function decodeCompactConfig(value: string): URLSearchParams | null {
     if ((mask & (1 << 16)) === 0) return true
     const selected: string[] = []
     for (const category of HYPRLAND_CATEGORIES) {
-      const value = readEnum(HYPRLAND_CHOICES[category])
-      if (!value) return false
+      const value = readEnum(HYPRLAND_URL_VALUES[category])
+      if (value === null) return false
       selected.push(value)
     }
     const low = bytes[cursor++]
