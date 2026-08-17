@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import ChoicePicker from '@/components/ChoicePicker.vue'
 import LanguagePicker from '@/components/LanguagePicker.vue'
+import ThemePicker from '@/components/ThemePicker.vue'
 import {
   HYPRLAND_ADDONS,
   HYPRLAND_CHOICES,
@@ -438,10 +439,13 @@ function goToStep(index: number) {
     <header>
       <div class="top-row">
         <p class="product">{{ pick(ui.title, props.locale) }}</p>
-        <LanguagePicker
-          :model-value="props.locale"
-          @update:model-value="emit('update:locale', $event)"
-        />
+        <div class="pickers">
+          <LanguagePicker
+            :model-value="props.locale"
+            @update:model-value="emit('update:locale', $event)"
+          />
+          <ThemePicker :locale="props.locale" />
+        </div>
       </div>
       <p class="progress">
         {{ pick(ui.wizardProgress, props.locale)(step + 1, titles.length) }}
@@ -846,6 +850,11 @@ function goToStep(index: number) {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.pickers {
+  display: flex;
+  gap: 0.5rem;
 }
 
 h1 {

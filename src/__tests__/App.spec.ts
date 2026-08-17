@@ -389,6 +389,21 @@ describe('setup wizard', () => {
     expect(window.location.search).toBe('')
   })
 
+  it('switches the theme, keeps it for the next visit, and auto clears it', async () => {
+    const wrapper = mount(App)
+
+    expect(document.documentElement.dataset.theme).toBeUndefined()
+
+    await wrapper.get('[data-theme-option="dark"]').trigger('click')
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(localStorage.getItem('theme')).toBe('dark')
+    expect(wrapper.get('[data-theme-option="dark"]').attributes('aria-pressed')).toBe('true')
+
+    await wrapper.get('[data-theme-option="auto"]').trigger('click')
+    expect(document.documentElement.dataset.theme).toBeUndefined()
+    expect(localStorage.getItem('theme')).toBeNull()
+  })
+
   it('restores shared configuration at its saved wizard step', () => {
     window.history.replaceState(
       null,

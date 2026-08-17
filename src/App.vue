@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import GuideDoc from './components/GuideDoc.vue'
 import LanguagePicker from './components/LanguagePicker.vue'
 import SetupWizard from './components/SetupWizard.vue'
+import ThemePicker from './components/ThemePicker.vue'
 import {
   VERIFIED_AGAINST,
   completeConfig,
@@ -232,7 +233,10 @@ const summary = computed(() => {
   <main v-if="screen === 'welcome'" class="welcome">
     <div class="welcome-top">
       <h1>{{ pick(ui.title, locale) }}</h1>
-      <LanguagePicker v-model="locale" />
+      <div class="header-actions">
+        <LanguagePicker v-model="locale" />
+        <ThemePicker :locale="locale" />
+      </div>
     </div>
     <h2>{{ pick(ui.welcomeTitle, locale) }}</h2>
     <p>{{ pick(ui.welcomeBody, locale) }}</p>
@@ -258,6 +262,7 @@ const summary = computed(() => {
         <h1>{{ pick(ui.title, locale) }}</h1>
         <div class="header-actions no-print">
           <LanguagePicker v-model="locale" />
+          <ThemePicker :locale="locale" />
           <button data-action="edit" type="button" @click="editConfiguration">
             {{ pick(ui.editConfig, locale) }}
           </button>
