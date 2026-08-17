@@ -577,7 +577,7 @@ describe('renderGuide', () => {
 
     const hyprland = renderHtml({ ...stageOneConfig, desktop: 'hyprland', graphics: 'nvidia' })
     expect(hyprland).toContain('pacman -S nvidia-open nvidia-utils')
-    expect(hyprland).toContain('pacman -S hyprland xdg-desktop-portal-hyprland wl-clipboard')
+    expect(hyprland).toContain('pacman -S hyprland xdg-desktop-portal-hyprland wl-clipboard playerctl')
     expect(hyprland).toContain('greetd greetd-regreet')
     expect(hyprland).toContain('systemctl enable greetd')
     expect(hyprland).toContain(

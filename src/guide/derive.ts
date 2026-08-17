@@ -208,6 +208,7 @@ export function derive(cfg: Config): Context {
         'hyprland',
         'xdg-desktop-portal-hyprland',
         'wl-clipboard',
+        'playerctl',
         'hyprpolkitagent',
         'greetd',
         'greetd-regreet',
