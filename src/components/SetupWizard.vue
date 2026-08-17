@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ChoicePicker from '@/components/ChoicePicker.vue'
+import LanguagePicker from '@/components/LanguagePicker.vue'
 import {
   HYPRLAND_ADDONS,
   HYPRLAND_CHOICES,
@@ -16,13 +17,13 @@ import {
   type ConfigChoice,
 } from '@/guide/config'
 import type { ConfigDraft, HyprlandAddon, HyprlandExtras, Locale, Tpm2Preset } from '@/guide/types'
-import { choiceDescriptions, choices, hyprlandAddonGroups, pick, ui } from '@/guide/ui'
+import { choiceDescriptions, choices, hyprlandAddonGroups, localeNames, pick, ui } from '@/guide/ui'
 
 const props = defineProps<{
   locale: Locale
   summary: { label: string; value: string }[]
 }>()
-const emit = defineEmits<{ finish: []; cancel: [] }>()
+const emit = defineEmits<{ finish: []; cancel: []; 'update:locale': [Locale] }>()
 const model = defineModel<ConfigDraft>({ required: true })
 const step = defineModel<number>('step', { required: true })
 const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -435,12 +436,21 @@ function goToStep(index: number) {
 <template>
   <main class="wizard">
     <header>
-      <p class="product">{{ pick(ui.title, props.locale) }}</p>
+      <div class="top-row">
+        <p class="product">{{ pick(ui.title, props.locale) }}</p>
+        <LanguagePicker
+          :model-value="props.locale"
+          @update:model-value="emit('update:locale', $event)"
+        />
+      </div>
       <p class="progress">
         {{ pick(ui.wizardProgress, props.locale)(step + 1, titles.length) }}
       </p>
       <h1>{{ titles[step] }}</h1>
-      <ol aria-label="配置进度" :style="{ gridTemplateColumns: `repeat(${titles.length}, 1fr)` }">
+      <ol
+        :aria-label="pick(ui.wizardSteps, props.locale)"
+        :style="{ gridTemplateColumns: `repeat(${titles.length}, 1fr)` }"
+      >
         <li
           v-for="(title, index) in titles"
           :key="title"
@@ -829,6 +839,13 @@ function goToStep(index: number) {
 
 .progress {
   margin: 1.5rem 0 0.2rem;
+}
+
+.top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 h1 {

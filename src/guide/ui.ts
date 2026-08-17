@@ -89,9 +89,17 @@ export const ui = {
   hostnameHint: { zh: '这台电脑在本机和网络中使用的名称，例如 archlinux 或 workstation。' },
   username: { zh: '用户名' },
   usernameHint: { zh: '日常登录使用的普通用户账户；不能使用 root。' },
+  language: { zh: '界面语言', en: 'Language' },
+  wizardSteps: { zh: '配置进度', en: 'Configuration progress' },
   disclaimer: { zh: '本站与 Arch Linux 官方无关。' },
-  stepCount: { zh: (total: number) => `共 ${total} 步` },
+  stepCount: { zh: (total: number) => `共 ${total} 步`, en: (total: number) => `${total} steps` },
 } satisfies Record<string, Localized<unknown>>
+
+/** Written the way each language names itself, so it reads the same whatever the interface is set to. */
+export const localeNames: Record<Locale, string> = {
+  zh: '中文',
+  en: 'English',
+}
 
 export const choices = {
   cpu: {

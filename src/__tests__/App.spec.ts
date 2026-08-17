@@ -354,6 +354,41 @@ describe('setup wizard', () => {
     expect(parseDraft(window.location.search).hyprland).toBeUndefined()
   })
 
+  it('keeps the configuration when the language changes and carries it in the link', async () => {
+    const wrapper = mount(App)
+    await start(wrapper)
+    await wrapper.get('select[name="timezone"]').setValue('America/Toronto')
+    await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
+
+    const saved = parseDraft(window.location.search)
+    await wrapper.get('button[name="language"]').trigger('click')
+    await wrapper.get('[data-locale="en"]').trigger('click')
+
+    expect(new URLSearchParams(window.location.search).get('lang')).toBe('en')
+    expect(parseDraft(window.location.search)).toEqual(saved)
+
+    // Chinese is written out too, so the link opens in Chinese on an English browser.
+    await wrapper.get('button[name="language"]').trigger('click')
+    await wrapper.get('[data-locale="zh"]').trigger('click')
+    expect(new URLSearchParams(window.location.search).get('lang')).toBe('zh')
+    expect(parseDraft(window.location.search)).toEqual(saved)
+  })
+
+  it('opens a shared link in the language it carries, over the browser default', () => {
+    window.history.replaceState(null, '', '/?lang=en')
+    const wrapper = mount(App)
+
+    expect(wrapper.get('button[name="language"]').text()).toBe('English')
+    expect(new URLSearchParams(window.location.search).get('lang')).toBe('en')
+  })
+
+  it('starts in the browser language without writing it into the link', () => {
+    const wrapper = mount(App)
+    // jsdom reports en-US, so detection lands on English.
+    expect(wrapper.get('button[name="language"]').text()).toBe('English')
+    expect(window.location.search).toBe('')
+  })
+
   it('restores shared configuration at its saved wizard step', () => {
     window.history.replaceState(
       null,

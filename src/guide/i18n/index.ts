@@ -16,5 +16,7 @@ export function prose(key: ProseKey, locale: Locale, ctx: Context): string {
   const entry: Prose | undefined = catalogs[locale]?.[key] ?? zh[key]
   // Keys resolved through `t` are plain strings, so a typo has to fail here.
   if (entry === undefined) throw new Error(`missing prose: ${key}`)
-  return typeof entry === 'function' ? entry(ctx, (other) => prose(other as ProseKey, locale, ctx)) : entry
+  return typeof entry === 'function'
+    ? entry(ctx, (other) => prose(other as ProseKey, locale, ctx))
+    : entry
 }
