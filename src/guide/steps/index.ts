@@ -6,6 +6,7 @@ import { systemSteps } from './system'
 import { storageSteps } from './storage'
 import { bootSteps } from './boot'
 import { desktopSteps } from './desktop'
+import { hyprlandSteps } from './hyprland'
 import { finishSteps } from './finish'
 
 export const sectionTitles: Record<string, Localized<string>> = {
@@ -16,6 +17,7 @@ export const sectionTitles: Record<string, Localized<string>> = {
   storage: { zh: '存储配置' },
   boot: { zh: '引导' },
   desktop: { zh: '桌面与显卡' },
+  hyprland: { zh: 'Hyprland 配套' },
   finish: { zh: '收尾' },
 }
 
@@ -28,5 +30,6 @@ export const steps: Step[] = [
   ...storageSteps,
   ...bootSteps,
   ...desktopSteps,
+  ...hyprlandSteps,
   ...finishSteps,
 ]

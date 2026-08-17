@@ -10,6 +10,34 @@ export type SubvolumeLayout = 'root-only' | 'separated'
 export type SecureBootMode = 'none' | 'custom-db' | 'shim-mok'
 export type SnapperMode = 'none' | 'root' | 'root-home'
 export type Desktop = 'none' | 'gnome' | 'kde' | 'hyprland'
+
+export type HyprlandNotifications = 'none' | 'swaync' | 'mako'
+export type HyprlandLauncher = 'hyprlauncher' | 'rofi' | 'wofi' | 'walker'
+export type HyprlandFileManager = 'nautilus' | 'dolphin' | 'thunar'
+export type HyprlandTerminal = 'ghostty' | 'kitty'
+export type HyprlandBar = 'none' | 'waybar'
+export type HyprlandLock = 'none' | 'hyprlock'
+/** Independently selectable extras; each value is also its package name. */
+export type HyprlandAddon =
+  | 'hyprpaper'
+  | 'hyprsunset'
+  | 'hyprshot'
+  | 'gnome-keyring'
+  | 'seahorse'
+
+/**
+ * Hyprland ships only the compositor and a session. A terminal, launcher and
+ * file manager have to be picked; the rest of the categories can stay empty.
+ */
+export type HyprlandExtras = {
+  notifications: HyprlandNotifications
+  launcher: HyprlandLauncher
+  fileManager: HyprlandFileManager
+  terminal: HyprlandTerminal
+  bar: HyprlandBar
+  lock: HyprlandLock
+  addons: HyprlandAddon[]
+}
 export type Graphics = 'intel' | 'amd' | 'nvidia'
 export type ReflectorConfig = {
   countries: string[]
@@ -59,12 +87,17 @@ export type Config = {
   secureBoot: SecureBootMode
   snapper: SnapperMode
   desktop: Desktop
+  /** Null for every desktop other than Hyprland. */
+  hyprland: HyprlandExtras | null
   graphics: Graphics
   reflector: ReflectorConfig
 }
 
 /** User choices collected by the setup wizard; absent means not selected yet. */
-export type ConfigDraft = Partial<Omit<Config, 'espSize' | 'mountOptions'>>
+export type ConfigDraft = Partial<Omit<Config, 'espSize' | 'mountOptions' | 'hyprland'>> & {
+  /** Null carries over from a finished `Config` whose desktop is not Hyprland. */
+  hyprland?: Partial<HyprlandExtras> | null
+}
 
 /**
  * Everything the steps read, resolved once from `Config`. Steps never recompute
@@ -92,6 +125,12 @@ export type Context = {
   audioPackages: string[]
   desktopCommonPackages: string[]
   desktopPackages: string[]
+  /** Hyprland session software from the official repositories. */
+  hyprlandPackages: string[]
+  /** Hyprland session software that only exists in the AUR. */
+  hyprlandAurPackages: string[]
+  /** Subset of `hyprlandPackages` that ships a systemd user unit. */
+  hyprlandServices: string[]
   /** Regional suffix of the Noto CJK families, e.g. `SC`. */
   cjkVariant?: string
   displayManager?: string

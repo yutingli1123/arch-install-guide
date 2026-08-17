@@ -2,10 +2,16 @@
 import { computed, ref, watch } from 'vue'
 import GuideDoc from './components/GuideDoc.vue'
 import SetupWizard from './components/SetupWizard.vue'
-import { VERIFIED_AGAINST, completeConfig, parseDraft, serializeDraft } from './guide/config'
+import {
+  VERIFIED_AGAINST,
+  completeConfig,
+  completeHyprland,
+  parseDraft,
+  serializeDraft,
+} from './guide/config'
 import { selectSteps } from './guide/render'
 import type { ConfigDraft, Locale } from './guide/types'
-import { choices, pick, ui } from './guide/ui'
+import { choices, hyprlandAddonGroups, pick, ui } from './guide/ui'
 
 function firstIncompleteStep(draft: ConfigDraft): number {
   if (!draft.timezone || !draft.systemLocale) return 0
@@ -19,7 +25,14 @@ function firstIncompleteStep(draft: ConfigDraft): number {
     (draft.subvolumeLayout === 'separated' && !draft.snapper)
   )
     return 2
-  if (!draft.hostname || !draft.username || !draft.desktop || !draft.reflector) return 3
+  if (
+    !draft.hostname ||
+    !draft.username ||
+    !draft.desktop ||
+    (draft.desktop === 'hyprland' && !completeHyprland(draft.hyprland)) ||
+    !draft.reflector
+  )
+    return 3
   if (!draft.disk || !draft.cpu || !draft.graphics) return 4
   return 5
 }
@@ -146,6 +159,42 @@ const summary = computed(() => {
       label: pick(ui.desktop, locale.value),
       value: pick(choices.desktop[cfg.desktop], locale.value),
     },
+    ...(cfg.hyprland
+      ? [
+          {
+            label: pick(ui.hyprlandTerminal, locale.value),
+            value: pick(choices.hyprlandTerminal[cfg.hyprland.terminal], locale.value),
+          },
+          {
+            label: pick(ui.hyprlandLauncher, locale.value),
+            value: pick(choices.hyprlandLauncher[cfg.hyprland.launcher], locale.value),
+          },
+          {
+            label: pick(ui.hyprlandFileManager, locale.value),
+            value: pick(choices.hyprlandFileManager[cfg.hyprland.fileManager], locale.value),
+          },
+          {
+            label: pick(ui.hyprlandNotifications, locale.value),
+            value: pick(choices.hyprlandNotifications[cfg.hyprland.notifications], locale.value),
+          },
+          {
+            label: pick(ui.hyprlandBar, locale.value),
+            value: pick(choices.hyprlandBar[cfg.hyprland.bar], locale.value),
+          },
+          {
+            label: pick(ui.hyprlandLock, locale.value),
+            value: pick(choices.hyprlandLock[cfg.hyprland.lock], locale.value),
+          },
+          ...hyprlandAddonGroups.map((group) => ({
+            label: pick(group.label, locale.value),
+            value:
+              group.addons
+                .filter((addon) => cfg.hyprland!.addons.includes(addon))
+                .map((addon) => pick(choices.hyprlandAddons[addon], locale.value))
+                .join('、') || none,
+          })),
+        ]
+      : []),
     {
       label: pick(ui.reflector, locale.value),
       value: `${cfg.reflector.countries.join(',')} / ${cfg.reflector.ageHours} h / ${cfg.reflector.number}`,

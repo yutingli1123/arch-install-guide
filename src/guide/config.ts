@@ -1,4 +1,11 @@
-import type { Config, ConfigDraft, Encryption, Tpm2Preset } from './types'
+import type {
+  Config,
+  ConfigDraft,
+  Encryption,
+  HyprlandAddon,
+  HyprlandExtras,
+  Tpm2Preset,
+} from './types'
 
 export type ConfigChoice =
   | 'encryption.password'
@@ -98,6 +105,60 @@ export const SYSTEM_LOCALES = [
 ] as const
 
 export const KEYMAPS = ['us', 'uk', 'de-latin1', 'fr-latin9', 'es', 'it', 'jp106', 'ru'] as const
+
+/** Single-choice Hyprland categories. Enum order is part of the URL format. */
+export const HYPRLAND_CHOICES = {
+  notifications: ['none', 'swaync', 'mako'],
+  launcher: ['hyprlauncher', 'rofi', 'wofi', 'walker'],
+  fileManager: ['nautilus', 'dolphin', 'thunar'],
+  terminal: ['ghostty', 'kitty'],
+  bar: ['none', 'waybar'],
+  lock: ['none', 'hyprlock'],
+} as const satisfies { [K in keyof Omit<HyprlandExtras, 'addons'>]: readonly HyprlandExtras[K][] }
+
+/** Bit order is part of the URL format. */
+export const HYPRLAND_ADDONS = [
+  'hyprpaper',
+  'hyprsunset',
+  'hyprshot',
+  'gnome-keyring',
+  'seahorse',
+] as const satisfies readonly HyprlandAddon[]
+
+/** Categories that carry a `none` option start there; the rest wait for an answer. */
+export const NEW_HYPRLAND_DRAFT: Partial<HyprlandExtras> = {
+  notifications: 'none',
+  bar: 'none',
+  lock: 'none',
+  addons: [],
+}
+
+const HYPRLAND_CATEGORIES = Object.keys(HYPRLAND_CHOICES) as (keyof typeof HYPRLAND_CHOICES)[]
+/** Index 0 stands for a category the user has not answered yet. */
+const HYPRLAND_URL_VALUES = Object.fromEntries(
+  HYPRLAND_CATEGORIES.map((category) => [category, ['', ...HYPRLAND_CHOICES[category]]]),
+) as Record<(typeof HYPRLAND_CATEGORIES)[number], string[]>
+
+/** Keeps a selection comparable and encodable regardless of the order it was clicked in. */
+export function orderAddons(addons: readonly HyprlandAddon[]): HyprlandAddon[] {
+  return HYPRLAND_ADDONS.filter((addon) => addons.includes(addon))
+}
+
+/** Returns null while a mandatory category is unanswered or an addon is unknown. */
+export function completeHyprland(
+  draft: Partial<HyprlandExtras> | null | undefined,
+): HyprlandExtras | null {
+  const addons = draft?.addons ?? []
+  if (
+    !draft ||
+    HYPRLAND_CATEGORIES.some((category) => draft[category] === undefined) ||
+    new Set(addons).size !== addons.length ||
+    !addons.every(isAddon)
+  ) {
+    return null
+  }
+  return { ...(draft as HyprlandExtras), addons: orderAddons(addons) }
+}
 
 export const MIRROR_COUNTRIES = [
   ['AL', 'Albania'],
@@ -203,6 +264,7 @@ export const stageOneConfig: Config = {
   secureBoot: 'none',
   snapper: 'none',
   desktop: 'none',
+  hyprland: null,
   graphics: 'intel',
   reflector: { countries: ['CA'], ageHours: 12, number: 10 },
 }
@@ -269,6 +331,7 @@ export function parseDraft(search: string): ConfigDraft {
   ] as const)
   const snapper = listedValue(params.get('snapper'), ['none', 'root', 'root-home'] as const)
   const desktop = listedValue(params.get('desktop'), ['none', 'gnome', 'kde', 'hyprland'] as const)
+  const hyprland = parseHyprland(params)
   const graphics = listedValue(params.get('graphics'), ['intel', 'amd', 'nvidia'] as const)
   const reflector = parseReflector(params)
   const timezone = listedValue(params.get('timezone'), TIMEZONES)
@@ -287,6 +350,7 @@ export function parseDraft(search: string): ConfigDraft {
   if (secureBoot) draft.secureBoot = secureBoot
   if (snapper) draft.snapper = snapper
   if (desktop) draft.desktop = desktop
+  if (hyprland) draft.hyprland = hyprland
   if (graphics) draft.graphics = graphics
   if (reflector) draft.reflector = reflector
   if (timezone) draft.timezone = timezone
@@ -295,7 +359,33 @@ export function parseDraft(search: string): ConfigDraft {
   if (hostname) draft.hostname = hostname
   if (username) draft.username = username
   if (draft.subvolumeLayout === 'root-only') delete draft.snapper
+  if (draft.desktop !== 'hyprland') delete draft.hyprland
   return draft
+}
+
+function parseHyprland(params: URLSearchParams): Partial<HyprlandExtras> | undefined {
+  const selected = params.get('hypr')?.split(',')
+  if (selected?.length !== HYPRLAND_CATEGORIES.length) return undefined
+
+  const extras: Partial<HyprlandExtras> = { addons: [] }
+  for (const [index, category] of HYPRLAND_CATEGORIES.entries()) {
+    const raw = selected[index] ?? ''
+    if (raw === '') continue
+    const value = listedValue(raw, HYPRLAND_CHOICES[category])
+    if (!value) return undefined
+    Object.assign(extras, { [category]: value })
+  }
+
+  const addons = params.get('hyprAddons')?.split(',').filter(Boolean) ?? []
+  if (!addons.every((addon, index) => isAddon(addon) && addons.indexOf(addon) === index)) {
+    return undefined
+  }
+  extras.addons = orderAddons(addons as HyprlandAddon[])
+  return extras
+}
+
+function isAddon(value: string): value is HyprlandAddon {
+  return HYPRLAND_ADDONS.includes(value as HyprlandAddon)
 }
 
 function parseEncryption(params: URLSearchParams): Encryption | undefined {
@@ -365,6 +455,9 @@ export function completeConfig(draft: ConfigDraft): Config | null {
     return null
   }
 
+  const hyprland = completeHyprland(draft.hyprland)
+  if (draft.desktop === 'hyprland' && !hyprland) return null
+
   const preset = tpm2Preset(draft.encryption)
   if (
     draft.reflector.countries.length === 0 ||
@@ -405,6 +498,7 @@ export function completeConfig(draft: ConfigDraft): Config | null {
     secureBoot: draft.secureBoot,
     snapper: draft.subvolumeLayout === 'root-only' ? 'none' : draft.snapper!,
     desktop: draft.desktop,
+    hyprland: draft.desktop === 'hyprland' ? hyprland : null,
     graphics: draft.graphics,
     reflector: draft.reflector,
   }
@@ -457,9 +551,9 @@ const COMPACT_ENUMS = {
 } as const
 
 function encodeCompactConfig(draft: ConfigDraft): string | null {
-  // Byte 0 is the format version; bytes 1-2 are the field-presence bitmap.
+  // Byte 0 is the format version; bytes 1-3 are the field-presence bitmap.
   let mask = 0
-  const bytes = [1, 0, 0]
+  const bytes = [2, 0, 0, 0]
   const include = (bit: number, write: () => void) => {
     mask |= 1 << bit
     write()
@@ -523,20 +617,34 @@ function encodeCompactConfig(draft: ConfigDraft): string | null {
       bytes.push(draft.reflector!.number)
     })
   if (draft.zram !== undefined) include(15, () => bytes.push(draft.zram ? 1 : 0))
+  if (draft.hyprland)
+    include(16, () => {
+      const extras = draft.hyprland!
+      for (const category of HYPRLAND_CATEGORIES) {
+        writeEnum(extras[category] ?? '', HYPRLAND_URL_VALUES[category])
+      }
+      let addons = 0
+      for (const addon of extras.addons ?? []) {
+        const index = HYPRLAND_ADDONS.indexOf(addon)
+        if (index < 0) throw new RangeError('compact config enum is unknown')
+        addons |= 1 << index
+      }
+      bytes.push(addons & 0xff, addons >> 8)
+    })
   if (mask === 0) return null
 
   bytes[1] = mask & 0xff
-  bytes[2] = mask >> 8
+  bytes[2] = (mask >> 8) & 0xff
+  bytes[3] = mask >> 16
   return encodeBase64Url(Uint8Array.from(bytes))
 }
 
 function decodeCompactConfig(value: string): URLSearchParams | null {
   const bytes = decodeBase64Url(value)
-  if (!bytes || bytes.length < 3 || bytes[0] !== 1) return null
-  const mask = bytes[1]! | (bytes[2]! << 8)
-  if ((mask & ~0xffff) !== 0) return null
+  if (!bytes || bytes.length < 4 || bytes[0] !== 2) return null
+  const mask = bytes[1]! | (bytes[2]! << 8) | (bytes[3]! << 16)
 
-  let cursor = 3
+  let cursor = 4
   const params = new URLSearchParams()
   const readText = () => {
     const length = bytes[cursor++]
@@ -614,6 +722,23 @@ function decodeCompactConfig(value: string): URLSearchParams | null {
     params.set('mirrorNumber', String(number))
     return true
   }
+  const readHyprland = () => {
+    if ((mask & (1 << 16)) === 0) return true
+    const selected: string[] = []
+    for (const category of HYPRLAND_CATEGORIES) {
+      const value = readEnum(HYPRLAND_URL_VALUES[category])
+      if (value === null) return false
+      selected.push(value)
+    }
+    const low = bytes[cursor++]
+    const high = bytes[cursor++]
+    if (low === undefined || high === undefined) return false
+    const addons = low | (high << 8)
+    if (addons >= 1 << HYPRLAND_ADDONS.length) return false
+    params.set('hypr', selected.join(','))
+    params.set('hyprAddons', HYPRLAND_ADDONS.filter((_, index) => addons & (1 << index)).join(','))
+    return true
+  }
   const readZram = () => {
     if ((mask & (1 << 15)) === 0) return true
     const zram = bytes[cursor++]
@@ -638,7 +763,8 @@ function decodeCompactConfig(value: string): URLSearchParams | null {
     read(12, 'user', readText) &&
     read(13, 'graphics', () => readEnum(COMPACT_ENUMS.graphics)) &&
     readReflector() &&
-    readZram()
+    readZram() &&
+    readHyprland()
 
   return valid && cursor === bytes.length ? params : null
 }

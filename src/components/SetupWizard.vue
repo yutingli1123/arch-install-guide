@@ -2,17 +2,21 @@
 import { computed } from 'vue'
 import ChoicePicker from '@/components/ChoicePicker.vue'
 import {
+  HYPRLAND_ADDONS,
+  HYPRLAND_CHOICES,
   KEYMAPS,
   MIRROR_COUNTRIES,
+  NEW_HYPRLAND_DRAFT,
   SYSTEM_LOCALES,
   TIMEZONES,
   makeTpm2Encryption,
+  orderAddons,
   tpm2Preset,
   validate,
   type ConfigChoice,
 } from '@/guide/config'
-import type { ConfigDraft, Locale, Tpm2Preset } from '@/guide/types'
-import { choiceDescriptions, choices, pick, ui } from '@/guide/ui'
+import type { ConfigDraft, HyprlandAddon, HyprlandExtras, Locale, Tpm2Preset } from '@/guide/types'
+import { choiceDescriptions, choices, hyprlandAddonGroups, pick, ui } from '@/guide/ui'
 
 const props = defineProps<{
   locale: Locale
@@ -160,6 +164,84 @@ const desktopOptions = computed(() => [
     disabledReason: unavailableReason(`desktop.${value}`),
   })),
 ])
+type HyprlandCategory = keyof typeof HYPRLAND_CHOICES
+type HyprlandCategoryUi = {
+  label: (typeof ui)['hyprlandTerminal']
+  choices: Record<string, (typeof ui)['hyprlandTerminal']>
+  descriptions: Record<string, (typeof ui)['hyprlandTerminal']>
+}
+const HYPRLAND_CATEGORY_UI: Record<HyprlandCategory, HyprlandCategoryUi> = {
+  notifications: {
+    label: ui.hyprlandNotifications,
+    choices: choices.hyprlandNotifications,
+    descriptions: choiceDescriptions.hyprlandNotifications,
+  },
+  launcher: {
+    label: ui.hyprlandLauncher,
+    choices: choices.hyprlandLauncher,
+    descriptions: choiceDescriptions.hyprlandLauncher,
+  },
+  fileManager: {
+    label: ui.hyprlandFileManager,
+    choices: choices.hyprlandFileManager,
+    descriptions: choiceDescriptions.hyprlandFileManager,
+  },
+  terminal: {
+    label: ui.hyprlandTerminal,
+    choices: choices.hyprlandTerminal,
+    descriptions: choiceDescriptions.hyprlandTerminal,
+  },
+  bar: {
+    label: ui.hyprlandBar,
+    choices: choices.hyprlandBar,
+    descriptions: choiceDescriptions.hyprlandBar,
+  },
+  lock: {
+    label: ui.hyprlandLock,
+    choices: choices.hyprlandLock,
+    descriptions: choiceDescriptions.hyprlandLock,
+  },
+}
+
+const hyprland = computed<Partial<HyprlandExtras>>(() => model.value.hyprland ?? NEW_HYPRLAND_DRAFT)
+const hyprlandCategories = computed(() =>
+  (Object.keys(HYPRLAND_CHOICES) as HyprlandCategory[]).map((category) => ({
+    category,
+    label: pick(HYPRLAND_CATEGORY_UI[category].label, props.locale),
+    selected: hyprland.value[category] as string | undefined,
+    options: (HYPRLAND_CHOICES[category] as readonly string[]).map((value) => ({
+      value,
+      label: pick(HYPRLAND_CATEGORY_UI[category].choices[value]!, props.locale),
+      description: pick(HYPRLAND_CATEGORY_UI[category].descriptions[value]!, props.locale),
+    })),
+  })),
+)
+const addonGroups = computed(() =>
+  hyprlandAddonGroups.map((group) => ({
+    label: pick(group.label, props.locale),
+    addons: group.addons.map((addon) => ({
+      value: addon,
+      label: pick(choices.hyprlandAddons[addon], props.locale),
+      description: pick(choiceDescriptions.hyprlandAddons[addon], props.locale),
+      checked: hyprland.value.addons?.includes(addon) ?? false,
+    })),
+  })),
+)
+
+function commitHyprland(category: HyprlandCategory, value: string | undefined) {
+  if (!value) return
+  model.value = {
+    ...model.value,
+    hyprland: { ...hyprland.value, [category]: value } as Partial<HyprlandExtras>,
+  }
+}
+
+function toggleHyprlandAddon(addon: HyprlandAddon, event: Event) {
+  const addons = (hyprland.value.addons ?? []).filter((selected) => selected !== addon)
+  if ((event.currentTarget as HTMLInputElement).checked) addons.push(addon)
+  model.value = { ...model.value, hyprland: { ...hyprland.value, addons: orderAddons(addons) } }
+}
+
 const graphicsOptions = computed(() =>
   (['intel', 'amd', 'nvidia'] as const).map((value) => ({
     value,
@@ -205,6 +287,10 @@ function commitChoice(field: ChoiceField, value: string | undefined) {
   if (value === undefined) return
   const next = { ...model.value, [field]: value } as ConfigDraft
   if (field === 'subvolumeLayout' && value === 'root-only') delete next.snapper
+  if (field === 'desktop') {
+    if (value === 'hyprland') next.hyprland ??= NEW_HYPRLAND_DRAFT
+    else delete next.hyprland
+  }
   model.value = next
 }
 
@@ -465,50 +551,6 @@ function goToStep(index: number) {
           </label>
         </div>
 
-        <div class="field encryption-field">
-          <span>{{ pick(ui.encryption, props.locale) }}</span>
-          <ChoicePicker
-            name="encryption"
-            :model-value="selectedEncryption"
-            :options="encryptionOptions"
-            @update:model-value="commitEncryption"
-          />
-          <div
-            v-if="model.encryption?.mode === 'luks2' && model.encryption.unlock.method === 'tpm2'"
-            class="field nested-field"
-          >
-            <span>{{ pick(ui.tpmPolicy, props.locale) }}</span>
-            <ChoicePicker
-              name="tpm2Preset"
-              :model-value="tpm2Preset(model.encryption)"
-              :options="tpmPresetOptions"
-              @update:model-value="commitTpm2Preset"
-            />
-            <label class="check-option">
-              <input
-                name="tpmPin"
-                type="checkbox"
-                :checked="model.encryption.unlock.pin"
-                @change="commitTpmPin"
-              />
-              <span>{{ pick(ui.requireTpmPin, props.locale) }}</span>
-            </label>
-            <p v-if="tpm2Preset(model.encryption) === 'minimal'" class="constraint-message">
-              {{ pick(ui.pcr7Warning, props.locale) }}
-            </p>
-          </div>
-        </div>
-
-        <div class="field secure-boot-field">
-          <span>{{ pick(ui.secureBoot, props.locale) }}</span>
-          <ChoicePicker
-            name="secureBoot"
-            :model-value="model.secureBoot"
-            :options="secureBootOptions"
-            @update:model-value="commitSecureBoot"
-          />
-        </div>
-
         <div class="field" :class="{ 'disabled-field': model.subvolumeLayout === 'root-only' }">
           <span>{{ pick(ui.snapper, props.locale) }}</span>
           <ChoicePicker
@@ -521,6 +563,52 @@ function goToStep(index: number) {
           <p v-else class="constraint-message">
             {{ pick(ui.snapperUnsupportedRootOnly, props.locale) }}
           </p>
+        </div>
+
+        <div class="encryption-row">
+          <div class="field encryption-field">
+            <span>{{ pick(ui.encryption, props.locale) }}</span>
+            <ChoicePicker
+              name="encryption"
+              :model-value="selectedEncryption"
+              :options="encryptionOptions"
+              @update:model-value="commitEncryption"
+            />
+            <div
+              v-if="model.encryption?.mode === 'luks2' && model.encryption.unlock.method === 'tpm2'"
+              class="field nested-field"
+            >
+              <span>{{ pick(ui.tpmPolicy, props.locale) }}</span>
+              <ChoicePicker
+                name="tpm2Preset"
+                :model-value="tpm2Preset(model.encryption)"
+                :options="tpmPresetOptions"
+                @update:model-value="commitTpm2Preset"
+              />
+              <label class="check-option">
+                <input
+                  name="tpmPin"
+                  type="checkbox"
+                  :checked="model.encryption.unlock.pin"
+                  @change="commitTpmPin"
+                />
+                <span>{{ pick(ui.requireTpmPin, props.locale) }}</span>
+              </label>
+              <p v-if="tpm2Preset(model.encryption) === 'minimal'" class="constraint-message">
+                {{ pick(ui.pcr7Warning, props.locale) }}
+              </p>
+            </div>
+          </div>
+
+          <div class="field secure-boot-field">
+            <span>{{ pick(ui.secureBoot, props.locale) }}</span>
+            <ChoicePicker
+              name="secureBoot"
+              :model-value="model.secureBoot"
+              :options="secureBootOptions"
+              @update:model-value="commitSecureBoot"
+            />
+          </div>
         </div>
       </fieldset>
 
@@ -625,43 +713,72 @@ function goToStep(index: number) {
           />
         </div>
 
-        <div class="field nested-field reflector-field">
+        <div class="field reflector-field">
           <span>{{ pick(ui.reflector, props.locale) }}</span>
-          <label>
-            <span>{{ pick(ui.mirrorCountry, props.locale) }}</span>
-            <input
-              name="mirrorCountries"
-              required
-              placeholder="CA,US"
-              :value="model.reflector?.countries.join(',') ?? ''"
-              @change="commitReflectorCountries"
+          <div class="field nested-field">
+            <label>
+              <span>{{ pick(ui.mirrorCountry, props.locale) }}</span>
+              <input
+                name="mirrorCountries"
+                required
+                placeholder="CA,US"
+                :value="model.reflector?.countries.join(',') ?? ''"
+                @change="commitReflectorCountries"
+              />
+              <small>{{ pick(ui.mirrorCountryHint, props.locale) }}</small>
+            </label>
+            <label>
+              <span>{{ pick(ui.mirrorAge, props.locale) }}</span>
+              <input
+                name="mirrorAge"
+                required
+                type="number"
+                min="1"
+                max="168"
+                :value="model.reflector?.ageHours ?? 12"
+                @change="commitReflectorAge"
+              />
+            </label>
+            <label>
+              <span>{{ pick(ui.mirrorNumber, props.locale) }}</span>
+              <input
+                name="mirrorNumber"
+                required
+                type="number"
+                min="1"
+                max="50"
+                :value="model.reflector?.number ?? 10"
+                @change="commitReflectorNumber"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div v-if="model.desktop === 'hyprland'" class="field nested-field hyprland-field">
+          <span>{{ pick(ui.hyprlandExtras, props.locale) }}</span>
+          <small>{{ pick(ui.hyprlandExtrasHint, props.locale) }}</small>
+          <div v-for="entry in hyprlandCategories" :key="entry.category" class="field">
+            <span>{{ entry.label }}</span>
+            <ChoicePicker
+              :name="`hyprland.${entry.category}`"
+              :model-value="entry.selected"
+              :options="entry.options"
+              @update:model-value="commitHyprland(entry.category, $event)"
             />
-            <small>{{ pick(ui.mirrorCountryHint, props.locale) }}</small>
-          </label>
-          <label>
-            <span>{{ pick(ui.mirrorAge, props.locale) }}</span>
-            <input
-              name="mirrorAge"
-              required
-              type="number"
-              min="1"
-              max="168"
-              :value="model.reflector?.ageHours ?? 12"
-              @change="commitReflectorAge"
-            />
-          </label>
-          <label>
-            <span>{{ pick(ui.mirrorNumber, props.locale) }}</span>
-            <input
-              name="mirrorNumber"
-              required
-              type="number"
-              min="1"
-              max="50"
-              :value="model.reflector?.number ?? 10"
-              @change="commitReflectorNumber"
-            />
-          </label>
+          </div>
+          <div v-for="group in addonGroups" :key="group.label" class="field">
+            <span>{{ group.label }}</span>
+            <label v-for="addon in group.addons" :key="addon.value" class="check-option">
+              <input
+                type="checkbox"
+                :name="`hyprland.${addon.value}`"
+                :checked="addon.checked"
+                @change="toggleHyprlandAddon(addon.value, $event)"
+              />
+              <span>{{ addon.label }}</span>
+              <small>{{ addon.description }}</small>
+            </label>
+          </div>
         </div>
       </fieldset>
 
@@ -923,8 +1040,26 @@ small.description {
   color: var(--muted);
 }
 
+/** Keeps secure boot beside encryption, so the TPM policy block cannot push it down. */
+.encryption-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 1rem;
+}
+
 .disabled-field {
   color: var(--faint);
+}
+
+/** Title row plus a box that fills the rest, so it ends level with the field beside it. */
+.reflector-field {
+  grid-template-rows: auto 1fr;
+}
+
+.reflector-field .nested-field {
+  margin-top: 0;
 }
 
 .nested-field {
@@ -941,6 +1076,45 @@ small.description {
   align-items: center;
   gap: 0.5rem;
   color: var(--fg);
+}
+
+.hyprland-field {
+  grid-column: 1 / -1;
+}
+
+.hyprland-field > .field {
+  margin-top: 0.9rem;
+}
+
+.hyprland-field .check-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.25rem 0.55rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.hyprland-field .check-option input {
+  margin: 0.15rem 0 0;
+  accent-color: var(--accent);
+}
+
+.hyprland-field .check-option:hover,
+.hyprland-field .check-option:focus-within {
+  border-color: var(--accent);
+}
+
+.hyprland-field .check-option span {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+
+.hyprland-field .check-option small {
+  grid-column: 2;
+  color: var(--muted);
 }
 
 .check-option input {
@@ -1025,6 +1199,7 @@ button.primary {
 
 @media (max-width: 38rem) {
   fieldset,
+  .encryption-row,
   .review ul {
     grid-template-columns: 1fr;
   }

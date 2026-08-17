@@ -114,8 +114,9 @@ describe('derive', () => {
     const hyprland = derive({ ...stageOneConfig, desktop: 'hyprland' })
     expect(hyprland.displayManager).toBe('greetd')
     expect(hyprland.desktopPackages).toEqual(
-      expect.arrayContaining(['ghostty', 'hyprpolkitagent', 'greetd', 'greetd-regreet']),
+      expect.arrayContaining(['hyprpolkitagent', 'greetd', 'greetd-regreet']),
     )
+    expect(hyprland.desktopPackages).not.toContain('ghostty')
     expect(hyprland.audioPackages).toEqual([
       'pipewire',
       'pipewire-audio',
@@ -123,8 +124,9 @@ describe('derive', () => {
       'pipewire-pulse',
       'pipewire-jack',
       'wireplumber',
-      'pavucontrol',
     ])
+    expect(hyprland.audioPackages).not.toContain('pavucontrol')
+    expect(hyprland.hyprlandPackages).toEqual([])
     expect(hyprland.desktopCommonPackages).toEqual([
       'bluez',
       'bluez-utils',
@@ -260,6 +262,15 @@ describe('configuration', () => {
       username: 'alice',
       graphics: 'nvidia',
       desktop: 'hyprland',
+      hyprland: {
+        notifications: 'mako',
+        launcher: 'wofi',
+        fileManager: 'dolphin',
+        terminal: 'kitty',
+        bar: 'waybar',
+        lock: 'hyprlock',
+        addons: ['hyprshot'],
+      },
       reflector: { countries: ['GB', 'FR'], ageHours: 6, number: 7 },
     }
 
@@ -566,8 +577,7 @@ describe('renderGuide', () => {
 
     const hyprland = renderHtml({ ...stageOneConfig, desktop: 'hyprland', graphics: 'nvidia' })
     expect(hyprland).toContain('pacman -S nvidia-open nvidia-utils')
-    expect(hyprland).toContain('pacman -S hyprland ghostty')
-    expect(hyprland).toContain('xdg-desktop-portal-hyprland hyprpolkitagent')
+    expect(hyprland).toContain('pacman -S hyprland xdg-desktop-portal-hyprland wl-clipboard playerctl')
     expect(hyprland).toContain('greetd greetd-regreet')
     expect(hyprland).toContain('systemctl enable greetd')
     expect(hyprland).toContain(
@@ -578,8 +588,9 @@ describe('renderGuide', () => {
     expect(hyprland).not.toContain('/etc/greetd/hyprland.conf')
     expect(hyprland).toContain('使用 <code>nmtui</code> 进行配置')
     expect(hyprland).toContain(
-      'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse pipewire-jack wireplumber pavucontrol',
+      'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse pipewire-jack wireplumber',
     )
+    expect(hyprland).not.toContain('pavucontrol')
     expect(hyprland).toContain(
       'pacman -S bluez bluez-utils blueman noto-fonts noto-fonts-cjk noto-fonts-extra noto-fonts-emoji fcitx5-im',
     )
@@ -603,13 +614,181 @@ describe('renderGuide', () => {
     expect(hyprland).toContain('Wants=xdg-desktop-autostart.target')
     expect(hyprland).toContain('hl.env(&quot;QT_IM_MODULES&quot;, &quot;wayland;fcitx&quot;)')
     expect(hyprland).toContain('/home/user/.config/hypr/hyprland.lua')
-    expect(hyprland).toContain('local terminal    = &quot;ghostty&quot;')
+    expect(hyprland).not.toContain('local terminal')
     expect(hyprland).toContain(
       'dbus-update-activation-environment --systemd XCURSOR_THEME XCURSOR_SIZE XMODIFIERS QT_IM_MODULES XDG_SESSION_TYPE; systemctl --user start hyprland-session.target',
     )
     expect(hyprland).toContain('start-hyprland')
     expect(hyprland).not.toContain('systemctl enable gdm')
     expect(hyprland).not.toContain('systemctl enable sddm')
+  })
+})
+
+describe('hyprland extras', () => {
+  const hyprland = (extras: Partial<Config['hyprland']> = {}): Config => ({
+    ...stageOneConfig,
+    desktop: 'hyprland',
+    hyprland: {
+      notifications: 'none',
+      launcher: 'rofi',
+      fileManager: 'nautilus',
+      terminal: 'ghostty',
+      bar: 'none',
+      lock: 'none',
+      addons: [],
+      ...extras,
+    },
+  })
+  const full = hyprland({
+    notifications: 'swaync',
+    fileManager: 'thunar',
+    bar: 'waybar',
+    lock: 'hyprlock',
+    addons: [
+      'hyprpaper',
+      'hyprsunset',
+      'hyprshot',
+      'gnome-keyring',
+      'seahorse',
+    ],
+  })
+
+  it('installs one package set per selection and enables only the services it ships', () => {
+    const context = derive(full)
+
+    expect(context.hyprlandPackages).toEqual([
+      'ghostty',
+      'rofi',
+      'thunar',
+      'gvfs',
+      'gvfs-smb',
+      'tumbler',
+      'ffmpegthumbnailer',
+      'thunar-volman',
+      'thunar-archive-plugin',
+      'swaync',
+      'waybar',
+      'hyprlock',
+      'hypridle',
+      'hyprpaper',
+      'hyprsunset',
+      'hyprshot',
+      'gnome-keyring',
+      'seahorse',
+    ])
+    expect(context.hyprlandServices).toEqual([
+      'swaync',
+      'waybar',
+      'hypridle',
+      'hyprpaper',
+      'hyprsunset',
+    ])
+    expect(context.hyprlandAurPackages).toEqual([])
+
+    const rendered = renderHtml(full)
+    expect(rendered).toContain('pacman -S ghostty rofi thunar gvfs gvfs-smb')
+    expect(rendered).toContain(
+      'systemctl --global enable swaync.service waybar.service hypridle.service hyprpaper.service hyprsunset.service',
+    )
+    expect(rendered).toContain('local terminal    = &quot;ghostty&quot;')
+    expect(rendered).toContain('local fileManager = &quot;thunar&quot;')
+    expect(rendered).toContain('local menu        = &quot;rofi -show drun&quot;')
+    expect(rendered).toContain('hl.bind(&quot;SHIFT + PRINT&quot;, hl.dsp.exec_cmd(&quot;hyprshot -m region&quot;))')
+    expect(rendered).toContain(
+      '/usr/share/hypr/hyprlock.conf /home/user/.config/hypr/hyprlock.conf',
+    )
+    expect(rendered).toContain('path = /usr/share/hypr/wall2.png')
+    expect(rendered).toContain('session    optional     pam_gnome_keyring.so auto_start')
+    expect(rendered).toContain('登录后按 <code>SUPER + Q</code> 打开终端')
+    expect(rendered).not.toContain('paru -S walker')
+  })
+
+  it('requires a terminal, launcher and file manager, and nothing beyond them', () => {
+    const minimal = hyprland()
+    const rendered = renderHtml(minimal)
+
+    expect(derive(minimal).hyprlandPackages).toEqual([
+      'ghostty',
+      'rofi',
+      'nautilus',
+      'gvfs-smb',
+      'sushi',
+    ])
+    expect(
+      selectSteps(minimal)
+        .filter((step) => step.section === 'hyprland')
+        .map((s) => s.id),
+    ).toEqual(['hyprland-extras', 'hyprland-programs'])
+    expect(rendered).toContain('pacman -S ghostty rofi nautilus gvfs-smb sushi')
+    expect(rendered).not.toContain('systemctl --global enable swaync')
+    expect(rendered).not.toContain('hyprpaper.conf')
+    expect(rendered).not.toContain('pam_gnome_keyring.so')
+
+    // The wizard cannot skip these three, so the guide is never generated without them.
+    for (const category of ['terminal', 'launcher', 'fileManager'] as const) {
+      const { [category]: _missing, ...rest } = minimal.hyprland!
+      expect(completeConfig({ ...minimal, hyprland: rest })).toBeNull()
+    }
+    expect(completeConfig({ ...minimal, hyprland: undefined })).toBeNull()
+  })
+
+  it('keeps each selection independent of the others', () => {
+    const barOnly = hyprland({ bar: 'waybar' })
+    const rendered = renderHtml(barOnly)
+
+    expect(derive(barOnly).hyprlandPackages).toContain('waybar')
+    expect(rendered).toContain('systemctl --global enable waybar.service')
+    expect(rendered).not.toContain('hyprlock')
+
+    const screenshot = renderHtml(hyprland({ addons: ['hyprshot'] }))
+    expect(screenshot).toContain('hl.bind(&quot;SHIFT + PRINT&quot;')
+    expect(screenshot).not.toContain('hyprpaper.conf')
+  })
+
+  it('installs walker and elephant from the AUR and runs elephant as a user service', () => {
+    const walker = hyprland({ launcher: 'walker' })
+    const context = derive(walker)
+    const rendered = renderHtml(walker)
+
+    expect(context.hyprlandPackages).not.toContain('walker')
+    expect(context.hyprlandAurPackages).toEqual([
+      'walker',
+      'elephant',
+      'elephant-desktopapplications',
+    ])
+    expect(rendered).toContain('sudo -u user paru -S walker elephant elephant-desktopapplications')
+    expect(rendered).toContain('/etc/systemd/user/elephant.service')
+    expect(rendered).toContain('systemctl --global enable elephant.service')
+    expect(rendered).toContain('local menu        = &quot;walker&quot;')
+    expect(renderHtml(hyprland())).not.toContain('elephant')
+
+    const hyprlauncher = hyprland({ launcher: 'hyprlauncher' })
+    expect(derive(hyprlauncher).hyprlandPackages).toContain('hyprlauncher')
+    expect(derive(hyprlauncher).hyprlandAurPackages).toEqual([])
+    expect(renderHtml(hyprlauncher)).toContain('local menu        = &quot;hyprlauncher&quot;')
+    expect(renderHtml(hyprlauncher)).not.toContain('paru -S walker')
+  })
+
+  it('round-trips selections through the share link and drops them for other desktops', () => {
+    expect(completeConfig(parseDraft(serializeDraft(full)))).toEqual(full)
+    expect(parseDraft(serializeDraft(hyprland({ launcher: 'walker' }))).hyprland?.launcher).toBe(
+      'walker',
+    )
+
+    // A half-answered wizard page still has to survive a reload.
+    const partial = { desktop: 'hyprland' as const, hyprland: { terminal: 'kitty' as const } }
+    expect(parseDraft(serializeDraft(partial)).hyprland).toEqual({
+      terminal: 'kitty',
+      addons: [],
+    })
+
+    const gnome = completeConfig(parseDraft(serializeDraft({ ...full, desktop: 'gnome' })))
+    expect(parseDraft(serializeDraft({ ...full, desktop: 'gnome' })).hyprland).toBeUndefined()
+    expect(gnome?.hyprland).toBeNull()
+    expect(renderHtml(gnome!)).not.toContain('pacman -S ghostty rofi')
+    expect(() => derive({ ...full, desktop: 'gnome' })).toThrow(
+      'hyprland extras require the hyprland desktop',
+    )
   })
 })
 

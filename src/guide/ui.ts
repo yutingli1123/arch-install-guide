@@ -1,4 +1,4 @@
-import type { Locale, Localized } from './types'
+import type { HyprlandAddon, Locale, Localized } from './types'
 
 export function pick<T>(value: Localized<T>, locale: Locale): T {
   return value[locale] ?? value.zh
@@ -55,6 +55,19 @@ export const ui = {
   snapper: { zh: 'snapper' },
   snapperUnsupportedRootOnly: { zh: '单一根子卷不推荐 Snapper' },
   desktop: { zh: '桌面环境' },
+  hyprlandExtras: { zh: 'Hyprland 配套' },
+  hyprlandExtrasHint: {
+    zh: 'Hyprland 只提供合成器和会话，以下各类均可单独选择。',
+  },
+  hyprlandNotifications: { zh: '通知中心' },
+  hyprlandLauncher: { zh: '应用启动器' },
+  hyprlandFileManager: { zh: '文件管理器' },
+  hyprlandTerminal: { zh: '终端' },
+  hyprlandBar: { zh: '状态栏' },
+  hyprlandLock: { zh: '锁屏与空闲管理' },
+  hyprlandWallpaper: { zh: '壁纸与色温' },
+  hyprlandScreenshot: { zh: '截图工具' },
+  hyprlandKeyring: { zh: '密钥环' },
   graphics: { zh: '显卡' },
   reflector: { zh: '镜像源' },
   mirrorCountry: { zh: '国家代码' },
@@ -127,6 +140,41 @@ export const choices = {
     intel: { zh: 'Intel' },
     amd: { zh: 'AMD' },
     nvidia: { zh: 'NVIDIA' },
+  },
+  hyprlandNotifications: {
+    none: { zh: '不安装' },
+    swaync: { zh: 'SwayNC' },
+    mako: { zh: 'mako' },
+  },
+  hyprlandLauncher: {
+    hyprlauncher: { zh: 'Hyprlauncher' },
+    rofi: { zh: 'rofi' },
+    wofi: { zh: 'wofi' },
+    walker: { zh: 'Walker + Elephant' },
+  },
+  hyprlandFileManager: {
+    nautilus: { zh: 'Nautilus' },
+    dolphin: { zh: 'Dolphin' },
+    thunar: { zh: 'Thunar' },
+  },
+  hyprlandTerminal: {
+    ghostty: { zh: 'Ghostty' },
+    kitty: { zh: 'Kitty' },
+  },
+  hyprlandBar: {
+    none: { zh: '不安装' },
+    waybar: { zh: 'Waybar' },
+  },
+  hyprlandLock: {
+    none: { zh: '不安装' },
+    hyprlock: { zh: 'Hyprlock + Hypridle' },
+  },
+  hyprlandAddons: {
+    hyprpaper: { zh: 'Hyprpaper' },
+    hyprsunset: { zh: 'Hyprsunset' },
+    hyprshot: { zh: 'Hyprshot' },
+    'gnome-keyring': { zh: 'GNOME Keyring' },
+    seahorse: { zh: 'Seahorse' },
   },
   systemLocale: {
     'en_US.UTF-8': { zh: 'English (United States)' },
@@ -257,4 +305,46 @@ export const choiceDescriptions = {
     amd: { zh: '安装 Mesa、AMD Vulkan 驱动和 Mesa 视频加速驱动。' },
     nvidia: { zh: '安装 NVIDIA 开放内核模块和用户空间驱动，适用于 Turing 及更新架构。' },
   },
+  hyprlandNotifications: {
+    none: { zh: '不安装通知守护进程，应用发出的通知不会显示。' },
+    swaync: { zh: '带通知中心面板，可回看历史通知。' },
+    mako: { zh: '仅显示通知，无面板。' },
+  },
+  hyprlandLauncher: {
+    hyprlauncher: { zh: 'Hyprland 生态自带的启动器，也是默认配置里 SUPER + R 指向的程序。' },
+    rofi: { zh: '同时支持窗口切换、dmenu 输入等模式。' },
+    wofi: { zh: '仅做应用启动，配置项少。' },
+    walker: { zh: 'GTK4 启动器，检索数据由 Elephant 服务提供。' },
+  },
+  hyprlandFileManager: {
+    nautilus: { zh: 'GNOME 的文件管理器，随选安装 SMB 支持与空格预览。' },
+    dolphin: { zh: 'KDE 的文件管理器，随选安装缩略图插件；SMB 支持来自其依赖 kio-extras。' },
+    thunar: { zh: 'Xfce 的文件管理器，随选安装 GVfs、SMB 支持、缩略图、可移动介质和压缩包插件。' },
+  },
+  hyprlandTerminal: {
+    ghostty: { zh: 'GPU 渲染，配置文件即生效。' },
+    kitty: { zh: 'GPU 渲染，内置分屏与图片协议。' },
+  },
+  hyprlandBar: {
+    none: { zh: '不安装状态栏。' },
+    waybar: { zh: '显示工作区、托盘和系统状态，使用发行版自带的默认配置。' },
+  },
+  hyprlandLock: {
+    none: { zh: '不安装锁屏，空闲时不会自动息屏或挂起。' },
+    hyprlock: { zh: 'Hyprlock 负责锁屏界面，Hypridle 按空闲时间触发锁屏、息屏和挂起。' },
+  },
+  hyprlandAddons: {
+    hyprpaper: { zh: '设置壁纸，需要指定图片。' },
+    hyprsunset: { zh: '色温滤镜，用 hyprsunset -t 4000 调整。' },
+    hyprshot: { zh: '按区域、窗口或显示器截图，同时写入剪贴板。' },
+    'gnome-keyring': { zh: '存储应用密码，可由登录密码自动解锁。' },
+    seahorse: { zh: '密钥环的图形管理界面。' },
+  },
 } satisfies Record<string, Record<string, Localized<string>>>
+
+/** Multi-select Hyprland categories, shared by the wizard and the configuration summary. */
+export const hyprlandAddonGroups: { label: Localized<string>; addons: HyprlandAddon[] }[] = [
+  { label: ui.hyprlandWallpaper, addons: ['hyprpaper', 'hyprsunset'] },
+  { label: ui.hyprlandScreenshot, addons: ['hyprshot'] },
+  { label: ui.hyprlandKeyring, addons: ['gnome-keyring', 'seahorse'] },
+]
