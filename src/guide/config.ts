@@ -7,7 +7,7 @@ import type {
   Localized,
   Tpm2Preset,
 } from './types'
-import { ui } from './ui'
+import { ui } from './i18n'
 
 export type ConfigChoice =
   | 'encryption.password'
@@ -126,6 +126,13 @@ export const HYPRLAND_ADDONS = [
   'gnome-keyring',
   'seahorse',
 ] as const satisfies readonly HyprlandAddon[]
+
+/** Multi-select Hyprland categories, shared by the wizard and the configuration summary. */
+export const hyprlandAddonGroups: { label: Localized<string>; addons: HyprlandAddon[] }[] = [
+  { label: ui.hyprlandWallpaper, addons: ['hyprpaper', 'hyprsunset'] },
+  { label: ui.hyprlandScreenshot, addons: ['hyprshot'] },
+  { label: ui.hyprlandKeyring, addons: ['gnome-keyring', 'seahorse'] },
+]
 
 /** Categories that carry a `none` option start there; the rest wait for an answer. */
 export const NEW_HYPRLAND_DRAFT: Partial<HyprlandExtras> = {

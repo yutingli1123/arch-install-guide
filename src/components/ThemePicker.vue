@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { Locale } from '@/guide/types'
-import { pick, ui } from '@/guide/ui'
+import { pick, ui } from '@/guide/i18n'
 
 type Theme = 'auto' | 'light' | 'dark'
 

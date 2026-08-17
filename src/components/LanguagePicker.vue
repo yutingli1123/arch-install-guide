@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { Locale } from '@/guide/types'
-import { localeNames, pick, ui } from '@/guide/ui'
+import { localeNames, pick, ui } from '@/guide/i18n'
 
 const props = defineProps<{ modelValue: Locale }>()
 // Not defineModel: picking the language already shown still has to notify, because that

@@ -8,12 +8,13 @@ import {
   VERIFIED_AGAINST,
   completeConfig,
   completeHyprland,
+  hyprlandAddonGroups,
   parseDraft,
   serializeDraft,
 } from './guide/config'
 import { selectSteps } from './guide/render'
 import type { ConfigDraft, Locale } from './guide/types'
-import { choices, hyprlandAddonGroups, pick, ui } from './guide/ui'
+import { choices, pick, ui } from './guide/i18n'
 
 function firstIncompleteStep(draft: ConfigDraft): number {
   if (!draft.timezone || !draft.systemLocale) return 0

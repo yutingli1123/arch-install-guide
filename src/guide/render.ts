@@ -1,9 +1,8 @@
 import { derive } from './derive'
 import { createMarkdown } from './markdown'
-import { prose, type ProseKey } from './i18n'
+import { pick, prose, ui, type ProseKey } from './i18n'
 import { sectionTitles, steps } from './steps'
 import type { Config, Locale, Step } from './types'
-import { pick, ui } from './ui'
 
 export type RenderedStep = {
   id: string

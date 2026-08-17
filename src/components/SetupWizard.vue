@@ -11,6 +11,7 @@ import {
   NEW_HYPRLAND_DRAFT,
   SYSTEM_LOCALES,
   TIMEZONES,
+  hyprlandAddonGroups,
   makeTpm2Encryption,
   orderAddons,
   tpm2Preset,
@@ -25,7 +26,7 @@ import type {
   Localized,
   Tpm2Preset,
 } from '@/guide/types'
-import { choiceDescriptions, choices, hyprlandAddonGroups, localeNames, pick, ui } from '@/guide/ui'
+import { choiceDescriptions, choices, pick, ui } from '@/guide/i18n'
 
 const props = defineProps<{
   locale: Locale

@@ -1,9 +1,9 @@
 import { packagePurposeRows } from '../packages'
 import type { Context } from '../types'
-import type { ProseCatalog } from './index'
+import type { ChoiceCatalog, DescriptionCatalog, ProseCatalog, UiCatalog } from './index'
 
-/** English prose. Keys not listed here fall back to the Chinese entry. */
-export const en: ProseCatalog = {
+/** English guide prose. Keys not listed here fall back to the Chinese entry. */
+export const prose: ProseCatalog = {
   'live.boot-mode.intro': 'After booting the Arch installation media, confirm the firmware mode:',
   'live.boot-mode.output': 'An output of `64` means 64-bit UEFI, so you can continue.',
   'live.boot-mode.bios':
@@ -369,4 +369,246 @@ export const en: ProseCatalog = {
   'desktop.desktop-environment.autostart': 'Add to the `AUTOSTART` section:',
   'desktop.desktop-environment.display-manager': ({ displayManager }: Context) =>
     `After the reboot, \`${displayManager}\` provides the graphical login.`,
+}
+
+/** English interface labels. Keys left out fall back to the Chinese entry. */
+export const ui: UiCatalog = {
+  title: 'Arch Linux Installation Guide',
+  welcomeTitle: 'Generate an Arch Linux installation guide that fits your machine',
+  welcomeBody:
+    'Work through the wizard to configure the system, and end with an installation guide you can follow command by command or print.',
+  start: 'Start configuring',
+  copy: 'Copy',
+  copied: 'Copied',
+  print: 'Save as PDF',
+  editConfig: 'Edit configuration',
+  installationTarget: 'Installation target',
+  diskTutorial: 'Confirm the target disk',
+  diskTutorialBeforeCommand:
+    'Boot the installation media on the computer you are installing Arch Linux on, then run',
+  diskTutorialAfterCommand:
+    '. Use SIZE and TYPE to find the whole target disk. Enter the device name after the fixed /dev/ prefix, such as nvme0n1 or sda, not a partition name like nvme0n1p1 or sda1.',
+  diskEraseWarning:
+    'The partitioning commands in the guide erase all data on the target disk. Make sure the device name is correct.',
+  storage: 'Storage',
+  regionLanguage: 'Region and language',
+  baseSystem: 'Base system',
+  review: 'Review',
+  backToWelcome: 'Back to start',
+  previous: 'Previous',
+  next: 'Next',
+  selectPlaceholder: 'Select',
+  unavailable: (reason: string) => `Unavailable: ${reason}`,
+  generateGuide: 'Generate the guide',
+  wizardProgress: (current: number, total: number) => `Step ${current} of ${total}`,
+  verifiedAgainst: 'Verified against Arch as of',
+  configSummary: 'Configuration for this guide',
+  enabled: 'Enabled',
+  disabled: 'Disabled',
+  none: 'None',
+  listSeparator: ', ',
+  targetDisk: 'Target disk',
+  diskSwap: 'Disk swap',
+  diskSwapSize: 'Size (GiB)',
+  subvolumes: 'Subvolume layout',
+  encryption: 'Disk encryption',
+  unlock: 'Unlock method',
+  password: 'Password',
+  tpmPolicy: 'TPM2 binding policy',
+  requireTpmPin: 'Require a TPM PIN at boot',
+  pcr7Warning:
+    'Binding PCR 7 alone does not distinguish one UKI from another, and with Secure Boot off it records only that Secure Boot is disabled.',
+  tpmPolicyRequiresSecureBoot: (mode: string) => `The current TPM2 binding policy requires ${mode}`,
+  snapperRequiresSeparated: 'Requires the separate subvolume layout',
+  hashPcrs: 'PCR hash binding',
+  signedPcrs: 'PCR signing policy',
+  secureBoot: 'Secure Boot',
+  snapperUnsupportedRootOnly: 'Snapper is not recommended with a single root subvolume',
+  desktop: 'Desktop environment',
+  hyprlandExtras: 'Hyprland session',
+  hyprlandExtrasHint:
+    'Hyprland provides only the compositor and the session; each of the following is chosen separately.',
+  hyprlandNotifications: 'Notifications',
+  hyprlandLauncher: 'Application launcher',
+  hyprlandFileManager: 'File manager',
+  hyprlandTerminal: 'Terminal',
+  hyprlandBar: 'Status bar',
+  hyprlandLock: 'Lock screen and idle',
+  hyprlandWallpaper: 'Wallpaper and color temperature',
+  hyprlandScreenshot: 'Screenshots',
+  hyprlandKeyring: 'Keyring',
+  graphics: 'Graphics',
+  reflector: 'Mirrors',
+  mirrorCountry: 'Country codes',
+  mirrorCountryHint: 'One or more ISO country codes separated by commas, for example CA,US.',
+  mirrorCountryInvalid: 'Enter valid ISO country codes separated by commas',
+  mirrorAge: 'Synchronized within (hours)',
+  mirrorNumber: 'Mirrors to keep',
+  timezone: 'Time zone',
+  timezoneHint: 'The time zone the installed system will use.',
+  detectedTimezone: (timezone: string) => `Detected time zone: ${timezone}`,
+  useDetectedTimezone: 'Use it',
+  systemLocale: 'System language',
+  systemLocaleHint:
+    'The locale system services, the terminal, and the login screen use by default.',
+  cjkTtyWarning:
+    'The TTY cannot display CJK characters and shows boxes instead. Choose a CJK system language only with a graphical interface planned; for a command-line system, pick a non-CJK locale.',
+  keymap: 'Keyboard layout',
+  keymapHint: 'The keyboard layout used in the installation environment and the virtual console.',
+  hostname: 'Hostname',
+  hostnameHint:
+    'The name this computer uses locally and on the network, such as archlinux or workstation.',
+  username: 'Username',
+  usernameHint: 'The regular account used for everyday logins; root is not allowed.',
+  language: 'Language',
+  theme: 'Theme',
+  themeAuto: 'System',
+  themeLight: 'Light',
+  themeDark: 'Dark',
+  wizardSteps: 'Configuration progress',
+  disclaimer: 'This site is not affiliated with Arch Linux.',
+  stepCount: (total: number) => `${total} steps`,
+}
+
+/** English labels of the wizard options. Product names are left to the Chinese entry. */
+export const choices: ChoiceCatalog = {
+  zram: {
+    false: 'Off',
+    true: 'On',
+  },
+  diskSwap: {
+    none: 'None',
+  },
+  subvolumeLayout: {
+    'root-only': 'Single root subvolume (simpler)',
+    separated: 'Separate subvolumes (supports snapshots)',
+  },
+  encryption: {
+    none: 'Off',
+    password: 'LUKS2 (password)',
+    tpm2: 'LUKS2 (TPM2)',
+  },
+  tpm2Preset: {
+    minimal: 'Minimal (PCR 7)',
+    'custom-db': 'Recommended (custom db)',
+    'shim-mok': 'Recommended (shim/MOK)',
+  },
+  secureBoot: {
+    none: 'Off',
+    'custom-db': 'Custom UEFI db',
+  },
+  snapper: {
+    none: 'Not configured',
+  },
+  desktop: {
+    none: 'None',
+  },
+  hyprlandNotifications: {
+    none: 'Not installed',
+  },
+  hyprlandBar: {
+    none: 'Not installed',
+  },
+  hyprlandLock: {
+    none: 'Not installed',
+  },
+}
+
+/** English one-line explanations shown under each wizard option. */
+export const choiceDescriptions: DescriptionCatalog = {
+  cpu: {
+    intel: 'Installs the intel-ucode microcode package that Intel processors need.',
+    amd: 'Installs the amd-ucode microcode package that AMD processors need.',
+  },
+  zram: {
+    false: 'No zram.',
+    true: 'Uses zram to create compressed swap in memory.',
+  },
+  diskSwap: {
+    none: 'No swap on disk.',
+    swapfile: 'Creates a swapfile on the Btrfs filesystem.',
+  },
+  subvolumeLayout: {
+    'root-only': 'Creates only @. Simpler, but Snapper cannot be configured.',
+    separated:
+      'Puts /boot, /home, the logs, and the package cache on separate subvolumes of the same Btrfs filesystem, which controls what a root snapshot contains and allows Snapper.',
+  },
+  encryption: {
+    none: 'Leaves the root filesystem unencrypted; the ESP stays unencrypted in every mode.',
+    password: 'Protects the system data with LUKS2, unlocked by typing a password at every boot.',
+    tpm2: 'Uses LUKS2 with the TPM2 verifying the boot state; a PIN can be required as well.',
+  },
+  tpm2Preset: {
+    minimal:
+      'Hash-binds PCR 7. Kernel updates need no re-enrollment, but images signed with the same key cannot be told apart.',
+    'custom-db':
+      'Binds PCR 7, and binds PCR 11 through a signing policy; selects the custom UEFI db as well.',
+    'shim-mok':
+      'Binds PCR 7+14, and binds PCR 11 through a signing policy; selects shim-signed + MOK as well.',
+  },
+  secureBoot: {
+    none: 'Does not verify the signatures of the boot files.',
+    'custom-db':
+      'Enrolls a custom certificate into the firmware UEFI db; the firmware has to support Setup Mode.',
+    'shim-mok':
+      'Builds the trust chain from the Microsoft-signed shim and a MOK you enroll yourself.',
+  },
+  snapper: {
+    none: 'Creates no Snapper configuration.',
+    root: 'Creates and manages snapshots of the root system only.',
+    'root-home': 'Creates separate snapshot configurations for the root system and for home.',
+  },
+  desktop: {
+    none: 'Installs the command-line base system only; a desktop can still be added later.',
+    gnome: 'Installs the GNOME desktop environment.',
+    kde: 'Installs the KDE Plasma desktop environment.',
+    hyprland: 'Installs the Hyprland Wayland compositor.',
+  },
+  graphics: {
+    intel:
+      'Installs Mesa, the Intel Vulkan driver, and video acceleration for modern Intel integrated graphics.',
+    amd: 'Installs Mesa, the AMD Vulkan driver, and the Mesa video acceleration drivers.',
+    nvidia:
+      'Installs the NVIDIA open kernel modules and userspace drivers, for Turing and newer architectures.',
+  },
+  hyprlandNotifications: {
+    none: 'Installs no notification daemon, so notifications from applications never appear.',
+    swaync: 'Includes a notification center panel for reviewing past notifications.',
+    mako: 'Displays notifications only, without a panel.',
+  },
+  hyprlandLauncher: {
+    hyprlauncher:
+      'The launcher from the Hyprland ecosystem, and what SUPER + R points at in the default configuration.',
+    rofi: 'Also works as a window switcher, a dmenu replacement, and more.',
+    wofi: 'Launches applications only, with few options.',
+    walker: 'A GTK4 launcher; the Elephant service supplies the data it searches.',
+  },
+  hyprlandFileManager: {
+    nautilus: 'The GNOME file manager, installed with SMB support and space-bar previews.',
+    dolphin:
+      'The KDE file manager, installed with thumbnail plugins; SMB support comes from its kio-extras dependency.',
+    thunar:
+      'The Xfce file manager, installed with GVfs, SMB support, thumbnails, removable media, and archive plugins.',
+  },
+  hyprlandTerminal: {
+    ghostty: 'GPU rendered, configured entirely from a plain config file.',
+    kitty: 'GPU rendered, with built-in splits and an image protocol.',
+  },
+  hyprlandBar: {
+    none: 'Installs no status bar.',
+    waybar:
+      'Shows workspaces, the tray, and system status, using the default configuration from the distribution.',
+  },
+  hyprlandLock: {
+    none: 'Installs no lock screen, and the machine neither blanks nor suspends when idle.',
+    hyprlock:
+      'Hyprlock draws the lock screen; Hypridle triggers locking, blanking, and suspend after set idle times.',
+  },
+  hyprlandAddons: {
+    hyprpaper: 'Sets the wallpaper; the image has to be named.',
+    hyprsunset: 'Color temperature filter, adjusted with hyprsunset -t 4000.',
+    hyprshot: 'Captures a region, a window, or a display, and copies the result to the clipboard.',
+    'gnome-keyring': 'Stores application passwords and can be unlocked by the login password.',
+    seahorse: 'Graphical manager for the keyring.',
+  },
 }
