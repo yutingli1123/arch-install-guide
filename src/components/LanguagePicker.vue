@@ -46,7 +46,10 @@ function step(offset: number) {
       @keydown.up.prevent="step(-1)"
       @keydown.esc="open = false"
     >
-      {{ localeNames[locale] }}
+      <!-- Every name renders stacked in one cell, so the width holds at the widest across languages. -->
+      <span v-for="(name, value) in localeNames" :key="value" :class="{ ghost: value !== locale }">
+        {{ name }}
+      </span>
     </button>
     <ul v-if="open" role="listbox" :aria-label="label">
       <li
@@ -74,8 +77,11 @@ function step(offset: number) {
 }
 
 button {
-  /** Right side also holds the caret, so the label reads centered with less padding left. */
-  padding: 0.35rem 1.6rem 0.35rem 0.9rem;
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.9rem;
   border: 1px solid var(--rule);
   border-radius: 999px;
   background: transparent;
@@ -88,6 +94,16 @@ button {
     color 0.15s;
 }
 
+button span {
+  grid-area: 1 / 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+button span.ghost {
+  visibility: hidden;
+}
+
 button:hover,
 button:focus-visible {
   border-color: var(--accent);
@@ -96,16 +112,11 @@ button:focus-visible {
 
 /** Caret drawn in currentColor, so it follows the theme and the hover state. */
 button::after {
-  position: absolute;
-  top: 50%;
-  right: 0.75rem;
-  width: 0.32rem;
-  height: 0.32rem;
-  border-right: 1px solid currentColor;
-  border-bottom: 1px solid currentColor;
+  width: 0.5em;
+  height: 0.32em;
+  background: currentColor;
+  clip-path: polygon(0 0, 50% 62%, 100% 0, 100% 38%, 50% 100%, 0 38%);
   content: '';
-  transform: translateY(-70%) rotate(45deg);
-  pointer-events: none;
 }
 
 ul {

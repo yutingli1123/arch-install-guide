@@ -378,14 +378,14 @@ describe('setup wizard', () => {
     window.history.replaceState(null, '', '/?lang=en')
     const wrapper = mount(App)
 
-    expect(wrapper.get('button[name="language"]').text()).toBe('English')
+    expect(wrapper.get('button[name="language"] span:not(.ghost)').text()).toBe('English')
     expect(new URLSearchParams(window.location.search).get('lang')).toBe('en')
   })
 
   it('starts in the browser language without writing it into the link', () => {
     const wrapper = mount(App)
     // jsdom reports en-US, so detection lands on English.
-    expect(wrapper.get('button[name="language"]').text()).toBe('English')
+    expect(wrapper.get('button[name="language"] span:not(.ghost)').text()).toBe('English')
     expect(window.location.search).toBe('')
   })
 
