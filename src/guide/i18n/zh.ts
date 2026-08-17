@@ -549,8 +549,8 @@ export const choiceDescriptions: DescriptionCatalog = {
     thunar: 'Xfce 的文件管理器，随选安装 GVfs、SMB 支持、缩略图、可移动介质和压缩包插件。',
   },
   hyprlandTerminal: {
-    ghostty: 'GPU 渲染，配置文件即生效。',
-    kitty: 'GPU 渲染，内置分屏与图片协议。',
+    ghostty: 'GPU 渲染的现代终端。',
+    kitty: 'GPU 渲染的现代终端。',
   },
   hyprlandBar: {
     none: '不安装状态栏。',

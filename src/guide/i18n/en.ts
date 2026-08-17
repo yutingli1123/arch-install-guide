@@ -590,8 +590,8 @@ export const choiceDescriptions = {
       'The Xfce file manager, installed with GVfs, SMB support, thumbnails, removable media, and archive plugins.',
   },
   hyprlandTerminal: {
-    ghostty: 'GPU rendered; configuration changes take effect immediately.',
-    kitty: 'GPU rendered, with built-in splits and an image protocol.',
+    ghostty: 'A modern GPU-rendered terminal.',
+    kitty: 'A modern GPU-rendered terminal.',
   },
   hyprlandBar: {
     none: 'Installs no status bar.',
