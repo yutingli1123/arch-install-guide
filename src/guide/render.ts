@@ -1,5 +1,6 @@
 import { derive } from './derive'
 import { createMarkdown } from './markdown'
+import { prose, type ProseKey } from './i18n'
 import { sectionTitles, steps } from './steps'
 import type { Config, Locale, Step } from './types'
 import { pick, ui } from './ui'
@@ -33,13 +34,13 @@ export function renderGuide(cfg: Config, locale: Locale): RenderedSection[] {
     const rendered: RenderedStep = {
       id: step.id,
       number,
-      title: pick(step.title, locale),
+      title: prose(step.title as ProseKey, locale, ctx),
       html: step
         .body(ctx)
         .map((block) =>
           'cmd' in block
             ? md.render(`\`\`\`${block.lang ?? ''}\n${block.cmd}\n\`\`\``)
-            : md.render(pick(block.prose, locale)),
+            : md.render(prose(block.key as ProseKey, locale, ctx)),
         )
         .join(''),
     }
@@ -50,7 +51,9 @@ export function renderGuide(cfg: Config, locale: Locale): RenderedSection[] {
     } else {
       sections.push({
         id: step.section,
-        title: pick(sectionTitles[step.section] ?? { zh: step.section }, locale),
+        title: sectionTitles[step.section]
+          ? prose(sectionTitles[step.section]!, locale, ctx)
+          : step.section,
         steps: [rendered],
       })
     }

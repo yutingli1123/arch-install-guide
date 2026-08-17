@@ -1,8 +1,9 @@
-import type { Block, Localized } from './types'
+import type { ProseKey } from './i18n'
+import type { Block } from './types'
 
-/** Prose, one translation per locale. Markdown, without fenced blocks. */
-export function text(zh: string, en?: string): Block {
-  return { prose: (en === undefined ? { zh } : { zh, en }) as Localized<string> }
+/** Prose, looked up in the per-locale catalogs. */
+export function text(key: ProseKey): Block {
+  return { key }
 }
 
 /** A command block. Shared by every locale, so translations cannot make it drift. */

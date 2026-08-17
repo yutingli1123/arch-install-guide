@@ -96,6 +96,13 @@ const BASE_PACKAGES = [
   'vim',
 ]
 
+const DESKTOP_NAMES = {
+  none: '',
+  gnome: 'GNOME',
+  kde: 'KDE Plasma',
+  hyprland: 'Hyprland',
+} satisfies Record<Config['desktop'], string>
+
 const SUBVOLUME_LAYOUTS = {
   'root-only': [{ name: '@', mountPoint: '/' }],
   separated: [
@@ -280,6 +287,7 @@ export function derive(cfg: Config): Context {
     audioPackages,
     desktopCommonPackages,
     desktopPackages: desktop.packages,
+    desktopName: DESKTOP_NAMES[cfg.desktop],
     hyprlandPackages: hyprland,
     hyprlandAurPackages: cfg.hyprland?.launcher === 'walker' ? WALKER_AUR_PACKAGES : [],
     hyprlandServices: hyprland.filter((name) => HYPRLAND_SERVICE_PACKAGES.includes(name)),

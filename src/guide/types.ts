@@ -126,13 +126,15 @@ export type Context = {
   hyprlandAurPackages: string[]
   /** Subset of `hyprlandPackages` that ships a systemd user unit. */
   hyprlandServices: string[]
+  /** Display name of the chosen desktop, e.g. `KDE Plasma`. Never translated. */
+  desktopName: string
   /** Regional suffix of the Noto CJK families, e.g. `SC`. */
   cjkVariant?: string
   displayManager?: string
 }
 
-/** Prose is translated; a command block is written once and rendered as is. */
-export type Block = { prose: Localized<string> } | { cmd: string; lang?: string }
+/** Prose is looked up per locale; a command block is written once and rendered as is. */
+export type Block = { key: string } | { cmd: string; lang?: string }
 
 export type Body = (ctx: Context) => Block[]
 
@@ -140,7 +142,8 @@ export type Step = {
   id: string
   /** Section this step belongs to, used for grouping in the rendered guide. */
   section: string
-  title: Localized<string>
+  /** Catalog key of the step title. */
+  title: string
   /** Prose blocks are markdown; command blocks render as copyable blocks. */
   body: Body
   /** Omitted means the step is always included. */
