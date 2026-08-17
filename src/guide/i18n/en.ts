@@ -1,9 +1,8 @@
 import { packagePurposeRows } from '../packages'
 import type { Context } from '../types'
-import type { ChoiceCatalog, DescriptionCatalog, ProseCatalog, UiCatalog } from './index'
 
-/** English guide prose. Keys not listed here fall back to the Chinese entry. */
-export const prose: ProseCatalog = {
+/** Guide prose, keyed by `<section>.<step>.<purpose>`. This file defines the full key set. */
+export const prose = {
   'live.boot-mode.intro': 'After booting the Arch installation media, confirm the firmware mode:',
   'live.boot-mode.output': 'An output of `64` means 64-bit UEFI, so you can continue.',
   'live.boot-mode.bios':
@@ -371,8 +370,8 @@ export const prose: ProseCatalog = {
     `After the reboot, \`${displayManager}\` provides the graphical login.`,
 }
 
-/** English interface labels. Keys left out fall back to the Chinese entry. */
-export const ui: UiCatalog = {
+/** Translated interface labels; wording that never changes lives in `neutral.ts`. */
+export const ui = {
   title: 'Arch Linux Installation Guide',
   welcomeTitle: 'Generate an Arch Linux installation guide that fits your machine',
   welcomeBody:
@@ -470,8 +469,8 @@ export const ui: UiCatalog = {
   stepCount: (total: number) => `${total} steps`,
 }
 
-/** English labels of the wizard options. Product names are left to the Chinese entry. */
-export const choices: ChoiceCatalog = {
+/** Translated labels of the wizard options; product names live in `neutral.ts`. */
+export const choices = {
   zram: {
     false: 'Off',
     true: 'On',
@@ -514,8 +513,8 @@ export const choices: ChoiceCatalog = {
   },
 }
 
-/** English one-line explanations shown under each wizard option. */
-export const choiceDescriptions: DescriptionCatalog = {
+/** One-line explanations shown under each wizard option; this file carries the full set. */
+export const choiceDescriptions = {
   cpu: {
     intel: 'Installs the intel-ucode microcode package that Intel processors need.',
     amd: 'Installs the amd-ucode microcode package that AMD processors need.',

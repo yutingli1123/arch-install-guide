@@ -1,7 +1,7 @@
 export type Locale = 'zh' | 'en'
 
-/** Falls back to `zh` when a locale is missing. */
-export type Localized<T> = { zh: T } & Partial<Record<Locale, T>>
+/** Falls back to `en` when a locale is missing. */
+export type Localized<T> = { en: T } & Partial<Record<Locale, T>>
 
 export type CpuVendor = 'intel' | 'amd'
 

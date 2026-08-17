@@ -1,26 +1,27 @@
 import type { Context, Locale, Localized } from '../types'
 import * as en from './en'
+import * as neutral from './neutral'
 import * as zh from './zh'
 
 /** A prose entry is a plain string, or a function when it interpolates the configuration. */
 export type Prose = string | ((ctx: Context, t: (key: string) => string) => string)
 
-export type ProseKey = keyof typeof zh.prose
+export type ProseKey = keyof typeof en.prose
 
-/** Locales other than `zh` may leave an entry out; it then falls back to the Chinese one. */
+/** Locales other than `en` may leave an entry out; it then falls back to the English one. */
 export type ProseCatalog = Partial<Record<ProseKey, Prose>>
 
-/** The Chinese tables define the shape; every other locale fills in what it translates. */
-export type UiCatalog = Partial<typeof zh.ui>
-export type ChoiceCatalog = { [K in keyof typeof zh.choices]?: Partial<(typeof zh.choices)[K]> }
+/** The English tables define the translatable keys; every other locale fills in what it renders. */
+export type UiCatalog = Partial<typeof en.ui>
+export type ChoiceCatalog = { [K in keyof typeof en.choices]?: Partial<(typeof en.choices)[K]> }
 export type DescriptionCatalog = {
-  [K in keyof typeof zh.choiceDescriptions]?: Partial<(typeof zh.choiceDescriptions)[K]>
+  [K in keyof typeof en.choiceDescriptions]?: Partial<(typeof en.choiceDescriptions)[K]>
 }
 
 const catalogs: Record<Locale, ProseCatalog> = { zh: zh.prose, en: en.prose }
 
 export function prose(key: ProseKey, locale: Locale, ctx: Context): string {
-  const entry: Prose | undefined = catalogs[locale]?.[key] ?? zh.prose[key]
+  const entry: Prose | undefined = catalogs[locale]?.[key] ?? en.prose[key]
   // Keys resolved through `t` are plain strings, so a typo has to fail here.
   if (entry === undefined) throw new Error(`missing prose: ${key}`)
   return typeof entry === 'function'
@@ -29,51 +30,72 @@ export function prose(key: ProseKey, locale: Locale, ctx: Context): string {
 }
 
 export function pick<T>(value: Localized<T>, locale: Locale): T {
-  return value[locale] ?? value.zh
+  return value[locale] ?? value.en
 }
 
-/** Pairs each Chinese entry with its translations, so one lookup covers every locale. */
-function merge<T extends Record<string, unknown>>(
+export { localeNames } from './neutral'
+
+const LOCALES = Object.keys(neutral.localeNames) as Locale[]
+
+type Table = Record<string, unknown>
+type Groups = Record<string, Record<string, string>>
+
+/** A neutral entry answers with the same text whichever locale asks for it. */
+function everyLocale<T>(value: T): Localized<T> {
+  return Object.fromEntries(LOCALES.map((locale) => [locale, value])) as Localized<T>
+}
+
+type Merged<N extends Table, T extends Table> = { [K in keyof N]: Localized<N[K]> } & {
+  [K in keyof T]: Localized<T[K]>
+}
+
+/** Joins the neutral entries with the translated ones, so one lookup covers both. */
+function table<N extends Table, T extends Table>(
+  untranslated: N,
   base: T,
   ...translations: [Locale, Partial<T>][]
-): { [K in keyof T]: Localized<T[K]> } {
-  const merged = Object.fromEntries(
-    Object.entries(base).map(([key, value]) => [
-      key,
-      Object.fromEntries([
-        ['zh', value],
-        ...translations.map(([locale, table]) => [locale, table[key]]),
-      ]),
-    ]),
-  )
-  return merged as { [K in keyof T]: Localized<T[K]> }
+): Merged<N, T> {
+  const merged: Table = {}
+  for (const [key, value] of Object.entries(untranslated)) merged[key] = everyLocale(value)
+  for (const [key, value] of Object.entries(base)) {
+    merged[key] = Object.fromEntries([
+      ['en', value],
+      ...translations.map(([locale, entries]) => [locale, (entries as Table)[key]]),
+    ])
+  }
+  return merged as Merged<N, T>
 }
 
-function mergeGroups<T extends Record<string, Record<string, string>>>(
+type MergedGroups<N extends Groups, T extends Groups> = {
+  [K in keyof N | keyof T]: {
+    [V in
+      | (K extends keyof N ? keyof N[K] : never)
+      | (K extends keyof T ? keyof T[K] : never)]: Localized<string>
+  }
+}
+
+function groups<N extends Groups, T extends Groups>(
+  untranslated: N,
   base: T,
   ...translations: [Locale, { [K in keyof T]?: Partial<T[K]> }][]
-): { [K in keyof T]: { [V in keyof T[K]]: Localized<string> } } {
+): MergedGroups<N, T> {
+  const categories = new Set([...Object.keys(untranslated), ...Object.keys(base)])
   const merged = Object.fromEntries(
-    Object.entries(base).map(([group, entries]) => [
-      group,
-      merge(
-        entries,
-        ...translations.map(([locale, table]): [Locale, Partial<typeof entries>] => [
+    [...categories].map((category) => [
+      category,
+      table(
+        untranslated[category] ?? {},
+        base[category] ?? {},
+        ...translations.map(([locale, entries]): [Locale, Record<string, string>] => [
           locale,
-          table[group] ?? {},
+          (entries as Groups)[category] ?? {},
         ]),
       ),
     ]),
   )
-  return merged as { [K in keyof T]: { [V in keyof T[K]]: Localized<string> } }
+  return merged as MergedGroups<N, T>
 }
 
-export const ui = merge(zh.ui, ['en', en.ui])
-export const choices = mergeGroups(zh.choices, ['en', en.choices])
-export const choiceDescriptions = mergeGroups(zh.choiceDescriptions, ['en', en.choiceDescriptions])
-
-/** Written the way each language names itself, so it reads the same whatever the interface is set to. */
-export const localeNames: Record<Locale, string> = {
-  zh: '中文',
-  en: 'English',
-}
+export const ui = table(neutral.ui, en.ui, ['zh', zh.ui])
+export const choices = groups(neutral.choices, en.choices, ['zh', zh.choices])
+export const choiceDescriptions = groups({}, en.choiceDescriptions, ['zh', zh.choiceDescriptions])

@@ -1,11 +1,9 @@
 import { packagePurposeRows } from '../packages'
 import type { Context } from '../types'
+import type { ChoiceCatalog, DescriptionCatalog, ProseCatalog, UiCatalog } from './index'
 
-/**
- * Chinese guide prose, keyed by `<section>.<step>.<purpose>`. Every other locale
- * declares the same keys; the lookup falls back here when one is missing.
- */
-export const prose = {
+/** Chinese guide prose. Keys left out fall back to the English entry. */
+export const prose: ProseCatalog = {
   'live.boot-mode.intro': '从 Arch 安装介质启动后，先确认固件模式：',
   'live.boot-mode.output': '输出 `64` 表示 64 位 UEFI，可以继续。',
   'live.boot-mode.bios':
@@ -347,8 +345,8 @@ export const prose = {
     `重启后由 \`${displayManager}\` 提供图形登录界面。`,
 }
 
-/** Chinese interface labels, shared by the wizard, the summary, and the rendered guide. */
-export const ui = {
+/** Chinese interface labels; wording that never changes lives in `neutral.ts`. */
+export const ui: UiCatalog = {
   title: 'Arch Linux 安装指南',
   welcomeTitle: '生成适合你的 Arch Linux 安装指南',
   welcomeBody: '通过分步向导完成系统配置，最后生成一份可以逐项执行和打印的安装指南。',
@@ -382,15 +380,12 @@ export const ui = {
   /** Joins the selected add-ons of one group in the configuration summary. */
   listSeparator: '、',
   targetDisk: '目标磁盘',
-  cpu: 'CPU',
-  zram: 'zram',
   diskSwap: '磁盘 swap',
   diskSwapSize: '容量（GiB）',
   subvolumes: '子卷布局',
   encryption: '磁盘加密',
   unlock: '解锁方式',
   password: '密码',
-  tpmPin: 'TPM PIN',
   tpmPolicy: 'TPM2 绑定策略',
   requireTpmPin: '启动时要求输入 TPM PIN',
   pcr7Warning: '仅绑定 PCR 7 不区分具体 UKI；关闭安全启动时只记录“安全启动关闭”。',
@@ -399,7 +394,6 @@ export const ui = {
   hashPcrs: 'PCR 哈希绑定',
   signedPcrs: 'PCR 签名策略',
   secureBoot: '安全启动',
-  snapper: 'snapper',
   snapperUnsupportedRootOnly: '单一根子卷不推荐 Snapper',
   desktop: '桌面环境',
   hyprlandExtras: 'Hyprland 配套',
@@ -444,19 +438,14 @@ export const ui = {
   stepCount: (total: number) => `共 ${total} 步`,
 }
 
-/** Chinese labels of the wizard options. */
-export const choices = {
-  cpu: {
-    intel: 'Intel',
-    amd: 'AMD',
-  },
+/** Chinese labels of the wizard options; product names live in `neutral.ts`. */
+export const choices: ChoiceCatalog = {
   zram: {
     false: '关闭',
     true: '开启',
   },
   diskSwap: {
     none: '无',
-    swapfile: 'swapfile',
   },
   subvolumeLayout: {
     'root-only': '单一根子卷（结构简单）',
@@ -475,141 +464,26 @@ export const choices = {
   secureBoot: {
     none: '关闭',
     'custom-db': '自定义 UEFI db',
-    'shim-mok': 'shim-signed + MOK',
   },
   snapper: {
     none: '不配置',
-    root: 'root',
-    'root-home': 'root + home',
   },
   desktop: {
     none: '无',
-    gnome: 'GNOME',
-    kde: 'KDE Plasma',
-    hyprland: 'Hyprland',
-  },
-  graphics: {
-    intel: 'Intel',
-    amd: 'AMD',
-    nvidia: 'NVIDIA',
   },
   hyprlandNotifications: {
     none: '不安装',
-    swaync: 'SwayNC',
-    mako: 'mako',
-  },
-  hyprlandLauncher: {
-    hyprlauncher: 'Hyprlauncher',
-    rofi: 'rofi',
-    wofi: 'wofi',
-    walker: 'Walker + Elephant',
-  },
-  hyprlandFileManager: {
-    nautilus: 'Nautilus',
-    dolphin: 'Dolphin',
-    thunar: 'Thunar',
-  },
-  hyprlandTerminal: {
-    ghostty: 'Ghostty',
-    kitty: 'Kitty',
   },
   hyprlandBar: {
     none: '不安装',
-    waybar: 'Waybar',
   },
   hyprlandLock: {
     none: '不安装',
-    hyprlock: 'Hyprlock + Hypridle',
-  },
-  hyprlandAddons: {
-    hyprpaper: 'Hyprpaper',
-    hyprsunset: 'Hyprsunset',
-    hyprshot: 'Hyprshot',
-    'gnome-keyring': 'GNOME Keyring',
-    seahorse: 'Seahorse',
-  },
-  /** Every locale is named in its own language, so these entries read the same in any interface. */
-  systemLocale: {
-    'en_US.UTF-8': 'English (United States)',
-    'en_GB.UTF-8': 'English (United Kingdom)',
-    'en_CA.UTF-8': 'English (Canada)',
-    'zh_CN.UTF-8': '简体中文',
-    'zh_TW.UTF-8': '繁體中文',
-    'zh_HK.UTF-8': '繁體中文（香港）',
-    'de_DE.UTF-8': 'Deutsch',
-    'fr_FR.UTF-8': 'Français',
-    'es_ES.UTF-8': 'Español',
-    'it_IT.UTF-8': 'Italiano',
-    'ja_JP.UTF-8': '日本語',
-    'ko_KR.UTF-8': '한국어',
-    'ru_RU.UTF-8': 'Русский',
-    'ar_EG.UTF-8': 'العربية（مصر）',
-    'bg_BG.UTF-8': 'Български',
-    'ca_ES.UTF-8': 'Català',
-    'cs_CZ.UTF-8': 'Čeština',
-    'da_DK.UTF-8': 'Dansk',
-    'de_AT.UTF-8': 'Deutsch（Österreich）',
-    'de_CH.UTF-8': 'Deutsch（Schweiz）',
-    'el_GR.UTF-8': 'Ελληνικά',
-    'en_AU.UTF-8': 'English (Australia)',
-    'en_IE.UTF-8': 'English (Ireland)',
-    'en_NZ.UTF-8': 'English (New Zealand)',
-    'en_SG.UTF-8': 'English (Singapore)',
-    'en_ZA.UTF-8': 'English (South Africa)',
-    'es_AR.UTF-8': 'Español（Argentina）',
-    'es_CL.UTF-8': 'Español（Chile）',
-    'es_CO.UTF-8': 'Español（Colombia）',
-    'es_MX.UTF-8': 'Español（México）',
-    'et_EE.UTF-8': 'Eesti',
-    fa_IR: 'فارسی',
-    'fi_FI.UTF-8': 'Suomi',
-    'fr_BE.UTF-8': 'Français（Belgique）',
-    'fr_CA.UTF-8': 'Français（Canada）',
-    'fr_CH.UTF-8': 'Français（Suisse）',
-    'he_IL.UTF-8': 'עברית',
-    hi_IN: 'हिन्दी',
-    'hr_HR.UTF-8': 'Hrvatski',
-    'hu_HU.UTF-8': 'Magyar',
-    hy_AM: 'Հայերեն',
-    'id_ID.UTF-8': 'Bahasa Indonesia',
-    'is_IS.UTF-8': 'Íslenska',
-    'ka_GE.UTF-8': 'ქართული',
-    'kk_KZ.UTF-8': 'Қазақша',
-    'lt_LT.UTF-8': 'Lietuvių',
-    'lv_LV.UTF-8': 'Latviešu',
-    'ms_MY.UTF-8': 'Bahasa Melayu',
-    'nb_NO.UTF-8': 'Norsk bokmål',
-    'nl_BE.UTF-8': 'Nederlands（België）',
-    'nl_NL.UTF-8': 'Nederlands（Nederland）',
-    'nn_NO.UTF-8': 'Norsk nynorsk',
-    'pl_PL.UTF-8': 'Polski',
-    'pt_BR.UTF-8': 'Português（Brasil）',
-    'pt_PT.UTF-8': 'Português（Portugal）',
-    'ro_RO.UTF-8': 'Română',
-    'sk_SK.UTF-8': 'Slovenčina',
-    'sl_SI.UTF-8': 'Slovenščina',
-    sr_RS: 'Српски',
-    'sv_SE.UTF-8': 'Svenska',
-    'th_TH.UTF-8': 'ไทย',
-    'tr_TR.UTF-8': 'Türkçe',
-    'uk_UA.UTF-8': 'Українська',
-    ur_PK: 'اردو',
-    vi_VN: 'Tiếng Việt',
-  },
-  keymap: {
-    us: 'English (US)',
-    uk: 'English (UK)',
-    'de-latin1': 'Deutsch',
-    'fr-latin9': 'Français',
-    es: 'Español',
-    it: 'Italiano',
-    jp106: '日本語',
-    ru: 'Русский',
   },
 }
 
 /** Chinese one-line explanations shown under each wizard option. */
-export const choiceDescriptions = {
+export const choiceDescriptions: DescriptionCatalog = {
   cpu: {
     intel: '安装 Intel 处理器所需的 intel-ucode 微码包。',
     amd: '安装 AMD 处理器所需的 amd-ucode 微码包。',
