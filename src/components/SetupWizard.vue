@@ -558,50 +558,6 @@ function goToStep(index: number) {
           </label>
         </div>
 
-        <div class="field encryption-field">
-          <span>{{ pick(ui.encryption, props.locale) }}</span>
-          <ChoicePicker
-            name="encryption"
-            :model-value="selectedEncryption"
-            :options="encryptionOptions"
-            @update:model-value="commitEncryption"
-          />
-          <div
-            v-if="model.encryption?.mode === 'luks2' && model.encryption.unlock.method === 'tpm2'"
-            class="field nested-field"
-          >
-            <span>{{ pick(ui.tpmPolicy, props.locale) }}</span>
-            <ChoicePicker
-              name="tpm2Preset"
-              :model-value="tpm2Preset(model.encryption)"
-              :options="tpmPresetOptions"
-              @update:model-value="commitTpm2Preset"
-            />
-            <label class="check-option">
-              <input
-                name="tpmPin"
-                type="checkbox"
-                :checked="model.encryption.unlock.pin"
-                @change="commitTpmPin"
-              />
-              <span>{{ pick(ui.requireTpmPin, props.locale) }}</span>
-            </label>
-            <p v-if="tpm2Preset(model.encryption) === 'minimal'" class="constraint-message">
-              {{ pick(ui.pcr7Warning, props.locale) }}
-            </p>
-          </div>
-        </div>
-
-        <div class="field secure-boot-field">
-          <span>{{ pick(ui.secureBoot, props.locale) }}</span>
-          <ChoicePicker
-            name="secureBoot"
-            :model-value="model.secureBoot"
-            :options="secureBootOptions"
-            @update:model-value="commitSecureBoot"
-          />
-        </div>
-
         <div class="field" :class="{ 'disabled-field': model.subvolumeLayout === 'root-only' }">
           <span>{{ pick(ui.snapper, props.locale) }}</span>
           <ChoicePicker
@@ -614,6 +570,52 @@ function goToStep(index: number) {
           <p v-else class="constraint-message">
             {{ pick(ui.snapperUnsupportedRootOnly, props.locale) }}
           </p>
+        </div>
+
+        <div class="encryption-row">
+          <div class="field encryption-field">
+            <span>{{ pick(ui.encryption, props.locale) }}</span>
+            <ChoicePicker
+              name="encryption"
+              :model-value="selectedEncryption"
+              :options="encryptionOptions"
+              @update:model-value="commitEncryption"
+            />
+            <div
+              v-if="model.encryption?.mode === 'luks2' && model.encryption.unlock.method === 'tpm2'"
+              class="field nested-field"
+            >
+              <span>{{ pick(ui.tpmPolicy, props.locale) }}</span>
+              <ChoicePicker
+                name="tpm2Preset"
+                :model-value="tpm2Preset(model.encryption)"
+                :options="tpmPresetOptions"
+                @update:model-value="commitTpm2Preset"
+              />
+              <label class="check-option">
+                <input
+                  name="tpmPin"
+                  type="checkbox"
+                  :checked="model.encryption.unlock.pin"
+                  @change="commitTpmPin"
+                />
+                <span>{{ pick(ui.requireTpmPin, props.locale) }}</span>
+              </label>
+              <p v-if="tpm2Preset(model.encryption) === 'minimal'" class="constraint-message">
+                {{ pick(ui.pcr7Warning, props.locale) }}
+              </p>
+            </div>
+          </div>
+
+          <div class="field secure-boot-field">
+            <span>{{ pick(ui.secureBoot, props.locale) }}</span>
+            <ChoicePicker
+              name="secureBoot"
+              :model-value="model.secureBoot"
+              :options="secureBootOptions"
+              @update:model-value="commitSecureBoot"
+            />
+          </div>
         </div>
       </fieldset>
 
@@ -759,32 +761,30 @@ function goToStep(index: number) {
           </div>
         </div>
 
-        <div v-if="model.desktop === 'hyprland'" class="field hyprland-field">
+        <div v-if="model.desktop === 'hyprland'" class="field nested-field hyprland-field">
           <span>{{ pick(ui.hyprlandExtras, props.locale) }}</span>
           <small>{{ pick(ui.hyprlandExtrasHint, props.locale) }}</small>
-          <div class="field nested-field">
-            <div v-for="entry in hyprlandCategories" :key="entry.category" class="field">
-              <span>{{ entry.label }}</span>
-              <ChoicePicker
-                :name="`hyprland.${entry.category}`"
-                :model-value="entry.selected"
-                :options="entry.options"
-                @update:model-value="commitHyprland(entry.category, $event)"
+          <div v-for="entry in hyprlandCategories" :key="entry.category" class="field">
+            <span>{{ entry.label }}</span>
+            <ChoicePicker
+              :name="`hyprland.${entry.category}`"
+              :model-value="entry.selected"
+              :options="entry.options"
+              @update:model-value="commitHyprland(entry.category, $event)"
+            />
+          </div>
+          <div v-for="group in hyprlandAddonGroups" :key="group.label" class="field">
+            <span>{{ group.label }}</span>
+            <label v-for="addon in group.addons" :key="addon.value" class="check-option">
+              <input
+                type="checkbox"
+                :name="`hyprland.${addon.value}`"
+                :checked="addon.checked"
+                @change="toggleHyprlandAddon(addon.value, $event)"
               />
-            </div>
-            <div v-for="group in hyprlandAddonGroups" :key="group.label" class="field">
-              <span>{{ group.label }}</span>
-              <label v-for="addon in group.addons" :key="addon.value" class="check-option">
-                <input
-                  type="checkbox"
-                  :name="`hyprland.${addon.value}`"
-                  :checked="addon.checked"
-                  @change="toggleHyprlandAddon(addon.value, $event)"
-                />
-                <span>{{ addon.label }}</span>
-                <small>{{ addon.description }}</small>
-              </label>
-            </div>
+              <span>{{ addon.label }}</span>
+              <small>{{ addon.description }}</small>
+            </label>
           </div>
         </div>
       </fieldset>
@@ -1047,6 +1047,15 @@ small.description {
   color: var(--muted);
 }
 
+/** Keeps secure boot beside encryption, so the TPM policy block cannot push it down. */
+.encryption-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 1rem;
+}
+
 .disabled-field {
   color: var(--faint);
 }
@@ -1080,7 +1089,7 @@ small.description {
   grid-column: 1 / -1;
 }
 
-.hyprland-field .nested-field > .field + .field {
+.hyprland-field > .field {
   margin-top: 0.9rem;
 }
 
@@ -1197,6 +1206,7 @@ button.primary {
 
 @media (max-width: 38rem) {
   fieldset,
+  .encryption-row,
   .review ul {
     grid-template-columns: 1fr;
   }
