@@ -66,7 +66,7 @@ export const ui = {
   hyprlandBar: { zh: '状态栏' },
   hyprlandLock: { zh: '锁屏与空闲管理' },
   hyprlandWallpaper: { zh: '壁纸与色温' },
-  hyprlandScreenshot: { zh: '截图与剪贴板' },
+  hyprlandScreenshot: { zh: '截图工具' },
   hyprlandKeyring: { zh: '密钥环' },
   graphics: { zh: '显卡' },
   reflector: { zh: '镜像源' },
@@ -173,7 +173,6 @@ export const choices = {
     hyprpaper: { zh: 'Hyprpaper' },
     hyprsunset: { zh: 'Hyprsunset' },
     hyprshot: { zh: 'Hyprshot' },
-    'wl-clipboard': { zh: 'wl-clipboard' },
     'gnome-keyring': { zh: 'GNOME Keyring' },
     seahorse: { zh: 'Seahorse' },
   },
@@ -338,7 +337,6 @@ export const choiceDescriptions = {
     hyprpaper: { zh: '设置壁纸，需要指定图片。' },
     hyprsunset: { zh: '色温滤镜，用 hyprsunset -t 4000 调整。' },
     hyprshot: { zh: '按区域、窗口或显示器截图，同时写入剪贴板。' },
-    'wl-clipboard': { zh: '命令行剪贴板工具 wl-copy 和 wl-paste。' },
     'gnome-keyring': { zh: '存储应用密码，可由登录密码自动解锁。' },
     seahorse: { zh: '密钥环的图形管理界面。' },
   },
@@ -347,6 +345,6 @@ export const choiceDescriptions = {
 /** Multi-select Hyprland categories, shared by the wizard and the configuration summary. */
 export const hyprlandAddonGroups: { label: Localized<string>; addons: HyprlandAddon[] }[] = [
   { label: ui.hyprlandWallpaper, addons: ['hyprpaper', 'hyprsunset'] },
-  { label: ui.hyprlandScreenshot, addons: ['hyprshot', 'wl-clipboard'] },
+  { label: ui.hyprlandScreenshot, addons: ['hyprshot'] },
   { label: ui.hyprlandKeyring, addons: ['gnome-keyring', 'seahorse'] },
 ]

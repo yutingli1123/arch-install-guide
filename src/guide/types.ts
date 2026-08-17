@@ -22,7 +22,6 @@ export type HyprlandAddon =
   | 'hyprpaper'
   | 'hyprsunset'
   | 'hyprshot'
-  | 'wl-clipboard'
   | 'gnome-keyring'
   | 'seahorse'
 

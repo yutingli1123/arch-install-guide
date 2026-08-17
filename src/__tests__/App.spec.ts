@@ -335,9 +335,9 @@ describe('setup wizard', () => {
     await selectChoice(wrapper, 'hyprland.launcher', 'walker')
     await selectChoice(wrapper, 'hyprland.fileManager', 'thunar')
     await selectChoice(wrapper, 'hyprland.bar', 'waybar')
-    await wrapper.get('input[name="hyprland.wl-clipboard"]').setValue(true)
+    await wrapper.get('input[name="hyprland.hyprshot"]').setValue(true)
     await wrapper.get('input[name="hyprland.hyprpaper"]').setValue(true)
-    await wrapper.get('input[name="hyprland.wl-clipboard"]').setValue(false)
+    await wrapper.get('input[name="hyprland.hyprshot"]').setValue(false)
 
     expect(parseDraft(window.location.search).hyprland).toEqual({
       notifications: 'none',

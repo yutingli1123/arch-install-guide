@@ -121,7 +121,6 @@ export const HYPRLAND_ADDONS = [
   'hyprpaper',
   'hyprsunset',
   'hyprshot',
-  'wl-clipboard',
   'gnome-keyring',
   'seahorse',
 ] as const satisfies readonly HyprlandAddon[]

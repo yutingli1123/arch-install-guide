@@ -269,7 +269,7 @@ describe('configuration', () => {
         terminal: 'kitty',
         bar: 'waybar',
         lock: 'hyprlock',
-        addons: ['hyprshot', 'wl-clipboard'],
+        addons: ['hyprshot'],
       },
       reflector: { countries: ['GB', 'FR'], ageHours: 6, number: 7 },
     }
@@ -577,7 +577,7 @@ describe('renderGuide', () => {
 
     const hyprland = renderHtml({ ...stageOneConfig, desktop: 'hyprland', graphics: 'nvidia' })
     expect(hyprland).toContain('pacman -S nvidia-open nvidia-utils')
-    expect(hyprland).toContain('pacman -S hyprland xdg-desktop-portal-hyprland hyprpolkitagent')
+    expect(hyprland).toContain('pacman -S hyprland xdg-desktop-portal-hyprland wl-clipboard')
     expect(hyprland).toContain('greetd greetd-regreet')
     expect(hyprland).toContain('systemctl enable greetd')
     expect(hyprland).toContain(
@@ -648,7 +648,6 @@ describe('hyprland extras', () => {
       'hyprpaper',
       'hyprsunset',
       'hyprshot',
-      'wl-clipboard',
       'gnome-keyring',
       'seahorse',
     ],
@@ -674,7 +673,6 @@ describe('hyprland extras', () => {
       'hyprpaper',
       'hyprsunset',
       'hyprshot',
-      'wl-clipboard',
       'gnome-keyring',
       'seahorse',
     ])
