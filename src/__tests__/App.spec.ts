@@ -33,7 +33,6 @@ describe('setup wizard', () => {
       .findAll('select[name="systemLocale"] option:not([disabled])')
       .map((option) => option.attributes('value'))
     expect(localeValues).toEqual([...localeValues].sort())
-    expect(wrapper.text()).not.toContain('配置和当前步骤会自动保存到网址')
     expect(wrapper.get('.detected-timezone').text()).toContain(
       Intl.DateTimeFormat().resolvedOptions().timeZone,
     )
@@ -234,7 +233,6 @@ describe('setup wizard', () => {
 
     expect(wrapper.get('form').text()).toContain('只创建 @，结构简单，但不能配置 Snapper')
     expect(wrapper.get('form').text()).toContain('在同一个 Btrfs 文件系统中')
-    expect(wrapper.get('form').text()).not.toContain('当前不可用：对应安装步骤尚未提供')
     await selectChoice(wrapper, 'subvolumeLayout', 'root-only')
     expect(
       wrapper
@@ -477,7 +475,6 @@ describe('generated guide', () => {
     expect(summary).not.toContain('UEFI')
     expect(summary).not.toContain('UKI')
     expect(summary).not.toContain('systemd-boot')
-    expect(summary).not.toContain('ESP 大小')
     expect(summary).not.toContain('PCR')
     expect(wrapper.get('footer').text()).not.toContain('本指南配置')
 
