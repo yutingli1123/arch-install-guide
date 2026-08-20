@@ -304,17 +304,17 @@ export const prose: ProseCatalog = {
   'desktop.graphics-driver.nvidia':
     '`nvidia-open` 適用於 Turing 及更新的架構。Pascal 或更早的顯示卡不要執行此指令，應先依具體型號確認對應的舊版驅動程式。',
   'desktop.audio.intro': '安裝 PipeWire 音訊服務、WirePlumber 工作階段管理員和音量控制介面：',
-  'desktop.desktop-common.intro': ({ cfg }: Context) =>
+  'desktop.desktop-common.intro': ({ cfg, inputMethodEngine }: Context) =>
     `安裝 Noto 字型家族（含 CJK、emoji）。${
       cfg.desktop === 'hyprland'
         ? '安裝 BlueZ 藍牙後端與工具、Blueman 管理介面、Fcitx 5、GTK/Qt 前端和設定工具'
         : '安裝 Fcitx 5、GTK/Qt 前端和設定工具'
     }${
-      cfg.systemLocale.startsWith('zh_')
+      inputMethodEngine === 'fcitx5-chinese-addons'
         ? '；目前的中文 locale 會一併安裝拼音輸入引擎'
-        : cfg.systemLocale.startsWith('ja_')
+        : inputMethodEngine === 'fcitx5-mozc'
           ? '；目前的日文 locale 會一併安裝 Mozc 輸入引擎'
-          : cfg.systemLocale.startsWith('ko_')
+          : inputMethodEngine === 'fcitx5-hangul'
             ? '；目前的韓文 locale 會一併安裝 Hangul 輸入引擎'
             : ''
     }：`,

@@ -298,6 +298,11 @@ describe('configuration', () => {
     expect(completeConfig({})).toBeNull()
   })
 
+  it('round-trips a system locale whose index needs two bytes', () => {
+    const draft = { systemLocale: 'zu_ZA.UTF-8' }
+    expect(parseDraft(serializeDraft(draft))).toEqual(draft)
+  })
+
   it('keeps a partially completed configuration token compact', () => {
     const query = serializeDraft({
       disk: '/dev/nvme0n1',

@@ -323,17 +323,17 @@ export const prose = {
     '`nvidia-open` covers Turing and newer architectures. Do not run this command on Pascal or older cards; check which legacy driver matches the specific model first.',
   'desktop.audio.intro':
     'Install the PipeWire audio server, the WirePlumber session manager, and a volume control:',
-  'desktop.desktop-common.intro': ({ cfg }: Context) =>
+  'desktop.desktop-common.intro': ({ cfg, inputMethodEngine }: Context) =>
     `Install the Noto font families, including CJK and emoji. ${
       cfg.desktop === 'hyprland'
         ? 'Install the BlueZ Bluetooth backend and tools, the Blueman management interface, Fcitx 5, and its GTK/Qt frontends and configuration tool'
         : 'Install Fcitx 5 and its GTK/Qt frontends and configuration tool'
     }${
-      cfg.systemLocale.startsWith('zh_')
+      inputMethodEngine === 'fcitx5-chinese-addons'
         ? ', plus the Pinyin engine for the current Chinese locale'
-        : cfg.systemLocale.startsWith('ja_')
+        : inputMethodEngine === 'fcitx5-mozc'
           ? ', plus the Mozc engine for the current Japanese locale'
-          : cfg.systemLocale.startsWith('ko_')
+          : inputMethodEngine === 'fcitx5-hangul'
             ? ', plus the Hangul engine for the current Korean locale'
             : ''
     }:`,

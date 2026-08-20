@@ -14,74 +14,155 @@ export function partition(disk: string, index: number): string {
   return PARTITION_SUFFIX.test(disk) ? `${disk}p${index}` : `${disk}${index}`
 }
 
-/** systemLocale -> tesseract-data language code, for locales Tesseract has separate training data for. */
-const TESSERACT_LOCALE_DATA: Record<string, string> = {
+/** The language subtag of a locale name such as `sr_RS@latin`. */
+export function localeLanguage(locale: string): string {
+  return locale.split(/[_.@]/, 1)[0]!
+}
+
+/** Language subtag -> tesseract-data language code, for languages Tesseract has training data for. */
+const TESSERACT_LANGUAGE_DATA: Record<string, string> = {
+  af: 'afr',
+  am: 'amh',
+  ar: 'ara',
+  as: 'asm',
+  az: 'aze',
+  be: 'bel',
+  bg: 'bul',
+  bn: 'ben',
+  bo: 'bod',
+  br: 'bre',
+  bs: 'bos',
+  ca: 'cat',
+  chr: 'chr',
+  cs: 'ces',
+  cy: 'cym',
+  da: 'dan',
+  de: 'deu',
+  dv: 'div',
+  dz: 'dzo',
+  el: 'ell',
+  eo: 'epo',
+  es: 'spa',
+  et: 'est',
+  eu: 'eus',
+  fa: 'fas',
+  fi: 'fin',
+  fil: 'fil',
+  fo: 'fao',
+  fr: 'fra',
+  fy: 'fry',
+  ga: 'gle',
+  gd: 'gla',
+  gl: 'glg',
+  gu: 'guj',
+  he: 'heb',
+  hi: 'hin',
+  hr: 'hrv',
+  ht: 'hat',
+  hu: 'hun',
+  hy: 'hye',
+  id: 'ind',
+  is: 'isl',
+  it: 'ita',
+  iu: 'iku',
+  ja: 'jpn',
+  ka: 'kat',
+  kk: 'kaz',
+  km: 'khm',
+  kn: 'kan',
+  ko: 'kor',
+  ku: 'kmr',
+  ky: 'kir',
+  lb: 'ltz',
+  lo: 'lao',
+  lt: 'lit',
+  lv: 'lav',
+  mi: 'mri',
+  mk: 'mkd',
+  ml: 'mal',
+  mn: 'mon',
+  mr: 'mar',
+  ms: 'msa',
+  mt: 'mlt',
+  my: 'mya',
+  nb: 'nor',
+  ne: 'nep',
+  nl: 'nld',
+  nn: 'nor',
+  oc: 'oci',
+  or: 'ori',
+  pa: 'pan',
+  pl: 'pol',
+  ps: 'pus',
+  pt: 'por',
+  quz: 'que',
+  ro: 'ron',
+  ru: 'rus',
+  sa: 'san',
+  sd: 'snd',
+  si: 'sin',
+  sk: 'slk',
+  sl: 'slv',
+  sq: 'sqi',
+  sr: 'srp',
+  su: 'sun',
+  sv: 'swe',
+  sw: 'swa',
+  syr: 'syr',
+  ta: 'tam',
+  te: 'tel',
+  tg: 'tgk',
+  th: 'tha',
+  ti: 'tir',
+  tl: 'tgl',
+  to: 'ton',
+  tr: 'tur',
+  tt: 'tat',
+  ug: 'uig',
+  uk: 'ukr',
+  ur: 'urd',
+  uz: 'uzb',
+  vi: 'vie',
+  yi: 'yid',
+  yo: 'yor',
+}
+
+/** Locales written in a script other than the one the language's training data covers; null when none fits. */
+const TESSERACT_LOCALE_DATA: Record<string, string | null> = {
   'zh_CN.UTF-8': 'chi_sim',
+  'zh_SG.UTF-8': 'chi_sim',
   'zh_TW.UTF-8': 'chi_tra',
   'zh_HK.UTF-8': 'chi_tra',
-  'de_DE.UTF-8': 'deu',
-  'de_AT.UTF-8': 'deu',
-  'de_CH.UTF-8': 'deu',
-  'fr_FR.UTF-8': 'fra',
-  'fr_BE.UTF-8': 'fra',
-  'fr_CA.UTF-8': 'fra',
-  'fr_CH.UTF-8': 'fra',
-  'es_ES.UTF-8': 'spa',
-  'es_AR.UTF-8': 'spa',
-  'es_CL.UTF-8': 'spa',
-  'es_CO.UTF-8': 'spa',
-  'es_MX.UTF-8': 'spa',
-  'it_IT.UTF-8': 'ita',
-  'ja_JP.UTF-8': 'jpn',
-  'ko_KR.UTF-8': 'kor',
-  'ru_RU.UTF-8': 'rus',
-  'ar_EG.UTF-8': 'ara',
-  'bg_BG.UTF-8': 'bul',
-  'ca_ES.UTF-8': 'cat',
-  'cs_CZ.UTF-8': 'ces',
-  'da_DK.UTF-8': 'dan',
-  'el_GR.UTF-8': 'ell',
-  'et_EE.UTF-8': 'est',
-  fa_IR: 'fas',
-  'fi_FI.UTF-8': 'fin',
-  'he_IL.UTF-8': 'heb',
-  hi_IN: 'hin',
-  'hr_HR.UTF-8': 'hrv',
-  'hu_HU.UTF-8': 'hun',
-  hy_AM: 'hye',
-  'id_ID.UTF-8': 'ind',
-  'is_IS.UTF-8': 'isl',
-  'ka_GE.UTF-8': 'kat',
-  'kk_KZ.UTF-8': 'kaz',
-  'lt_LT.UTF-8': 'lit',
-  'lv_LV.UTF-8': 'lav',
-  'ms_MY.UTF-8': 'msa',
-  'nb_NO.UTF-8': 'nor',
-  'nn_NO.UTF-8': 'nor',
-  'nl_BE.UTF-8': 'nld',
-  'nl_NL.UTF-8': 'nld',
-  'pl_PL.UTF-8': 'pol',
-  'pt_BR.UTF-8': 'por',
-  'pt_PT.UTF-8': 'por',
-  'ro_RO.UTF-8': 'ron',
-  'sk_SK.UTF-8': 'slk',
-  'sl_SI.UTF-8': 'slv',
-  sr_RS: 'srp',
-  'sv_SE.UTF-8': 'swe',
-  'th_TH.UTF-8': 'tha',
-  'tr_TR.UTF-8': 'tur',
-  'uk_UA.UTF-8': 'ukr',
-  ur_PK: 'urd',
-  vi_VN: 'vie',
+  'sr_RS@latin': 'srp_latn',
+  'uz_UZ@cyrillic': 'uzb_cyrl',
+  az_IR: null,
+  'be_BY@latin': null,
+  pa_PK: null,
+  'sd_IN@devanagari': null,
+  'tt_RU@iqtelif': null,
+}
+
+function tesseractLanguage(locale: string): string | undefined {
+  const override = TESSERACT_LOCALE_DATA[locale]
+  if (override !== undefined) return override ?? undefined
+  return TESSERACT_LANGUAGE_DATA[localeLanguage(locale)]
 }
 
 /** systemLocale -> the Noto CJK regional variant used as the default CJK face. */
 export const CJK_VARIANTS: Record<string, string> = {
   'zh_CN.UTF-8': 'SC',
+  'zh_SG.UTF-8': 'SC',
   'zh_TW.UTF-8': 'TC',
   'zh_HK.UTF-8': 'HK',
   'ja_JP.UTF-8': 'JP',
   'ko_KR.UTF-8': 'KR',
+}
+
+/** Language subtag -> fcitx5 engine, for languages that need more than a keyboard layout. */
+const INPUT_METHOD_ENGINES: Record<string, string> = {
+  zh: 'fcitx5-chinese-addons',
+  ja: 'fcitx5-mozc',
+  ko: 'fcitx5-hangul',
 }
 
 const BASE_PACKAGES = [
@@ -188,6 +269,7 @@ export function derive(cfg: Config): Context {
   const rootDevice = partition(cfg.disk, 2)
   const rootFsDevice = cfg.encryption.mode === 'luks2' ? `/dev/mapper/${luksName}` : rootDevice
   const packages = [...BASE_PACKAGES, microcode]
+  const tesseract = tesseractLanguage(cfg.systemLocale)
   const graphicsPackages = {
     intel: ['mesa', 'vulkan-intel', 'intel-media-driver'],
     amd: ['mesa', 'vulkan-radeon', 'libva-mesa-driver'],
@@ -204,9 +286,7 @@ export function derive(cfg: Config): Context {
         'dolphin',
         'qt6-multimedia-ffmpeg',
         'tesseract-data-eng',
-        ...(TESSERACT_LOCALE_DATA[cfg.systemLocale]
-          ? [`tesseract-data-${TESSERACT_LOCALE_DATA[cfg.systemLocale]}`]
-          : []),
+        ...(tesseract ? [`tesseract-data-${tesseract}`] : []),
       ],
       displayManager: 'sddm',
     },
@@ -234,13 +314,7 @@ export function derive(cfg: Config): Context {
           'pipewire-jack',
           'wireplumber',
         ]
-  const inputMethodEngine = cfg.systemLocale.startsWith('zh_')
-    ? 'fcitx5-chinese-addons'
-    : cfg.systemLocale.startsWith('ja_')
-      ? 'fcitx5-mozc'
-      : cfg.systemLocale.startsWith('ko_')
-        ? 'fcitx5-hangul'
-        : undefined
+  const inputMethodEngine = INPUT_METHOD_ENGINES[localeLanguage(cfg.systemLocale)]
   const desktopCommonPackages =
     cfg.desktop === 'none'
       ? []
@@ -286,6 +360,7 @@ export function derive(cfg: Config): Context {
     graphicsPackages,
     audioPackages,
     desktopCommonPackages,
+    inputMethodEngine,
     desktopPackages: desktop.packages,
     desktopName: DESKTOP_NAMES[cfg.desktop],
     hyprlandPackages: hyprland,

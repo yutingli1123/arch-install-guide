@@ -120,6 +120,8 @@ export type Context = {
   graphicsPackages: string[]
   audioPackages: string[]
   desktopCommonPackages: string[]
+  /** fcitx5 engine that the system language needs, if any. */
+  inputMethodEngine?: string
   desktopPackages: string[]
   /** Hyprland session software from the official repositories. */
   hyprlandPackages: string[]
