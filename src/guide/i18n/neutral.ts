@@ -1,5 +1,3 @@
-import type { Locale } from '../types'
-
 /**
  * Text that reads the same whatever the interface language is: product and package names,
  * and every selectable locale or keymap written the way that language names itself.
@@ -145,9 +143,4 @@ export const choices = {
     jp106: '日本語',
     ru: 'Русский',
   },
-}
-
-export const localeNames: Record<Locale, string> = {
-  zh: '中文',
-  en: 'English',
 }

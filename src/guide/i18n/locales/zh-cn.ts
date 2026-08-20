@@ -1,8 +1,12 @@
-import { packagePurposeRows } from '../packages'
-import type { Context } from '../types'
-import type { ChoiceCatalog, DescriptionCatalog, ProseCatalog, UiCatalog } from './index'
+import { packagePurposeRows } from '../../packages'
+import type { Context } from '../../types'
+import type { ChoiceCatalog, DescriptionCatalog, ProseCatalog, UiCatalog } from '../index'
 
-/** Chinese guide prose. Keys left out fall back to the English entry. */
+export const name = '简体中文'
+/** Any Chinese tag; the longer Traditional Chinese prefixes claimed elsewhere take precedence. */
+export const browserTags = ['zh']
+
+/** Simplified Chinese guide prose. Keys left out fall back to the English entry. */
 export const prose: ProseCatalog = {
   'live.boot-mode.intro': '从 Arch 安装介质启动后，先确认固件模式：',
   'live.boot-mode.output': '输出 `64` 表示 64 位 UEFI，可以继续。',
@@ -345,7 +349,7 @@ export const prose: ProseCatalog = {
     `重启后由 \`${displayManager}\` 提供图形登录界面。`,
 }
 
-/** Chinese interface labels; wording that never changes lives in `neutral.ts`. */
+/** Simplified Chinese interface labels; wording that never changes lives in `neutral.ts`. */
 export const ui: UiCatalog = {
   title: 'Arch Linux 安装指南',
   welcomeTitle: '生成适合你的 Arch Linux 安装指南',
@@ -438,7 +442,7 @@ export const ui: UiCatalog = {
   stepCount: (total: number) => `共 ${total} 步`,
 }
 
-/** Chinese labels of the wizard options; product names live in `neutral.ts`. */
+/** Simplified Chinese labels of the wizard options; product names live in `neutral.ts`. */
 export const choices: ChoiceCatalog = {
   zram: {
     false: '关闭',
@@ -482,7 +486,7 @@ export const choices: ChoiceCatalog = {
   },
 }
 
-/** Chinese one-line explanations shown under each wizard option. */
+/** Simplified Chinese one-line explanations shown under each wizard option. */
 export const choiceDescriptions: DescriptionCatalog = {
   cpu: {
     intel: '安装 Intel 处理器所需的 intel-ucode 微码包。',

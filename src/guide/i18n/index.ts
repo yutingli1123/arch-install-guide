@@ -1,7 +1,6 @@
 import type { Context, Locale, Localized } from '../types'
-import * as en from './en'
+import * as en from './locales/en'
 import * as neutral from './neutral'
-import * as zh from './zh'
 
 /** A prose entry is a plain string, or a function when it interpolates the configuration. */
 export type Prose = string | ((ctx: Context, t: (key: string) => string) => string)
@@ -18,7 +17,56 @@ export type DescriptionCatalog = {
   [K in keyof typeof en.choiceDescriptions]?: Partial<(typeof en.choiceDescriptions)[K]>
 }
 
-const catalogs: Record<Locale, ProseCatalog> = { zh: zh.prose, en: en.prose }
+/** What a file under `locales/` exports; its file name is the locale code. */
+export interface LocaleModule {
+  /** The language named in itself, as the language picker shows it. */
+  name: string
+  /** Browser language tags the locale serves, in lower case; a tag matches whole or as a `-` prefix. */
+  browserTags: string[]
+  prose: ProseCatalog
+  ui: UiCatalog
+  choices: ChoiceCatalog
+  choiceDescriptions: DescriptionCatalog
+}
+
+/** Every file under `locales/` registers itself here, so adding a language is adding a file. */
+const modules = import.meta.glob<LocaleModule>('./locales/*.ts', { eager: true })
+const locales: [Locale, LocaleModule][] = Object.entries(modules).map(([path, module]) => [
+  path.slice('./locales/'.length, -'.ts'.length),
+  module,
+])
+/** English is the base of every table, so only the others are layered on as translations. */
+const translations = locales.filter(([locale]) => locale !== 'en')
+
+export const localeNames: Record<Locale, string> = Object.fromEntries(
+  locales.map(([locale, module]) => [locale, module.name]),
+)
+
+const LOCALES = locales.map(([locale]) => locale)
+
+/**
+ * Resolves the browser's languages, in preference order, to the first one any locale claims;
+ * among the claims on that language the longest tag wins, so `zh-tw` beats `zh`.
+ */
+export function browserLocale(languages: readonly string[]): Locale {
+  for (const language of languages) {
+    const tag = language.toLowerCase()
+    let best: [Locale, string] | undefined
+    for (const [locale, module] of locales)
+      for (const claimed of module.browserTags)
+        if (
+          (tag === claimed || tag.startsWith(`${claimed}-`)) &&
+          claimed.length > (best?.[1].length ?? 0)
+        )
+          best = [locale, claimed]
+    if (best) return best[0]
+  }
+  return 'en'
+}
+
+const catalogs: Record<Locale, ProseCatalog> = Object.fromEntries(
+  locales.map(([locale, module]) => [locale, module.prose]),
+)
 
 export function prose(key: ProseKey, locale: Locale, ctx: Context): string {
   const entry: Prose | undefined = catalogs[locale]?.[key] ?? en.prose[key]
@@ -32,10 +80,6 @@ export function prose(key: ProseKey, locale: Locale, ctx: Context): string {
 export function pick<T>(value: Localized<T>, locale: Locale): T {
   return value[locale] ?? value.en
 }
-
-export { localeNames } from './neutral'
-
-const LOCALES = Object.keys(neutral.localeNames) as Locale[]
 
 type Table = Record<string, unknown>
 type Groups = Record<string, Record<string, string>>
@@ -96,6 +140,21 @@ function groups<N extends Groups, T extends Groups>(
   return merged as MergedGroups<N, T>
 }
 
-export const ui = table(neutral.ui, en.ui, ['zh', zh.ui])
-export const choices = groups(neutral.choices, en.choices, ['zh', zh.choices])
-export const choiceDescriptions = groups({}, en.choiceDescriptions, ['zh', zh.choiceDescriptions])
+export const ui = table(
+  neutral.ui,
+  en.ui,
+  ...translations.map(([locale, module]): [Locale, UiCatalog] => [locale, module.ui]),
+)
+export const choices = groups(
+  neutral.choices,
+  en.choices,
+  ...translations.map(([locale, module]): [Locale, ChoiceCatalog] => [locale, module.choices]),
+)
+export const choiceDescriptions = groups(
+  {},
+  en.choiceDescriptions,
+  ...translations.map(([locale, module]): [Locale, DescriptionCatalog] => [
+    locale,
+    module.choiceDescriptions,
+  ]),
+)

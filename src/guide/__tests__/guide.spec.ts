@@ -337,7 +337,7 @@ describe('configuration', () => {
     expect(draft.disk).toBeUndefined()
     expect(draft.timezone).toBeUndefined()
     expect(draft.username).toBeUndefined()
-    expect(validate(draft)['snapper.root']?.zh).toBe('需要标准分离子卷布局')
+    expect(validate(draft)['snapper.root']?.['zh-cn']).toBe('需要标准分离子卷布局')
     expect(parseDraft('?c=invalid!')).toEqual({})
     expect(parseDraft('?cpu=amd&layout=root-only')).toEqual({})
   })
@@ -377,7 +377,7 @@ describe('steps', () => {
 })
 
 describe('renderGuide', () => {
-  const sections = renderGuide(stageOneConfig, 'zh')
+  const sections = renderGuide(stageOneConfig, 'zh-cn')
   const bodies = sections.flatMap((section) => section.steps).map((step) => step.html)
   const html = bodies.join('')
 
@@ -758,7 +758,7 @@ describe('hyprland extras', () => {
 })
 
 function renderHtml(cfg: Config): string {
-  return renderGuide(cfg, 'zh')
+  return renderGuide(cfg, 'zh-cn')
     .flatMap((section) => section.steps)
     .map((step) => step.html)
     .join('')

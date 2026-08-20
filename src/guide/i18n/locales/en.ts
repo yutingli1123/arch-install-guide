@@ -1,5 +1,9 @@
-import { packagePurposeRows } from '../packages'
-import type { Context } from '../types'
+import { packagePurposeRows } from '../../packages'
+import type { Context } from '../../types'
+
+export const name = 'English'
+/** Browser language tags this locale serves, matched as a prefix in lower case. */
+export const browserTags = ['en']
 
 /** Guide prose, keyed by `<section>.<step>.<purpose>`. This file defines the full key set. */
 export const prose = {

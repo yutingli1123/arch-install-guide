@@ -14,7 +14,7 @@ import {
 } from './guide/config'
 import { selectSteps } from './guide/render'
 import type { ConfigDraft, Locale } from './guide/types'
-import { choices, pick, ui } from './guide/i18n'
+import { browserLocale, choices, localeNames, pick, ui } from './guide/i18n'
 
 function firstIncompleteStep(draft: ConfigDraft): number {
   if (!draft.timezone || !draft.systemLocale) return 0
@@ -43,13 +43,11 @@ function firstIncompleteStep(draft: ConfigDraft): number {
 const initialParams = new URLSearchParams(window.location.search)
 const requestedLocale = initialParams.get('lang')
 /** Falls back to the browser's languages, the way the timezone field does. */
-const systemLocale: Locale = (navigator.languages ?? [navigator.language]).some((tag) =>
-  tag.toLowerCase().startsWith('zh'),
-)
-  ? 'zh'
-  : 'en'
+const systemLocale = browserLocale(navigator.languages ?? [navigator.language])
 const chosenLocale = ref<Locale | null>(
-  requestedLocale === 'zh' || requestedLocale === 'en' ? requestedLocale : null,
+  requestedLocale !== null && Object.keys(localeNames).includes(requestedLocale)
+    ? requestedLocale
+    : null,
 )
 /** The link only carries a language once one is picked; otherwise the browser decides. */
 const locale = computed<Locale>({
@@ -58,6 +56,14 @@ const locale = computed<Locale>({
     chosenLocale.value = value
   },
 })
+/** Fonts pick glyph forms by the document language, and the Chinese variants differ there. */
+watch(
+  locale,
+  (value) => {
+    document.documentElement.lang = value
+  },
+  { immediate: true },
+)
 const initialStep = Number(initialParams.get('step'))
 const draft = ref<ConfigDraft>(parseDraft(window.location.search))
 const config = computed(() => completeConfig(draft.value))

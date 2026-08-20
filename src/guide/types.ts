@@ -1,4 +1,5 @@
-export type Locale = 'zh' | 'en'
+/** A locale code is the name of a file under `i18n/locales/`. */
+export type Locale = string
 
 /** Falls back to `en` when a locale is missing. */
 export type Localized<T> = { en: T } & Partial<Record<Locale, T>>

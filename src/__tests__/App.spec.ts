@@ -375,8 +375,8 @@ describe('setup wizard', () => {
 
     // Chinese is written out too, so the link opens in Chinese on an English browser.
     await wrapper.get('button[name="language"]').trigger('click')
-    await wrapper.get('[data-locale="zh"]').trigger('click')
-    expect(new URLSearchParams(window.location.search).get('lang')).toBe('zh')
+    await wrapper.get('[data-locale="zh-cn"]').trigger('click')
+    expect(new URLSearchParams(window.location.search).get('lang')).toBe('zh-cn')
     expect(parseDraft(window.location.search)).toEqual(saved)
   })
 
@@ -394,6 +394,15 @@ describe('setup wizard', () => {
 
     expect(wrapper.get('button[name="language"] span:not(.ghost)').text()).toBe('English')
     expect(wrapper.get('.welcome').text()).toContain('Generate an Arch Linux installation guide')
+    expect(window.location.search).toBe('')
+  })
+
+  it('tells the Chinese variants apart by the browser language', () => {
+    useBrowserLanguages('zh-TW')
+    const wrapper = mount(App)
+
+    expect(wrapper.get('button[name="language"] span:not(.ghost)').text()).toBe('正體中文')
+    expect(wrapper.get('.welcome').text()).toContain('產生適合你的 Arch Linux 安裝指南')
     expect(window.location.search).toBe('')
   })
 
