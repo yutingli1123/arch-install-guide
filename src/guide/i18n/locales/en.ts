@@ -163,9 +163,18 @@ export const prose = {
     }:`,
   'system.locale.generate': 'Generate the locales:',
   'system.locale.lang': 'Set the system language:',
-  'system.locale.keymap': 'Set the virtual console keyboard layout:',
-  'system.locale.vconsole':
-    '`/etc/vconsole.conf` only affects the TTY; a desktop environment uses its own keyboard configuration.',
+  'system.locale.console': ({ cfg, consoleFont }: Context) =>
+    cfg.keymap === 'us'
+      ? 'Set the virtual console font:'
+      : consoleFont
+        ? 'Set the virtual console keyboard layout and font:'
+        : 'Set the virtual console keyboard layout:',
+  'system.locale.vconsole': ({ consoleFont }: Context) =>
+    `${
+      consoleFont
+        ? "The kernel's built-in console font lacks letters of this language; `FONT=` selects a kbd font that covers Latin, Greek and basic Cyrillic. "
+        : ''
+    }\`/etc/vconsole.conf\` only affects the TTY; a desktop environment uses its own keyboard configuration.`,
   'system.user.create': ({ cfg }: Context) =>
     `Create the user \`${cfg.username}\` and add them to the \`wheel\` group:`,
   'system.user.sudo':
@@ -454,8 +463,8 @@ export const ui = {
   systemLocale: 'System language',
   systemLocaleHint:
     'The locale system services, the terminal, and the login screen use by default.',
-  cjkTtyWarning:
-    'The TTY cannot display CJK characters and shows boxes instead. Choose a CJK system language only with a graphical interface planned; for a command-line system, pick a non-CJK locale.',
+  ttyFontWarning:
+    'The TTY font cannot display some or all characters of this language; they show as boxes. Choose it only with a graphical interface planned; for a command-line system, pick a language the console can display.',
   keymap: 'Keyboard layout',
   keymapHint: 'The keyboard layout used in the installation environment and the virtual console.',
   hostname: 'Hostname',

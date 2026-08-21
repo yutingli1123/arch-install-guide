@@ -434,15 +434,26 @@ describe('renderGuide', () => {
     expect(rootOnly).toContain('<code>/boot</code> 是根子卷内的普通目录')
   })
 
-  it('only writes vconsole.conf for a non-default keymap', () => {
-    const nonDefault = renderHtml({ ...stageOneConfig, keymap: 'de-latin1' })
-    expect(html).not.toContain("echo 'KEYMAP=us'")
-    expect(html).not.toContain('localectl list-keymaps')
-    expect(html).not.toContain('loadkeys us')
-    expect(nonDefault).toContain('localectl list-keymaps')
-    expect(nonDefault).toContain('loadkeys de-latin1')
-    expect(nonDefault).toContain('KEYMAP=de-latin1')
-    expect(nonDefault).toContain('/etc/vconsole.conf')
+  it('writes vconsole.conf only for a non-default keymap or a locale needing a console font', () => {
+    const base = { ...stageOneConfig, systemLocale: 'en_US.UTF-8', keymap: 'us' as const }
+    expect(renderHtml(base)).not.toContain('/etc/vconsole.conf')
+    expect(renderHtml(base)).not.toContain('localectl list-keymaps')
+    expect(renderHtml(base)).not.toContain('loadkeys us')
+
+    const keymap = renderHtml({ ...base, keymap: 'de-latin1' })
+    expect(keymap).toContain('localectl list-keymaps')
+    expect(keymap).toContain('loadkeys de-latin1')
+    expect(keymap).toContain("printf 'KEYMAP=de-latin1\\n'")
+    expect(keymap).not.toContain('FONT=')
+
+    const font = renderHtml({ ...base, systemLocale: 'ru_RU.UTF-8' })
+    expect(font).toContain("printf 'FONT=LatGrkCyr-8x16\\n'")
+    expect(font).not.toContain('KEYMAP=')
+
+    expect(renderHtml({ ...base, systemLocale: 'pl_PL.UTF-8', keymap: 'de-latin1' })).toContain(
+      "printf 'KEYMAP=de-latin1\\nFONT=LatGrkCyr-8x16\\n'",
+    )
+    expect(renderHtml({ ...base, systemLocale: 'zh_CN.UTF-8' })).not.toContain('/etc/vconsole.conf')
   })
 
   it('always enables the en_US fallback locale', () => {

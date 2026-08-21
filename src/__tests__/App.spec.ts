@@ -66,20 +66,25 @@ describe('setup wizard', () => {
     expect(parseDraft(window.location.search).timezone).toBe(timezone)
   })
 
-  it('warns that TTY cannot display CJK system locales', async () => {
+  it('warns when the console font cannot display the system locale', async () => {
     const wrapper = mount(App)
     await start(wrapper)
 
     expect(wrapper.find('.locale-warning').exists()).toBe(false)
     await wrapper.get('select[name="systemLocale"]').setValue('zh_CN.UTF-8')
-    expect(wrapper.get('.locale-warning').text()).toContain('TTY 无法显示 CJK 字符，会显示为方框')
+    expect(wrapper.get('.locale-warning').text()).toContain(
+      'TTY 字体无法显示该语言的部分或全部字符',
+    )
     expect(wrapper.get('.locale-warning').text()).toContain('明确计划安装并使用图形界面')
 
-    await wrapper.get('select[name="systemLocale"]').setValue('ja_JP.UTF-8')
-    expect(wrapper.find('.locale-warning').exists()).toBe(true)
-
-    await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
-    expect(wrapper.find('.locale-warning').exists()).toBe(false)
+    for (const locale of ['ja_JP.UTF-8', 'ar_EG.UTF-8', 'hi_IN', 'kk_KZ.UTF-8', 'vi_VN']) {
+      await wrapper.get('select[name="systemLocale"]').setValue(locale)
+      expect(wrapper.find('.locale-warning').exists()).toBe(true)
+    }
+    for (const locale of ['en_US.UTF-8', 'ru_RU.UTF-8', 'el_GR.UTF-8', 'pl_PL.UTF-8']) {
+      await wrapper.get('select[name="systemLocale"]').setValue(locale)
+      expect(wrapper.find('.locale-warning').exists()).toBe(false)
+    }
   })
 
   it('uses completed progress steps as backward navigation', async () => {

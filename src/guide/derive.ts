@@ -6,6 +6,7 @@ import type {
   Subvolume,
   SubvolumeLayout,
 } from './types'
+import { consoleFont } from './console'
 
 /** Devices whose partitions carry a `p` before the partition number. */
 const PARTITION_SUFFIX = /^\/dev\/(nvme|mmcblk|loop|md)/
@@ -361,6 +362,7 @@ export function derive(cfg: Config): Context {
     audioPackages,
     desktopCommonPackages,
     inputMethodEngine,
+    consoleFont: consoleFont(cfg.systemLocale),
     desktopPackages: desktop.packages,
     desktopName: DESKTOP_NAMES[cfg.desktop],
     hyprlandPackages: hyprland,

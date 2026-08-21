@@ -18,7 +18,7 @@ import {
   validate,
   type ConfigChoice,
 } from '@/guide/config'
-import { CJK_VARIANTS } from '@/guide/derive'
+import { consoleDisplays } from '@/guide/console'
 import type {
   ConfigDraft,
   HyprlandAddon,
@@ -40,7 +40,9 @@ const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 const canUseDetectedTimezone = TIMEZONES.includes(detectedTimezone)
 const sortedSystemLocales = [...SYSTEM_LOCALES].sort()
 const mirrorCountryCodes = MIRROR_COUNTRIES.map(([code]) => code)
-const isCjkSystemLocale = computed(() => (model.value.systemLocale ?? '') in CJK_VARIANTS)
+const ttyCannotDisplay = computed(
+  () => model.value.systemLocale !== undefined && !consoleDisplays(model.value.systemLocale),
+)
 
 const titles = computed(() => [
   pick(ui.regionLanguage, props.locale),
@@ -672,8 +674,8 @@ function goToStep(index: number) {
             </option>
           </select>
           <small>{{ pick(ui.systemLocaleHint, props.locale) }}</small>
-          <p v-if="isCjkSystemLocale" class="locale-warning" role="alert">
-            {{ pick(ui.cjkTtyWarning, props.locale) }}
+          <p v-if="ttyCannotDisplay" class="locale-warning" role="alert">
+            {{ pick(ui.ttyFontWarning, props.locale) }}
           </p>
         </label>
       </fieldset>

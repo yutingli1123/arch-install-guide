@@ -159,8 +159,18 @@ export const prose: ProseCatalog = {
     } 对应 UTF-8 locale 行的注释：`,
   'system.locale.generate': '生成 locale：',
   'system.locale.lang': '设定系统语言：',
-  'system.locale.keymap': '设定虚拟控制台键盘布局：',
-  'system.locale.vconsole': '`/etc/vconsole.conf` 仅影响 TTY；桌面环境使用其自身的键盘布局配置。',
+  'system.locale.console': ({ cfg, consoleFont }: Context) =>
+    cfg.keymap === 'us'
+      ? '设定虚拟控制台字体：'
+      : consoleFont
+        ? '设定虚拟控制台键盘布局和字体：'
+        : '设定虚拟控制台键盘布局：',
+  'system.locale.vconsole': ({ consoleFont }: Context) =>
+    `${
+      consoleFont
+        ? '内核内置的控制台字体缺少该语言的部分字母，`FONT=` 选用 kbd 自带的一款覆盖拉丁、希腊和基本西里尔字母的字体。'
+        : ''
+    }\`/etc/vconsole.conf\` 仅影响 TTY；桌面环境使用其自身的键盘布局配置。`,
   'system.user.create': ({ cfg }: Context) =>
     `创建用户 \`${cfg.username}\` 并将其加入 \`wheel\` 组：`,
   'system.user.sudo':
@@ -424,8 +434,8 @@ export const ui: UiCatalog = {
   useDetectedTimezone: '使用此时区',
   systemLocale: '系统语言',
   systemLocaleHint: '选择系统服务、终端和登录界面默认使用的语言环境。',
-  cjkTtyWarning:
-    'TTY 无法显示 CJK 字符，会显示为方框。仅当你明确计划安装并使用图形界面时，才推荐选择 CJK 系统语言；纯命令行系统请选择非 CJK locale。',
+  ttyFontWarning:
+    'TTY 字体无法显示该语言的部分或全部字符，会显示为方框。仅当你明确计划安装并使用图形界面时，才推荐选择它；纯命令行系统请选择控制台能显示的语言。',
   keymap: '键盘布局',
   keymapHint: '选择安装环境和虚拟控制台使用的键盘布局。',
   hostname: '主机名',

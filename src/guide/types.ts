@@ -122,6 +122,8 @@ export type Context = {
   desktopCommonPackages: string[]
   /** fcitx5 engine that the system language needs, if any. */
   inputMethodEngine?: string
+  /** Console font the system language needs beyond the kernel's built-in one, if any. */
+  consoleFont?: string
   desktopPackages: string[]
   /** Hyprland session software from the official repositories. */
   hyprlandPackages: string[]

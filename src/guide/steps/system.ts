@@ -22,21 +22,27 @@ export const systemSteps: Step[] = [
     id: 'locale',
     section: 'system',
     title: 'system.locale.title',
-    body: ({ cfg }) => [
-      text('system.locale.uncomment'),
-      cmd('vim /etc/locale.gen'),
-      text('system.locale.generate'),
-      cmd('locale-gen'),
-      text('system.locale.lang'),
-      cmd(`echo 'LANG=${cfg.systemLocale}' > /etc/locale.conf`),
-      ...(cfg.keymap === 'us'
-        ? []
-        : [
-            text('system.locale.keymap'),
-            cmd(`echo 'KEYMAP=${cfg.keymap}' > /etc/vconsole.conf`),
-            text('system.locale.vconsole'),
-          ]),
-    ],
+    body: ({ cfg, consoleFont }) => {
+      const vconsole = [
+        ...(cfg.keymap === 'us' ? [] : [`KEYMAP=${cfg.keymap}`]),
+        ...(consoleFont ? [`FONT=${consoleFont}`] : []),
+      ]
+      return [
+        text('system.locale.uncomment'),
+        cmd('vim /etc/locale.gen'),
+        text('system.locale.generate'),
+        cmd('locale-gen'),
+        text('system.locale.lang'),
+        cmd(`echo 'LANG=${cfg.systemLocale}' > /etc/locale.conf`),
+        ...(vconsole.length === 0
+          ? []
+          : [
+              text('system.locale.console'),
+              cmd(`printf '${vconsole.join('\\n')}\\n' > /etc/vconsole.conf`),
+              text('system.locale.vconsole'),
+            ]),
+      ]
+    },
   },
   {
     id: 'hostname',
