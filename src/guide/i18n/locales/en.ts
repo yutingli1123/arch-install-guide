@@ -503,7 +503,7 @@ export const choices = {
   tpm2Preset: {
     minimal: 'Minimal (PCR 7)',
     'custom-db': 'Recommended (custom db)',
-    'shim-mok': 'Recommended (shim/MOK)',
+    'shim-mok': 'Without custom db (shim/MOK)',
   },
   secureBoot: {
     none: 'Off',
@@ -556,14 +556,14 @@ export const choiceDescriptions = {
     'custom-db':
       'Binds PCR 7, and binds PCR 11 through a signing policy; selects the custom UEFI db as well.',
     'shim-mok':
-      'Binds PCR 7+14, and binds PCR 11 through a signing policy; selects shim-signed + MOK as well.',
+      'Binds PCR 7+14, and binds PCR 11 through a signing policy; selects shim-signed + MOK as well, for firmware that cannot enroll a custom certificate.',
   },
   secureBoot: {
     none: 'Does not verify the signatures of the boot files.',
     'custom-db':
       'Enrolls a custom certificate into the firmware UEFI db; the firmware has to support Setup Mode.',
     'shim-mok':
-      'Builds the trust chain from the Microsoft-signed shim and a MOK you enroll yourself.',
+      'For firmware that cannot enroll a custom certificate into the UEFI db: builds the trust chain from the Microsoft-signed shim and a MOK you enroll yourself.',
   },
   snapper: {
     none: 'Creates no Snapper configuration.',
