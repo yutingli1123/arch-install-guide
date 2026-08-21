@@ -335,19 +335,15 @@ h1 {
   letter-spacing: -0.02em;
 }
 
-/** Arch-blue triangle as a wordless logo mark. */
+/** Project icon as a wordless logo mark. */
 h1::before {
   content: '';
   display: inline-block;
-  width: 0.72em;
-  height: 0.66em;
+  width: 0.8em;
+  height: 0.8em;
   margin-right: 0.4em;
-  background: linear-gradient(
-    180deg,
-    var(--accent),
-    color-mix(in srgb, var(--accent) 65%, #135c8d)
-  );
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  vertical-align: -0.08em;
+  background: url('/icon.svg') center / contain no-repeat;
 }
 
 button {
