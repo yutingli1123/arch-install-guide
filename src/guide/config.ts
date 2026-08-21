@@ -770,6 +770,34 @@ export function completeConfig(draft: ConfigDraft): Config | null {
   }
 }
 
+/**
+ * First wizard step whose choices are not all present, in wizard order: region, keyboard, storage,
+ * base system, installation target; 5 (the review step) once every choice is present.
+ */
+export function firstIncompleteStep(draft: ConfigDraft): number {
+  if (!draft.timezone || !draft.systemLocale) return 0
+  if (!draft.keymap) return 1
+  if (
+    !draft.subvolumeLayout ||
+    draft.zram === undefined ||
+    !draft.diskSwap ||
+    !draft.encryption ||
+    !draft.secureBoot ||
+    (draft.subvolumeLayout === 'separated' && !draft.snapper)
+  )
+    return 2
+  if (
+    !draft.hostname ||
+    !draft.username ||
+    !draft.desktop ||
+    (draft.desktop === 'hyprland' && !completeHyprland(draft.hyprland)) ||
+    !draft.reflector
+  )
+    return 3
+  if (!draft.disk || !draft.cpu || !draft.graphics) return 4
+  return 5
+}
+
 function safeValue(value: string | null, pattern: RegExp): string | undefined {
   return value &&
     pattern.test(value) &&

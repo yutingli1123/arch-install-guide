@@ -11,6 +11,7 @@ import {
   NEW_HYPRLAND_DRAFT,
   SYSTEM_LOCALES,
   TIMEZONES,
+  firstIncompleteStep,
   hyprlandAddonGroups,
   makeTpm2Encryption,
   orderAddons,
@@ -53,6 +54,10 @@ const titles = computed(() => [
   pick(ui.review, props.locale),
 ])
 const unavailable = computed(() => validate(model.value))
+const firstIncomplete = computed(() => firstIncompleteStep(model.value))
+/** Any earlier step, or a later one as long as no step before it is left unfilled. */
+const canGoTo = (index: number) =>
+  index !== step.value && (index < step.value || index <= firstIncomplete.value)
 const reason = (choice: ConfigChoice) => unavailable.value[choice]
 const unavailableReason = (choice: ConfigChoice) => {
   const message = reason(choice)
@@ -437,7 +442,7 @@ function advance(event: Event) {
 }
 
 function goToStep(index: number) {
-  if (index < step.value) step.value = index
+  if (canGoTo(index)) step.value = index
 }
 </script>
 
@@ -465,14 +470,14 @@ function goToStep(index: number) {
         <li
           v-for="(title, index) in titles"
           :key="title"
-          :class="{ complete: index < step }"
+          :class="{ complete: canGoTo(index) }"
           :aria-current="index === step ? 'step' : undefined"
         >
           <button
             class="step-link"
             type="button"
             :data-step="index"
-            :disabled="index >= step"
+            :disabled="!canGoTo(index)"
             @click="goToStep(index)"
           >
             <span>{{ index + 1 }}</span>

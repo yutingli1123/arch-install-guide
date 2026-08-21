@@ -7,7 +7,7 @@ import ThemePicker from './components/ThemePicker.vue'
 import {
   VERIFIED_AGAINST,
   completeConfig,
-  completeHyprland,
+  firstIncompleteStep,
   hyprlandAddonGroups,
   parseDraft,
   serializeDraft,
@@ -15,30 +15,6 @@ import {
 import { selectSteps } from './guide/render'
 import type { ConfigDraft, Locale } from './guide/types'
 import { browserLocale, choices, localeNames, pick, ui } from './guide/i18n'
-
-function firstIncompleteStep(draft: ConfigDraft): number {
-  if (!draft.timezone || !draft.systemLocale) return 0
-  if (!draft.keymap) return 1
-  if (
-    !draft.subvolumeLayout ||
-    draft.zram === undefined ||
-    !draft.diskSwap ||
-    !draft.encryption ||
-    !draft.secureBoot ||
-    (draft.subvolumeLayout === 'separated' && !draft.snapper)
-  )
-    return 2
-  if (
-    !draft.hostname ||
-    !draft.username ||
-    !draft.desktop ||
-    (draft.desktop === 'hyprland' && !completeHyprland(draft.hyprland)) ||
-    !draft.reflector
-  )
-    return 3
-  if (!draft.disk || !draft.cpu || !draft.graphics) return 4
-  return 5
-}
 
 const initialParams = new URLSearchParams(window.location.search)
 const requestedLocale = initialParams.get('lang')

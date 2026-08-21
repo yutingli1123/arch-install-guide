@@ -87,7 +87,7 @@ describe('setup wizard', () => {
     }
   })
 
-  it('uses completed progress steps as backward navigation', async () => {
+  it('jumps through progress steps whose choices are already filled in', async () => {
     const wrapper = mount(App)
     await start(wrapper)
     expect(wrapper.get('.step-link[data-step="1"]').attributes('disabled')).toBeDefined()
@@ -95,11 +95,49 @@ describe('setup wizard', () => {
     await wrapper.get('select[name="timezone"]').setValue('America/Toronto')
     await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
     await next(wrapper)
+    await wrapper.get('select[name="keymap"]').setValue('us')
+    await next(wrapper)
     await wrapper.get('.step-link[data-step="0"]').trigger('click')
 
     expect(wrapper.get('.wizard h1').text()).toBe('区域与语言')
     expect(new URLSearchParams(window.location.search).get('step')).toBe('1')
     expect(parseDraft(window.location.search).timezone).toBe('America/Toronto')
+    expect(wrapper.get('.step-link[data-step="1"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('.step-link[data-step="2"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('.step-link[data-step="3"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.get('.step-link[data-step="2"]').trigger('click')
+    expect(wrapper.get('.wizard h1').text()).toBe('存储')
+    expect(new URLSearchParams(window.location.search).get('step')).toBe('3')
+
+    await wrapper.get('.step-link[data-step="0"]').trigger('click')
+    await wrapper.get('select[name="timezone"]').setValue('')
+    expect(wrapper.get('.step-link[data-step="1"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('.step-link[data-step="2"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('jumps forward to the review step once every choice is present', async () => {
+    const wrapper = mount(App)
+    await fillConfiguration(wrapper)
+    expect(wrapper.get('.wizard h1').text()).toBe('确认配置')
+
+    await wrapper.get('.step-link[data-step="0"]').trigger('click')
+    expect(wrapper.get('.step-link[data-step="5"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.findAll('ol li').map((item) => item.classes('complete'))).toEqual([
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+    ])
+    await wrapper.get('.step-link[data-step="5"]').trigger('click')
+    expect(wrapper.get('.wizard h1').text()).toBe('确认配置')
+    expect(new URLSearchParams(window.location.search).get('step')).toBe('6')
+
+    window.history.replaceState(null, '', `/?${serializeDraft(stageOneConfig)}&step=1`)
+    const reloaded = mount(App)
+    expect(reloaded.get('.step-link[data-step="5"]').attributes('disabled')).toBeUndefined()
   })
 
   it('keeps TPM2 presets and their required secure boot path consistent', async () => {
@@ -511,7 +549,8 @@ async function selectChoice(wrapper: VueWrapper, name: string, value: string) {
   await wrapper.get(`input[name="${name}"][value="${value}"]`).setValue(true)
 }
 
-async function openGuide(wrapper: VueWrapper) {
+/** Fills every step and lands on the review step. */
+async function fillConfiguration(wrapper: VueWrapper) {
   await start(wrapper)
   await wrapper.get('select[name="timezone"]').setValue('America/Toronto')
   await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
@@ -534,5 +573,9 @@ async function openGuide(wrapper: VueWrapper) {
   await selectChoice(wrapper, 'cpu', 'intel')
   await selectChoice(wrapper, 'graphics', 'intel')
   await next(wrapper)
+}
+
+async function openGuide(wrapper: VueWrapper) {
+  await fillConfiguration(wrapper)
   await next(wrapper)
 }
