@@ -1,48 +1,61 @@
-# arch-install-guide
+# Arch Linux Installation Guide
 
-This template should help get you started developing with Vue 3 in Vite.
+Generates a step-by-step, printable Arch Linux installation guide from the choices made in a setup wizard. A static front-end with no backend; the configuration lives only in the link.
 
-## Recommended IDE Setup
+The interface and the generated guide are available in English, Simplified Chinese and Traditional Chinese.
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## Features
 
-## Recommended Browser Setup
+Decisions the wizard covers:
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+- Region: timezone, system locale (glibc list), keyboard layout (30 layouts)
+- Storage: btrfs subvolume layout, zram, swapfile, snapper snapshots, LUKS2 encryption (passphrase or TPM2 unlock with PCR policy presets), Secure Boot (custom key database or shim + MOK), UKI
+- Base system: hostname, username, desktop (GNOME / KDE / Hyprland with its components), reflector mirror filters
+- Installation target: disk, CPU vendor, graphics driver
 
-## Type Support for `.vue` Imports in TS
+The generated guide derives `/etc/locale.conf`, `/etc/vconsole.conf` (keyboard layout and, where needed, a console font), the input method engine and OCR language data from the chosen locale; the wizard warns about languages the TTY cannot display.
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+## Links
 
-## Customize configuration
+The configuration, the current step and the interface language are all encoded in the URL, so copying the address bar shares or resumes a session:
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+| Parameter | Meaning                                                                 |
+| --------- | ----------------------------------------------------------------------- |
+| `c`       | Compactly encoded configuration, containing only the choices made       |
+| `step`    | Wizard step `1`–`6`, or `guide` to open the generated guide directly    |
+| `lang`    | `en` / `zh-cn` / `zh-tw`; defaults to the browser language when absent  |
 
-## Project Setup
+`c` encodes each choice as its index in the corresponding list. Reordering an option list in `config.ts` makes already shared links resolve to different choices.
 
-```sh
-npm install
-```
+## Development
 
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Type-Check, Compile and Minify for Production
+Requires Node.js `^22.18.0 || >=24.12.0` and pnpm.
 
 ```sh
-npm run build
+pnpm install
+pnpm dev          # development server
+pnpm test:unit    # Vitest; CI runs pnpm test:unit -- --run
+pnpm type-check   # vue-tsc
+pnpm format       # oxfmt src/
+pnpm build        # type check + build into dist/
 ```
 
-### Run Unit Tests with [Vitest](https://vitest.dev/)
+## Layout
 
-```sh
-npm run test:unit
-```
+| Path                        | Contents                                                                                   |
+| --------------------------- | ------------------------------------------------------------------------------------------ |
+| `src/guide/steps/`          | Step definitions per phase: conditions, command blocks, prose keys                          |
+| `src/guide/i18n/locales/`   | UI strings and prose catalogs; `en.ts` defines the key set, Chinese files hold translations |
+| `src/guide/i18n/neutral.ts` | Names that do not change with the interface language: locale and keymap self-names         |
+| `src/guide/config.ts`       | Option lists, draft validation, `Config` assembly, link encoding                            |
+| `src/guide/derive.ts`       | Packages, subvolumes, desktop components and other render context derived from `Config`    |
+| `src/guide/console.ts`      | Per-locale console font coverage table, deciding whether `FONT=` is written                |
+| `src/components/`           | Wizard, guide page, language and theme pickers                                             |
+
+Step text does not live in the step files: steps reference prose keys, and the keys with their English text are defined in `en.ts`. Chinese catalogs may be partial; missing entries fall back to English, while a key absent from `en.ts` is a type error.
+
+`VERIFIED_AGAINST` in `config.ts` is the year and month the guide was last checked against the current state of Arch; it is shown in the guide footer. Update it after re-verifying commands and package names.
+
+## License
+
+This project is licensed under the GNU General Public License v3.0. See [LICENSE](LICENSE).
