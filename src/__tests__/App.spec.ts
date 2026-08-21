@@ -464,6 +464,16 @@ describe('setup wizard', () => {
     expect(localStorage.getItem('theme')).toBeNull()
   })
 
+  it('uppercases mirror country codes as they are typed', async () => {
+    window.history.replaceState(null, '', '/?step=4')
+    const wrapper = mount(App)
+    const input = wrapper.get('input[name="mirrorCountries"]')
+    ;(input.element as HTMLInputElement).value = 'ca,us'
+    await input.trigger('input')
+    expect((input.element as HTMLInputElement).value).toBe('CA,US')
+    expect(parseDraft(window.location.search).reflector).toBeUndefined()
+  })
+
   it('restores shared configuration at its saved wizard step', () => {
     window.history.replaceState(
       null,

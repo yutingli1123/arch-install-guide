@@ -425,7 +425,7 @@ export const ui: UiCatalog = {
   graphics: '顯示卡',
   reflector: '鏡像站',
   mirrorCountry: '國家代碼',
-  mirrorCountryHint: '可填寫多個 ISO 國家代碼，以半形逗號分隔，例如 CA,US。',
+  mirrorCountryHint: '可填寫多個 ISO 國家代碼，以半形逗號分隔。',
   mirrorCountryInvalid: '請輸入有效的 ISO 國家代碼，並以半形逗號分隔',
   mirrorAge: '最近同步（小時）',
   mirrorNumber: '保留數量',

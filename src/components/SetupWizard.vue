@@ -379,6 +379,13 @@ function commitSecureBoot(value: string | undefined) {
   model.value = next
 }
 
+function uppercaseInput(event: Event) {
+  const input = event.currentTarget as HTMLInputElement
+  const { selectionStart, selectionEnd } = input
+  input.value = input.value.toUpperCase()
+  input.setSelectionRange(selectionStart, selectionEnd)
+}
+
 function commitReflectorCountries(event: Event) {
   const input = event.currentTarget as HTMLInputElement
   const countries = [
@@ -747,8 +754,10 @@ function goToStep(index: number) {
               <input
                 name="mirrorCountries"
                 required
+                autocapitalize="characters"
                 placeholder="CA,US"
                 :value="model.reflector?.countries.join(',') ?? ''"
+                @input="uppercaseInput"
                 @change="commitReflectorCountries"
               />
               <small>{{ pick(ui.mirrorCountryHint, props.locale) }}</small>

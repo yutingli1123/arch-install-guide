@@ -452,7 +452,7 @@ export const ui = {
   graphics: 'Graphics',
   reflector: 'Mirrors',
   mirrorCountry: 'Country codes',
-  mirrorCountryHint: 'One or more ISO country codes separated by commas, for example CA,US.',
+  mirrorCountryHint: 'One or more ISO country codes separated by commas.',
   mirrorCountryInvalid: 'Enter valid ISO country codes separated by commas',
   mirrorAge: 'Synchronized within (hours)',
   mirrorNumber: 'Mirrors to keep',

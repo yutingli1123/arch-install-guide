@@ -424,7 +424,7 @@ export const ui: UiCatalog = {
   graphics: '显卡',
   reflector: '镜像源',
   mirrorCountry: '国家代码',
-  mirrorCountryHint: '可填写多个 ISO 国家代码，用英文逗号分隔，例如 CA,US。',
+  mirrorCountryHint: '可填写多个 ISO 国家代码，用英文逗号分隔。',
   mirrorCountryInvalid: '请输入有效的 ISO 国家代码，并用英文逗号分隔',
   mirrorAge: '最近同步（小时）',
   mirrorNumber: '保留数量',
