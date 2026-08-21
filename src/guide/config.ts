@@ -362,7 +362,38 @@ export const SYSTEM_LOCALES = [
   'zu_ZA.UTF-8',
 ] as const
 
-export const KEYMAPS = ['us', 'uk', 'de-latin1', 'fr-latin9', 'es', 'it', 'jp106', 'ru'] as const
+export const KEYMAPS = [
+  'us',
+  'dvorak',
+  'colemak',
+  'uk',
+  'ca',
+  'cf',
+  'fr-latin9',
+  'be-latin1',
+  'fr_CH-latin1',
+  'de-latin1',
+  'sg-latin1',
+  'nl',
+  'es',
+  'la-latin1',
+  'pt-latin9',
+  'br-abnt2',
+  'it',
+  'sv-latin1',
+  'fi',
+  'no-latin1',
+  'dk-latin1',
+  'pl',
+  'cz-qwertz',
+  'sk-qwertz',
+  'hu',
+  'trq',
+  'trf',
+  'ru',
+  'ua-utf',
+  'jp106',
+] as const
 
 /** Single-choice Hyprland categories. Enum order is part of the URL format. */
 export const HYPRLAND_CHOICES = {
