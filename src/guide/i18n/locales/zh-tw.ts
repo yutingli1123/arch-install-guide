@@ -474,7 +474,7 @@ export const choices: ChoiceCatalog = {
   tpm2Preset: {
     minimal: '最小（PCR 7）',
     'custom-db': '建議（自訂 db）',
-    'shim-mok': '建議（shim/MOK）',
+    'shim-mok': '無法自訂 db 時（shim/MOK）',
   },
   secureBoot: {
     none: '關閉',
@@ -524,12 +524,14 @@ export const choiceDescriptions: DescriptionCatalog = {
   tpm2Preset: {
     minimal: '雜湊綁定 PCR 7；核心更新不需重新註冊，但不能區分由同一金鑰簽署的映像檔。',
     'custom-db': '綁定 PCR 7，並用簽章原則綁定 PCR 11；同時選擇自訂 UEFI db。',
-    'shim-mok': '綁定 PCR 7+14，並用簽章原則綁定 PCR 11；同時選擇 shim-signed + MOK。',
+    'shim-mok':
+      '綁定 PCR 7+14，並用簽章原則綁定 PCR 11；同時選擇 shim-signed + MOK，適用於無法註冊自訂憑證的韌體。',
   },
   secureBoot: {
     none: '不驗證開機檔案的簽章。',
     'custom-db': '將自訂憑證註冊到韌體 UEFI db；要求韌體支援 Setup Mode。',
-    'shim-mok': '透過微軟簽署的 shim 和自行註冊的 MOK 建立信任鏈。',
+    'shim-mok':
+      '適用於無法向 UEFI db 註冊自訂憑證的韌體：透過微軟簽署的 shim 和自行註冊的 MOK 建立信任鏈。',
   },
   snapper: {
     none: '不建立 Snapper 設定。',

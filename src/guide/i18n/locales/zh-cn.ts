@@ -473,7 +473,7 @@ export const choices: ChoiceCatalog = {
   tpm2Preset: {
     minimal: '最小（PCR 7）',
     'custom-db': '推荐（自定义 db）',
-    'shim-mok': '推荐（shim/MOK）',
+    'shim-mok': '无法自定义 db 时（shim/MOK）',
   },
   secureBoot: {
     none: '关闭',
@@ -523,12 +523,14 @@ export const choiceDescriptions: DescriptionCatalog = {
   tpm2Preset: {
     minimal: '哈希绑定 PCR 7；内核更新不需重新注册，但不能区分由同一密钥签名的镜像。',
     'custom-db': '绑定 PCR 7，并用签名策略绑定 PCR 11；同时选择自定义 UEFI db。',
-    'shim-mok': '绑定 PCR 7+14，并用签名策略绑定 PCR 11；同时选择 shim-signed + MOK。',
+    'shim-mok':
+      '绑定 PCR 7+14，并用签名策略绑定 PCR 11；同时选择 shim-signed + MOK，面向无法注册自定义证书的固件。',
   },
   secureBoot: {
     none: '不验证启动文件的签名。',
     'custom-db': '将自定义证书注册到固件 UEFI db；要求固件支持 Setup Mode。',
-    'shim-mok': '通过微软签名的 shim 和自行注册的 MOK 建立信任链。',
+    'shim-mok':
+      '面向无法向 UEFI db 注册自定义证书的固件：通过微软签名的 shim 和自行注册的 MOK 建立信任链。',
   },
   snapper: {
     none: '不创建 Snapper 配置。',

@@ -282,6 +282,7 @@ const summary = computed(() => {
 <style scoped>
 .row {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
@@ -289,7 +290,10 @@ const summary = computed(() => {
 
 .header-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
+  /** Lines up with the title text after its icon (0.8em + 0.4em of the h1 size) when wrapped below it. */
+  margin-left: 2.4rem;
 }
 
 .welcome {
@@ -315,6 +319,7 @@ const summary = computed(() => {
 
 .welcome-top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -344,6 +349,16 @@ h1::before {
   margin-right: 0.4em;
   vertical-align: -0.08em;
   background: url('/icon.svg') center / contain no-repeat;
+}
+
+@media (max-width: 30rem) {
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  .header-actions {
+    margin-left: 1.8rem;
+  }
 }
 
 button {
