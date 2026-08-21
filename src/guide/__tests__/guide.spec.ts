@@ -438,7 +438,7 @@ describe('renderGuide', () => {
     const base = { ...stageOneConfig, systemLocale: 'en_US.UTF-8', keymap: 'us' as const }
     expect(renderHtml(base)).not.toContain('/etc/vconsole.conf')
     expect(renderHtml(base)).not.toContain('localectl list-keymaps')
-    expect(renderHtml(base)).not.toContain('loadkeys us')
+    expect(renderHtml(base)).not.toContain('loadkeys')
 
     const keymap = renderHtml({ ...base, keymap: 'de-latin1' })
     expect(keymap).toContain('localectl list-keymaps')
