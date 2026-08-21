@@ -1,7 +1,8 @@
-export type Locale = 'zh' | 'en'
+/** A locale code is the name of a file under `i18n/locales/`. */
+export type Locale = string
 
-/** Falls back to `zh` when a locale is missing. */
-export type Localized<T> = { zh: T } & Partial<Record<Locale, T>>
+/** Falls back to `en` when a locale is missing. */
+export type Localized<T> = { en: T } & Partial<Record<Locale, T>>
 
 export type CpuVendor = 'intel' | 'amd'
 
@@ -18,12 +19,7 @@ export type HyprlandTerminal = 'ghostty' | 'kitty'
 export type HyprlandBar = 'none' | 'waybar'
 export type HyprlandLock = 'none' | 'hyprlock'
 /** Independently selectable extras; each value is also its package name. */
-export type HyprlandAddon =
-  | 'hyprpaper'
-  | 'hyprsunset'
-  | 'hyprshot'
-  | 'gnome-keyring'
-  | 'seahorse'
+export type HyprlandAddon = 'hyprpaper' | 'hyprsunset' | 'hyprshot' | 'gnome-keyring' | 'seahorse'
 
 /**
  * Hyprland ships only the compositor and a session. A terminal, launcher and
@@ -124,6 +120,10 @@ export type Context = {
   graphicsPackages: string[]
   audioPackages: string[]
   desktopCommonPackages: string[]
+  /** fcitx5 engine that the system language needs, if any. */
+  inputMethodEngine?: string
+  /** Console font the system language needs beyond the kernel's built-in one, if any. */
+  consoleFont?: string
   desktopPackages: string[]
   /** Hyprland session software from the official repositories. */
   hyprlandPackages: string[]
@@ -131,20 +131,26 @@ export type Context = {
   hyprlandAurPackages: string[]
   /** Subset of `hyprlandPackages` that ships a systemd user unit. */
   hyprlandServices: string[]
+  /** Display name of the chosen desktop, e.g. `KDE Plasma`. Never translated. */
+  desktopName: string
   /** Regional suffix of the Noto CJK families, e.g. `SC`. */
   cjkVariant?: string
   displayManager?: string
 }
 
-export type Body = (ctx: Context) => string
+/** Prose is looked up per locale; a command block is written once and rendered as is. */
+export type Block = { key: string } | { cmd: string; lang?: string }
+
+export type Body = (ctx: Context) => Block[]
 
 export type Step = {
   id: string
   /** Section this step belongs to, used for grouping in the rendered guide. */
   section: string
-  title: Localized<string>
-  /** Markdown. Fenced blocks render as copyable command blocks. */
-  body: Localized<Body>
+  /** Catalog key of the step title. */
+  title: string
+  /** Prose blocks are markdown; command blocks render as copyable blocks. */
+  body: Body
   /** Omitted means the step is always included. */
   when?: (cfg: Config) => boolean
 }

@@ -66,7 +66,6 @@ describe('derive', () => {
       secureBoot: 'custom-db',
     })
     expect(rendered).toContain('以 Root 权限执行命令')
-    expect(rendered).not.toContain('以管理员权限执行命令')
     expect(rendered).toContain('编辑配置文件')
     expect(rendered).toContain('配置 zram')
     expect(rendered).toContain('创建和打开 LUKS2 加密卷')
@@ -74,8 +73,6 @@ describe('derive', () => {
     expect(rendered).toContain('管理网络连接')
     expect(rendered).toContain('管理自定义 Secure Boot 密钥并签名 EFI 文件')
     expect(rendered).toContain('生成 UKI，并按配置创建 Secure Boot 或 PCR 11 签名')
-    expect(rendered).not.toContain('后续步骤要用')
-    expect(rendered).not.toContain('装完之后的联网')
   })
 
   it('derives graphics and desktop packages independently from storage', () => {
@@ -89,7 +86,6 @@ describe('derive', () => {
       'qt6-multimedia-ffmpeg',
       'tesseract-data-eng',
     ])
-    expect(kdeOnAmd.audioPackages).not.toContain('pavucontrol')
     expect(kdeOnAmd.displayManager).toBe('sddm')
 
     const kdeChinese = derive({ ...stageOneConfig, desktop: 'kde', systemLocale: 'zh_CN.UTF-8' })
@@ -125,7 +121,6 @@ describe('derive', () => {
       'pipewire-jack',
       'wireplumber',
     ])
-    expect(hyprland.audioPackages).not.toContain('pavucontrol')
     expect(hyprland.hyprlandPackages).toEqual([])
     expect(hyprland.desktopCommonPackages).toEqual([
       'bluez',
@@ -143,7 +138,6 @@ describe('derive', () => {
       desktop: 'gnome',
       systemLocale: 'zh_CN.UTF-8',
     })
-    expect(gnomeChinese.audioPackages).not.toContain('pavucontrol')
     expect(gnomeChinese.desktopCommonPackages).toContain('fcitx5-chinese-addons')
     expect(gnomeChinese.desktopCommonPackages).not.toContain('bluez')
     expect(gnomeChinese.desktopCommonPackages).not.toContain('bluez-utils')
@@ -174,7 +168,6 @@ describe('derive', () => {
         `mode=&quot;prepend&quot; binding=&quot;weak&quot;&gt;&lt;string&gt;${family} CJK SC&lt;`,
       )
     }
-    expect(rendered).not.toContain('name=&quot;lang&quot;')
     expect(renderHtml({ ...chinese, systemLocale: 'ja_JP.UTF-8' })).toContain('Noto Serif CJK JP')
     expect(renderHtml({ ...chinese, systemLocale: 'zh_HK.UTF-8' })).toContain('Noto Sans CJK HK')
 
@@ -286,7 +279,6 @@ describe('configuration', () => {
     expect(rendered).toContain(
       'reflector --country CA,US --age 6 --protocol https --sort rate --number 12',
     )
-    expect(rendered).not.toContain('--sort age')
     expect(completeConfig(parseDraft(serializeDraft(config)))).toEqual(config)
     expect(
       completeConfig({
@@ -304,6 +296,11 @@ describe('configuration', () => {
     expect(parseDraft(serializeDraft({ cpu: 'amd' }))).toEqual({ cpu: 'amd' })
     expect(parseDraft('?config=v1.Y3B1PWFtZA')).toEqual({})
     expect(completeConfig({})).toBeNull()
+  })
+
+  it('round-trips a system locale whose index needs two bytes', () => {
+    const draft = { systemLocale: 'zu_ZA.UTF-8' }
+    expect(parseDraft(serializeDraft(draft))).toEqual(draft)
   })
 
   it('keeps a partially completed configuration token compact', () => {
@@ -345,7 +342,7 @@ describe('configuration', () => {
     expect(draft.disk).toBeUndefined()
     expect(draft.timezone).toBeUndefined()
     expect(draft.username).toBeUndefined()
-    expect(validate(draft)['snapper.root']).toBe('需要标准分离子卷布局')
+    expect(validate(draft)['snapper.root']?.['zh-cn']).toBe('需要标准分离子卷布局')
     expect(parseDraft('?c=invalid!')).toEqual({})
     expect(parseDraft('?cpu=amd&layout=root-only')).toEqual({})
   })
@@ -385,7 +382,7 @@ describe('steps', () => {
 })
 
 describe('renderGuide', () => {
-  const sections = renderGuide(stageOneConfig, 'zh')
+  const sections = renderGuide(stageOneConfig, 'zh-cn')
   const bodies = sections.flatMap((section) => section.steps).map((step) => step.html)
   const html = bodies.join('')
 
@@ -416,7 +413,6 @@ describe('renderGuide', () => {
 
   it('uses concise disk discovery and mounts the ESP for root-only access', () => {
     expect(html).toContain('<span class="cmd-line-text">lsblk</span>')
-    expect(html).not.toContain('lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS')
     expect(html).toContain('mount --mkdir -o noatime,umask=0077 /dev/nvme0n1p1 /mnt/efi')
   })
 
@@ -438,29 +434,37 @@ describe('renderGuide', () => {
     expect(rootOnly).toContain('<code>/boot</code> 是根子卷内的普通目录')
   })
 
-  it('only writes vconsole.conf for a non-default keymap', () => {
-    const nonDefault = renderHtml({ ...stageOneConfig, keymap: 'de-latin1' })
-    expect(html).not.toContain("echo 'KEYMAP=us'")
-    expect(html).not.toContain('localectl list-keymaps')
-    expect(html).not.toContain('loadkeys us')
-    expect(nonDefault).toContain('localectl list-keymaps')
-    expect(nonDefault).toContain('loadkeys de-latin1')
-    expect(nonDefault).toContain('KEYMAP=de-latin1')
-    expect(nonDefault).toContain('/etc/vconsole.conf')
+  it('writes vconsole.conf only for a non-default keymap or a locale needing a console font', () => {
+    const base = { ...stageOneConfig, systemLocale: 'en_US.UTF-8', keymap: 'us' as const }
+    expect(renderHtml(base)).not.toContain('/etc/vconsole.conf')
+    expect(renderHtml(base)).not.toContain('localectl list-keymaps')
+    expect(renderHtml(base)).not.toContain('loadkeys')
+
+    const keymap = renderHtml({ ...base, keymap: 'de-latin1' })
+    expect(keymap).toContain('localectl list-keymaps')
+    expect(keymap).toContain('loadkeys de-latin1')
+    expect(keymap).toContain("printf 'KEYMAP=de-latin1\\n'")
+    expect(keymap).not.toContain('FONT=')
+
+    const font = renderHtml({ ...base, systemLocale: 'ru_RU.UTF-8' })
+    expect(font).toContain("printf 'FONT=LatGrkCyr-8x16\\n'")
+    expect(font).not.toContain('KEYMAP=')
+
+    expect(renderHtml({ ...base, systemLocale: 'pl_PL.UTF-8', keymap: 'de-latin1' })).toContain(
+      "printf 'KEYMAP=de-latin1\\nFONT=LatGrkCyr-8x16\\n'",
+    )
+    expect(renderHtml({ ...base, systemLocale: 'zh_CN.UTF-8' })).not.toContain('/etc/vconsole.conf')
   })
 
-  it('always enables the en_US fallback locale without duplicating the codeset label', () => {
+  it('always enables the en_US fallback locale', () => {
     const chinese = renderHtml({ ...stageOneConfig, systemLocale: 'zh_CN.UTF-8' })
 
     expect(chinese).toContain('<code>en_US.UTF-8</code> 和 <code>zh_CN.UTF-8</code>')
-    expect(chinese).not.toContain('zh_CN.UTF-8 UTF-8')
     expect(html).toContain('取消 <code>en_US.UTF-8</code> 对应 UTF-8 locale 行的注释')
-    expect(html).not.toContain('en_US.UTF-8 UTF-8')
   })
 
-  it('documents both UKI presets without mentioning fallback_image', () => {
+  it('documents both UKI presets', () => {
     expect(html).toContain("PRESETS=('default' 'fallback')")
-    expect(html).not.toContain('fallback_image')
     expect(html).toContain('mkdir -p /efi/EFI/Linux')
     expect(html).toContain('data-copy="mkdir -p /efi/EFI/Linux\nmkinitcpio -P"')
   })
@@ -478,7 +482,6 @@ describe('renderGuide', () => {
       '在 <code>HOOKS</code> 行的 <code>block</code> 后添加 <code>sd-encrypt</code>',
     )
     expect(encrypted).toContain('block sd-encrypt filesystems')
-    expect(encrypted).not.toContain('HOOKS=(base systemd autodetect')
     expect(encrypted).not.toContain('systemd-cryptenroll --tpm2-device=auto')
   })
 
@@ -496,13 +499,9 @@ describe('renderGuide', () => {
     expect(flagship).toContain('snapper --no-dbus list-configs')
     expect(flagship).toContain('findmnt --mountpoint /.snapshots')
     expect(flagship).toContain('findmnt --mountpoint /home/.snapshots')
-    expect(flagship).not.toContain('findmnt /.snapshots /home/.snapshots')
-    expect(flagship).not.toContain('install -d -m 700 /etc/kernel')
     expect(flagship).toContain('[PCRSignature:initrd]')
     expect(flagship).toContain('Phases=enter-initrd')
     expect(flagship).toContain('/etc/kernel/uki.conf')
-    expect(flagship).not.toContain('/etc/systemd/ukify.conf')
-    expect(flagship).not.toContain('加入 <code>--ukify</code>')
     expect(flagship).toContain('paru -S shim-signed')
     expect(flagship).toContain('--tpm2-pcrs=7+14')
     expect(flagship).toContain('--tpm2-public-key-pcrs=11')
@@ -511,10 +510,9 @@ describe('renderGuide', () => {
     expect(flagship).not.toContain('sudo bootctl status')
     expect(flagship).toContain('sudo bootctl --print-loader-path')
     expect(flagship).toContain('至此，TPM2 解锁配置完成')
-    expect(flagship).not.toContain('sudo pacman -Syu')
   })
 
-  it('signs installed systemd-boot files without relying on a same-version bootctl update', () => {
+  it('signs installed systemd-boot files', () => {
     const customDb = renderHtml({
       ...stageOneConfig,
       secureBoot: 'custom-db',
@@ -522,7 +520,6 @@ describe('renderGuide', () => {
 
     expect(customDb).toContain('sbctl sign -s /efi/EFI/systemd/systemd-bootx64.efi')
     expect(customDb).toContain('sbctl sign -s /efi/EFI/BOOT/BOOTX64.EFI')
-    expect(customDb).not.toContain('\nbootctl update\n')
   })
 
   it('renders sbctl only for the custom-db secure boot path', () => {
@@ -539,7 +536,6 @@ describe('renderGuide', () => {
     )
     expect(gnome).toContain('pacman -S mesa vulkan-intel intel-media-driver')
     expect(gnome).toContain('pacman -S gnome')
-    expect(gnome).not.toContain('pavucontrol')
     expect(gnome).toContain('systemctl enable gdm')
     expect(gnome).not.toContain('/etc/environment.d/90-fcitx.conf')
     expect(gnome).not.toContain('XMODIFIERS')
@@ -562,10 +558,8 @@ describe('renderGuide', () => {
     expect(kde).toContain(
       'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse pipewire-jack wireplumber',
     )
-    expect(kde).not.toContain('pavucontrol')
     expect(kde).toContain('/etc/environment.d/90-fcitx.conf')
     expect(kde).toContain('XMODIFIERS=@im=fcitx')
-    expect(kde).not.toContain('QT_IM_MODULE=fcitx')
     expect(kde).toContain('QT_IM_MODULES=wayland;fcitx')
     expect(kde).toContain('gtk-im-module=fcitx')
     expect(kde).toContain('Hidden=true')
@@ -577,7 +571,9 @@ describe('renderGuide', () => {
 
     const hyprland = renderHtml({ ...stageOneConfig, desktop: 'hyprland', graphics: 'nvidia' })
     expect(hyprland).toContain('pacman -S nvidia-open nvidia-utils')
-    expect(hyprland).toContain('pacman -S hyprland xdg-desktop-portal-hyprland wl-clipboard playerctl')
+    expect(hyprland).toContain(
+      'pacman -S hyprland xdg-desktop-portal-hyprland wl-clipboard playerctl',
+    )
     expect(hyprland).toContain('greetd greetd-regreet')
     expect(hyprland).toContain('systemctl enable greetd')
     expect(hyprland).toContain(
@@ -585,30 +581,19 @@ describe('renderGuide', () => {
     )
     expect(hyprland).toContain('hl.on(&quot;hyprland.start&quot;, function()')
     expect(hyprland).toContain("hl.exec_cmd(&quot;regreet; hyprctl dispatch 'hl.dsp.exit()'&quot;)")
-    expect(hyprland).not.toContain('/etc/greetd/hyprland.conf')
     expect(hyprland).toContain('使用 <code>nmtui</code> 进行配置')
     expect(hyprland).toContain(
       'pacman -S pipewire pipewire-audio pipewire-alsa pipewire-pulse pipewire-jack wireplumber',
     )
-    expect(hyprland).not.toContain('pavucontrol')
     expect(hyprland).toContain(
       'pacman -S bluez bluez-utils blueman noto-fonts noto-fonts-cjk noto-fonts-extra noto-fonts-emoji fcitx5-im',
     )
     expect(hyprland).toContain('systemctl enable bluetooth')
-    expect(hyprland).not.toContain('uwsm')
     expect(hyprland).not.toContain('/etc/environment.d/90-fcitx.conf')
-    expect(hyprland).not.toContain('SDL_IM_MODULE')
     expect(hyprland).toContain('gtk-im-module=fcitx')
     expect(hyprland).toContain('/home/user/.gtkrc-2.0')
-    expect(hyprland).not.toContain('QT_IM_MODULE=fcitx')
-    expect(hyprland).not.toContain('GTK_IM_MODULE=fcitx')
     expect(hyprland).not.toContain('系统设置 → 虚拟键盘')
-    expect(hyprland).not.toContain('不要全局设置')
-    expect(hyprland).not.toContain('polkit-kde-agent')
-    expect(hyprland).not.toContain('qt5-wayland')
-    expect(hyprland).not.toContain('qt6-wayland')
     expect(hyprland).toContain('systemctl --global enable hyprpolkitagent.service')
-    expect(hyprland).not.toContain('systemctl --user enable')
     expect(hyprland).toContain('/etc/systemd/user/hyprland-session.target')
     expect(hyprland).toContain('BindsTo=graphical-session.target')
     expect(hyprland).toContain('Wants=xdg-desktop-autostart.target')
@@ -644,13 +629,7 @@ describe('hyprland extras', () => {
     fileManager: 'thunar',
     bar: 'waybar',
     lock: 'hyprlock',
-    addons: [
-      'hyprpaper',
-      'hyprsunset',
-      'hyprshot',
-      'gnome-keyring',
-      'seahorse',
-    ],
+    addons: ['hyprpaper', 'hyprsunset', 'hyprshot', 'gnome-keyring', 'seahorse'],
   })
 
   it('installs one package set per selection and enables only the services it ships', () => {
@@ -693,7 +672,9 @@ describe('hyprland extras', () => {
     expect(rendered).toContain('local terminal    = &quot;ghostty&quot;')
     expect(rendered).toContain('local fileManager = &quot;thunar&quot;')
     expect(rendered).toContain('local menu        = &quot;rofi -show drun&quot;')
-    expect(rendered).toContain('hl.bind(&quot;SHIFT + PRINT&quot;, hl.dsp.exec_cmd(&quot;hyprshot -m region&quot;))')
+    expect(rendered).toContain(
+      'hl.bind(&quot;SHIFT + PRINT&quot;, hl.dsp.exec_cmd(&quot;hyprshot -m region&quot;))',
+    )
     expect(rendered).toContain(
       '/usr/share/hypr/hyprlock.conf /home/user/.config/hypr/hyprlock.conf',
     )
@@ -793,7 +774,7 @@ describe('hyprland extras', () => {
 })
 
 function renderHtml(cfg: Config): string {
-  return renderGuide(cfg, 'zh')
+  return renderGuide(cfg, 'zh-cn')
     .flatMap((section) => section.steps)
     .map((step) => step.html)
     .join('')

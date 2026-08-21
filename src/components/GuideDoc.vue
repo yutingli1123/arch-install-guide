@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { renderGuide } from '../guide/render'
 import type { Config, Locale } from '../guide/types'
-import { pick, ui } from '../guide/ui'
+import { pick, ui } from '../guide/i18n'
 
 const props = defineProps<{ config: Config; locale: Locale }>()
 

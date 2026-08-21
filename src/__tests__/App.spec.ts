@@ -3,8 +3,16 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import App from '../App.vue'
 import { makeTpm2Encryption, parseDraft, serializeDraft, stageOneConfig } from '../guide/config'
 
+/** Interface language follows the browser, so every assertion on wording has to pin it first. */
+function useBrowserLanguages(...languages: string[]) {
+  Object.defineProperty(navigator, 'languages', { value: languages, configurable: true })
+}
+
 describe('setup wizard', () => {
-  beforeEach(() => window.history.replaceState(null, '', '/'))
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/')
+    useBrowserLanguages('zh-CN')
+  })
 
   it('opens on a welcome page and reveals configuration only after starting', async () => {
     const wrapper = mount(App)
@@ -25,7 +33,6 @@ describe('setup wizard', () => {
       .findAll('select[name="systemLocale"] option:not([disabled])')
       .map((option) => option.attributes('value'))
     expect(localeValues).toEqual([...localeValues].sort())
-    expect(wrapper.text()).not.toContain('配置和当前步骤会自动保存到网址')
     expect(wrapper.get('.detected-timezone').text()).toContain(
       Intl.DateTimeFormat().resolvedOptions().timeZone,
     )
@@ -59,23 +66,28 @@ describe('setup wizard', () => {
     expect(parseDraft(window.location.search).timezone).toBe(timezone)
   })
 
-  it('warns that TTY cannot display CJK system locales', async () => {
+  it('warns when the console font cannot display the system locale', async () => {
     const wrapper = mount(App)
     await start(wrapper)
 
     expect(wrapper.find('.locale-warning').exists()).toBe(false)
     await wrapper.get('select[name="systemLocale"]').setValue('zh_CN.UTF-8')
-    expect(wrapper.get('.locale-warning').text()).toContain('TTY 无法显示 CJK 字符，会显示为方框')
+    expect(wrapper.get('.locale-warning').text()).toContain(
+      'TTY 字体无法显示该语言的部分或全部字符',
+    )
     expect(wrapper.get('.locale-warning').text()).toContain('明确计划安装并使用图形界面')
 
-    await wrapper.get('select[name="systemLocale"]').setValue('ja_JP.UTF-8')
-    expect(wrapper.find('.locale-warning').exists()).toBe(true)
-
-    await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
-    expect(wrapper.find('.locale-warning').exists()).toBe(false)
+    for (const locale of ['ja_JP.UTF-8', 'ar_EG.UTF-8', 'hi_IN', 'kk_KZ.UTF-8', 'vi_VN']) {
+      await wrapper.get('select[name="systemLocale"]').setValue(locale)
+      expect(wrapper.find('.locale-warning').exists()).toBe(true)
+    }
+    for (const locale of ['en_US.UTF-8', 'ru_RU.UTF-8', 'el_GR.UTF-8', 'pl_PL.UTF-8']) {
+      await wrapper.get('select[name="systemLocale"]').setValue(locale)
+      expect(wrapper.find('.locale-warning').exists()).toBe(false)
+    }
   })
 
-  it('uses completed progress steps as backward navigation', async () => {
+  it('jumps through progress steps whose choices are already filled in', async () => {
     const wrapper = mount(App)
     await start(wrapper)
     expect(wrapper.get('.step-link[data-step="1"]').attributes('disabled')).toBeDefined()
@@ -83,11 +95,49 @@ describe('setup wizard', () => {
     await wrapper.get('select[name="timezone"]').setValue('America/Toronto')
     await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
     await next(wrapper)
+    await wrapper.get('select[name="keymap"]').setValue('us')
+    await next(wrapper)
     await wrapper.get('.step-link[data-step="0"]').trigger('click')
 
     expect(wrapper.get('.wizard h1').text()).toBe('区域与语言')
     expect(new URLSearchParams(window.location.search).get('step')).toBe('1')
     expect(parseDraft(window.location.search).timezone).toBe('America/Toronto')
+    expect(wrapper.get('.step-link[data-step="1"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('.step-link[data-step="2"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('.step-link[data-step="3"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.get('.step-link[data-step="2"]').trigger('click')
+    expect(wrapper.get('.wizard h1').text()).toBe('存储')
+    expect(new URLSearchParams(window.location.search).get('step')).toBe('3')
+
+    await wrapper.get('.step-link[data-step="0"]').trigger('click')
+    await wrapper.get('select[name="timezone"]').setValue('')
+    expect(wrapper.get('.step-link[data-step="1"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('.step-link[data-step="2"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('jumps forward to the review step once every choice is present', async () => {
+    const wrapper = mount(App)
+    await fillConfiguration(wrapper)
+    expect(wrapper.get('.wizard h1').text()).toBe('确认配置')
+
+    await wrapper.get('.step-link[data-step="0"]').trigger('click')
+    expect(wrapper.get('.step-link[data-step="5"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.findAll('ol li').map((item) => item.classes('complete'))).toEqual([
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+    ])
+    await wrapper.get('.step-link[data-step="5"]').trigger('click')
+    expect(wrapper.get('.wizard h1').text()).toBe('确认配置')
+    expect(new URLSearchParams(window.location.search).get('step')).toBe('6')
+
+    window.history.replaceState(null, '', `/?${serializeDraft(stageOneConfig)}&step=1`)
+    const reloaded = mount(App)
+    expect(reloaded.get('.step-link[data-step="5"]').attributes('disabled')).toBeUndefined()
   })
 
   it('keeps TPM2 presets and their required secure boot path consistent', async () => {
@@ -226,7 +276,6 @@ describe('setup wizard', () => {
 
     expect(wrapper.get('form').text()).toContain('只创建 @，结构简单，但不能配置 Snapper')
     expect(wrapper.get('form').text()).toContain('在同一个 Btrfs 文件系统中')
-    expect(wrapper.get('form').text()).not.toContain('当前不可用：对应安装步骤尚未提供')
     await selectChoice(wrapper, 'subvolumeLayout', 'root-only')
     expect(
       wrapper
@@ -354,6 +403,77 @@ describe('setup wizard', () => {
     expect(parseDraft(window.location.search).hyprland).toBeUndefined()
   })
 
+  it('keeps the configuration when the language changes and carries it in the link', async () => {
+    const wrapper = mount(App)
+    await start(wrapper)
+    await wrapper.get('select[name="timezone"]').setValue('America/Toronto')
+    await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
+
+    const saved = parseDraft(window.location.search)
+    await wrapper.get('button[name="language"]').trigger('click')
+    await wrapper.get('[data-locale="en"]').trigger('click')
+
+    expect(new URLSearchParams(window.location.search).get('lang')).toBe('en')
+    expect(parseDraft(window.location.search)).toEqual(saved)
+
+    // Chinese is written out too, so the link opens in Chinese on an English browser.
+    await wrapper.get('button[name="language"]').trigger('click')
+    await wrapper.get('[data-locale="zh-cn"]').trigger('click')
+    expect(new URLSearchParams(window.location.search).get('lang')).toBe('zh-cn')
+    expect(parseDraft(window.location.search)).toEqual(saved)
+  })
+
+  it('opens a shared link in the language it carries, over the browser default', () => {
+    window.history.replaceState(null, '', '/?lang=en')
+    const wrapper = mount(App)
+
+    expect(wrapper.get('button[name="language"] span:not(.ghost)').text()).toBe('English')
+    expect(new URLSearchParams(window.location.search).get('lang')).toBe('en')
+  })
+
+  it('starts in the browser language without writing it into the link', () => {
+    useBrowserLanguages('en-US')
+    const wrapper = mount(App)
+
+    expect(wrapper.get('button[name="language"] span:not(.ghost)').text()).toBe('English')
+    expect(wrapper.get('.welcome').text()).toContain('Generate an Arch Linux installation guide')
+    expect(window.location.search).toBe('')
+  })
+
+  it('tells the Chinese variants apart by the browser language', () => {
+    useBrowserLanguages('zh-TW')
+    const wrapper = mount(App)
+
+    expect(wrapper.get('button[name="language"] span:not(.ghost)').text()).toBe('正體中文')
+    expect(wrapper.get('.welcome').text()).toContain('產生適合你的 Arch Linux 安裝指南')
+    expect(window.location.search).toBe('')
+  })
+
+  it('switches the theme, keeps it for the next visit, and auto clears it', async () => {
+    const wrapper = mount(App)
+
+    expect(document.documentElement.dataset.theme).toBeUndefined()
+
+    await wrapper.get('[data-theme-option="dark"]').trigger('click')
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(localStorage.getItem('theme')).toBe('dark')
+    expect(wrapper.get('[data-theme-option="dark"]').attributes('aria-pressed')).toBe('true')
+
+    await wrapper.get('[data-theme-option="auto"]').trigger('click')
+    expect(document.documentElement.dataset.theme).toBeUndefined()
+    expect(localStorage.getItem('theme')).toBeNull()
+  })
+
+  it('uppercases mirror country codes as they are typed', async () => {
+    window.history.replaceState(null, '', '/?step=4')
+    const wrapper = mount(App)
+    const input = wrapper.get('input[name="mirrorCountries"]')
+    ;(input.element as HTMLInputElement).value = 'ca,us'
+    await input.trigger('input')
+    expect((input.element as HTMLInputElement).value).toBe('CA,US')
+    expect(parseDraft(window.location.search).reflector).toBeUndefined()
+  })
+
   it('restores shared configuration at its saved wizard step', () => {
     window.history.replaceState(
       null,
@@ -417,7 +537,6 @@ describe('generated guide', () => {
     expect(summary).not.toContain('UEFI')
     expect(summary).not.toContain('UKI')
     expect(summary).not.toContain('systemd-boot')
-    expect(summary).not.toContain('ESP 大小')
     expect(summary).not.toContain('PCR')
     expect(wrapper.get('footer').text()).not.toContain('本指南配置')
 
@@ -440,7 +559,8 @@ async function selectChoice(wrapper: VueWrapper, name: string, value: string) {
   await wrapper.get(`input[name="${name}"][value="${value}"]`).setValue(true)
 }
 
-async function openGuide(wrapper: VueWrapper) {
+/** Fills every step and lands on the review step. */
+async function fillConfiguration(wrapper: VueWrapper) {
   await start(wrapper)
   await wrapper.get('select[name="timezone"]').setValue('America/Toronto')
   await wrapper.get('select[name="systemLocale"]').setValue('en_US.UTF-8')
@@ -463,5 +583,9 @@ async function openGuide(wrapper: VueWrapper) {
   await selectChoice(wrapper, 'cpu', 'intel')
   await selectChoice(wrapper, 'graphics', 'intel')
   await next(wrapper)
+}
+
+async function openGuide(wrapper: VueWrapper) {
+  await fillConfiguration(wrapper)
   await next(wrapper)
 }

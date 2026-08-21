@@ -1,28 +1,25 @@
 :root {
-  --bg: #fdfdfc;
-  --fg: #23211e;
-  --muted: #7c766e;
-  --faint: #a8a29a;
-  --rule: #e4e1db;
-  --code-bg: #f4f2ee;
-  --accent: #1793d1;
-  --warn: #b4531a;
+  color-scheme: light dark;
+  --bg: light-dark(#fdfdfc, #16181a);
+  --fg: light-dark(#23211e, #e2e4e6);
+  --muted: light-dark(#7c766e, #91969b);
+  --faint: light-dark(#a8a29a, #6b7075);
+  --rule: light-dark(#e4e1db, #2b2f33);
+  --code-bg: light-dark(#f4f2ee, #1d2023);
+  --accent: light-dark(#1793d1, #4db3e8);
+  --warn: light-dark(#b4531a, #e08a4a);
   --sans: system-ui, sans-serif;
   --mono: ui-monospace, 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
   --column: 56rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #16181a;
-    --fg: #e2e4e6;
-    --muted: #91969b;
-    --faint: #6b7075;
-    --rule: #2b2f33;
-    --code-bg: #1d2023;
-    --accent: #4db3e8;
-    --warn: #e08a4a;
-  }
+/** No data-theme attribute means auto: color-scheme stays `light dark` and the system decides. */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 *,
@@ -74,6 +71,7 @@ a {
 
 @media print {
   :root {
+    color-scheme: light;
     --bg: #fff;
     --fg: #000;
     --muted: #555;

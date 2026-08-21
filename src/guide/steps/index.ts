@@ -1,4 +1,5 @@
-import type { Localized, Step } from '../types'
+import type { ProseKey } from '../i18n'
+import type { Step } from '../types'
 import { liveSteps } from './live'
 import { diskSteps } from './disk'
 import { installSteps } from './install'
@@ -9,16 +10,16 @@ import { desktopSteps } from './desktop'
 import { hyprlandSteps } from './hyprland'
 import { finishSteps } from './finish'
 
-export const sectionTitles: Record<string, Localized<string>> = {
-  live: { zh: '安装环境' },
-  disk: { zh: '磁盘' },
-  install: { zh: '安装系统' },
-  system: { zh: '系统配置' },
-  storage: { zh: '存储配置' },
-  boot: { zh: '引导' },
-  desktop: { zh: '桌面与显卡' },
-  hyprland: { zh: 'Hyprland 配套' },
-  finish: { zh: '收尾' },
+export const sectionTitles: Record<string, ProseKey> = {
+  live: 'section.live',
+  disk: 'section.disk',
+  install: 'section.install',
+  system: 'section.system',
+  storage: 'section.storage',
+  boot: 'section.boot',
+  desktop: 'section.desktop',
+  hyprland: 'section.hyprland',
+  finish: 'section.finish',
 }
 
 /** Order here is the order of the generated guide. */

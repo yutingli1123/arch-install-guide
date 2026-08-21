@@ -1,44 +1,45 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import GuideDoc from './components/GuideDoc.vue'
+import LanguagePicker from './components/LanguagePicker.vue'
 import SetupWizard from './components/SetupWizard.vue'
+import ThemePicker from './components/ThemePicker.vue'
 import {
   VERIFIED_AGAINST,
   completeConfig,
-  completeHyprland,
+  firstIncompleteStep,
+  hyprlandAddonGroups,
   parseDraft,
   serializeDraft,
 } from './guide/config'
 import { selectSteps } from './guide/render'
 import type { ConfigDraft, Locale } from './guide/types'
-import { choices, hyprlandAddonGroups, pick, ui } from './guide/ui'
+import { browserLocale, choices, localeNames, pick, ui } from './guide/i18n'
 
-function firstIncompleteStep(draft: ConfigDraft): number {
-  if (!draft.timezone || !draft.systemLocale) return 0
-  if (!draft.keymap) return 1
-  if (
-    !draft.subvolumeLayout ||
-    draft.zram === undefined ||
-    !draft.diskSwap ||
-    !draft.encryption ||
-    !draft.secureBoot ||
-    (draft.subvolumeLayout === 'separated' && !draft.snapper)
-  )
-    return 2
-  if (
-    !draft.hostname ||
-    !draft.username ||
-    !draft.desktop ||
-    (draft.desktop === 'hyprland' && !completeHyprland(draft.hyprland)) ||
-    !draft.reflector
-  )
-    return 3
-  if (!draft.disk || !draft.cpu || !draft.graphics) return 4
-  return 5
-}
-
-const locale = ref<Locale>('zh')
 const initialParams = new URLSearchParams(window.location.search)
+const requestedLocale = initialParams.get('lang')
+/** Falls back to the browser's languages, the way the timezone field does. */
+const systemLocale = browserLocale(navigator.languages ?? [navigator.language])
+const chosenLocale = ref<Locale | null>(
+  requestedLocale !== null && Object.keys(localeNames).includes(requestedLocale)
+    ? requestedLocale
+    : null,
+)
+/** The link only carries a language once one is picked; otherwise the browser decides. */
+const locale = computed<Locale>({
+  get: () => chosenLocale.value ?? systemLocale,
+  set: (value) => {
+    chosenLocale.value = value
+  },
+})
+/** Fonts pick glyph forms by the document language, and the Chinese variants differ there. */
+watch(
+  locale,
+  (value) => {
+    document.documentElement.lang = value
+  },
+  { immediate: true },
+)
 const initialStep = Number(initialParams.get('step'))
 const draft = ref<ConfigDraft>(parseDraft(window.location.search))
 const config = computed(() => completeConfig(draft.value))
@@ -55,8 +56,8 @@ const wizardStep = ref(
 )
 
 watch(
-  [draft, screen, wizardStep],
-  ([value, currentScreen, currentStep]) => {
+  [draft, screen, wizardStep, chosenLocale],
+  ([value, currentScreen, currentStep, currentLocale]) => {
     const params =
       currentScreen === 'welcome'
         ? new URLSearchParams()
@@ -64,6 +65,7 @@ watch(
 
     if (currentScreen === 'configure') params.set('step', String(currentStep + 1))
     if (currentScreen === 'guide') params.set('step', 'guide')
+    if (currentLocale) params.set('lang', currentLocale)
 
     const query = params.toString()
     window.history.replaceState(
@@ -191,7 +193,7 @@ const summary = computed(() => {
               group.addons
                 .filter((addon) => cfg.hyprland!.addons.includes(addon))
                 .map((addon) => pick(choices.hyprlandAddons[addon], locale.value))
-                .join('、') || none,
+                .join(pick(ui.listSeparator, locale.value)) || none,
           })),
         ]
       : []),
@@ -212,7 +214,13 @@ const summary = computed(() => {
 
 <template>
   <main v-if="screen === 'welcome'" class="welcome">
-    <h1>{{ pick(ui.title, locale) }}</h1>
+    <div class="welcome-top">
+      <h1>{{ pick(ui.title, locale) }}</h1>
+      <div class="header-actions">
+        <LanguagePicker v-model="locale" />
+        <ThemePicker :locale="locale" />
+      </div>
+    </div>
     <h2>{{ pick(ui.welcomeTitle, locale) }}</h2>
     <p>{{ pick(ui.welcomeBody, locale) }}</p>
     <button class="primary" data-action="start" type="button" @click="startConfiguration">
@@ -228,6 +236,7 @@ const summary = computed(() => {
     :summary="summary"
     @cancel="screen = 'welcome'"
     @finish="showGuide"
+    @update:locale="locale = $event"
   />
 
   <template v-else-if="config">
@@ -235,6 +244,8 @@ const summary = computed(() => {
       <div class="row">
         <h1>{{ pick(ui.title, locale) }}</h1>
         <div class="header-actions no-print">
+          <LanguagePicker v-model="locale" />
+          <ThemePicker :locale="locale" />
           <button data-action="edit" type="button" @click="editConfiguration">
             {{ pick(ui.editConfig, locale) }}
           </button>
@@ -300,6 +311,14 @@ const summary = computed(() => {
   max-width: 34rem;
   margin: 1rem 0 0;
   color: var(--muted);
+}
+
+.welcome-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
 }
 
 .welcome .primary {

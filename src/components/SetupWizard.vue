@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ChoicePicker from '@/components/ChoicePicker.vue'
+import LanguagePicker from '@/components/LanguagePicker.vue'
+import ThemePicker from '@/components/ThemePicker.vue'
 import {
   HYPRLAND_ADDONS,
   HYPRLAND_CHOICES,
@@ -9,30 +11,38 @@ import {
   NEW_HYPRLAND_DRAFT,
   SYSTEM_LOCALES,
   TIMEZONES,
+  firstIncompleteStep,
+  hyprlandAddonGroups,
   makeTpm2Encryption,
   orderAddons,
   tpm2Preset,
   validate,
   type ConfigChoice,
 } from '@/guide/config'
-import type { ConfigDraft, HyprlandAddon, HyprlandExtras, Locale, Tpm2Preset } from '@/guide/types'
-import { choiceDescriptions, choices, hyprlandAddonGroups, pick, ui } from '@/guide/ui'
+import { consoleDisplays } from '@/guide/console'
+import type {
+  ConfigDraft,
+  HyprlandAddon,
+  HyprlandExtras,
+  Locale,
+  Localized,
+  Tpm2Preset,
+} from '@/guide/types'
+import { choiceDescriptions, choices, pick, ui } from '@/guide/i18n'
 
 const props = defineProps<{
   locale: Locale
   summary: { label: string; value: string }[]
 }>()
-const emit = defineEmits<{ finish: []; cancel: [] }>()
+const emit = defineEmits<{ finish: []; cancel: []; 'update:locale': [Locale] }>()
 const model = defineModel<ConfigDraft>({ required: true })
 const step = defineModel<number>('step', { required: true })
 const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 const canUseDetectedTimezone = TIMEZONES.includes(detectedTimezone)
 const sortedSystemLocales = [...SYSTEM_LOCALES].sort()
 const mirrorCountryCodes = MIRROR_COUNTRIES.map(([code]) => code)
-const isCjkSystemLocale = computed(() =>
-  ['zh_CN.UTF-8', 'zh_TW.UTF-8', 'zh_HK.UTF-8', 'ja_JP.UTF-8', 'ko_KR.UTF-8'].includes(
-    model.value.systemLocale ?? '',
-  ),
+const ttyCannotDisplay = computed(
+  () => model.value.systemLocale !== undefined && !consoleDisplays(model.value.systemLocale),
 )
 
 const titles = computed(() => [
@@ -44,10 +54,14 @@ const titles = computed(() => [
   pick(ui.review, props.locale),
 ])
 const unavailable = computed(() => validate(model.value))
+const firstIncomplete = computed(() => firstIncompleteStep(model.value))
+/** Any earlier step, or a later one as long as no step before it is left unfilled. */
+const canGoTo = (index: number) =>
+  index !== step.value && (index < step.value || index <= firstIncomplete.value)
 const reason = (choice: ConfigChoice) => unavailable.value[choice]
 const unavailableReason = (choice: ConfigChoice) => {
   const message = reason(choice)
-  return message ? `${pick(ui.unavailable, props.locale)}：${message}` : undefined
+  return message ? pick(ui.unavailable, props.locale)(pick(message, props.locale)) : undefined
 }
 
 const cpuOptions = computed(() => [
@@ -166,9 +180,9 @@ const desktopOptions = computed(() => [
 ])
 type HyprlandCategory = keyof typeof HYPRLAND_CHOICES
 type HyprlandCategoryUi = {
-  label: (typeof ui)['hyprlandTerminal']
-  choices: Record<string, (typeof ui)['hyprlandTerminal']>
-  descriptions: Record<string, (typeof ui)['hyprlandTerminal']>
+  label: Localized<string>
+  choices: Record<string, Localized<string>>
+  descriptions: Record<string, Localized<string>>
 }
 const HYPRLAND_CATEGORY_UI: Record<HyprlandCategory, HyprlandCategoryUi> = {
   notifications: {
@@ -365,6 +379,13 @@ function commitSecureBoot(value: string | undefined) {
   model.value = next
 }
 
+function uppercaseInput(event: Event) {
+  const input = event.currentTarget as HTMLInputElement
+  const { selectionStart, selectionEnd } = input
+  input.value = input.value.toUpperCase()
+  input.setSelectionRange(selectionStart, selectionEnd)
+}
+
 function commitReflectorCountries(event: Event) {
   const input = event.currentTarget as HTMLInputElement
   const countries = [
@@ -380,7 +401,7 @@ function commitReflectorCountries(event: Event) {
     countries.length > 0 &&
       countries.every((country) => mirrorCountryCodes.includes(country as never))
       ? ''
-      : '请输入有效的 ISO 国家代码，并用英文逗号分隔',
+      : pick(ui.mirrorCountryInvalid, props.locale),
   )
   if (!input.reportValidity()) {
     input.value = model.value.reflector?.countries.join(',') ?? ''
@@ -428,30 +449,42 @@ function advance(event: Event) {
 }
 
 function goToStep(index: number) {
-  if (index < step.value) step.value = index
+  if (canGoTo(index)) step.value = index
 }
 </script>
 
 <template>
   <main class="wizard">
     <header>
-      <p class="product">{{ pick(ui.title, props.locale) }}</p>
+      <div class="top-row">
+        <p class="product">{{ pick(ui.title, props.locale) }}</p>
+        <div class="pickers">
+          <LanguagePicker
+            :model-value="props.locale"
+            @update:model-value="emit('update:locale', $event)"
+          />
+          <ThemePicker :locale="props.locale" />
+        </div>
+      </div>
       <p class="progress">
         {{ pick(ui.wizardProgress, props.locale)(step + 1, titles.length) }}
       </p>
       <h1>{{ titles[step] }}</h1>
-      <ol aria-label="配置进度" :style="{ gridTemplateColumns: `repeat(${titles.length}, 1fr)` }">
+      <ol
+        :aria-label="pick(ui.wizardSteps, props.locale)"
+        :style="{ gridTemplateColumns: `repeat(${titles.length}, 1fr)` }"
+      >
         <li
           v-for="(title, index) in titles"
           :key="title"
-          :class="{ complete: index < step }"
+          :class="{ complete: canGoTo(index) }"
           :aria-current="index === step ? 'step' : undefined"
         >
           <button
             class="step-link"
             type="button"
             :data-step="index"
-            :disabled="index >= step"
+            :disabled="!canGoTo(index)"
             @click="goToStep(index)"
           >
             <span>{{ index + 1 }}</span>
@@ -538,7 +571,7 @@ function goToStep(index: number) {
             @update:model-value="commitDiskSwap"
           />
           <label v-if="model.diskSwap === 'swapfile'" class="nested-field">
-            <span>容量（GiB）</span>
+            <span>{{ pick(ui.diskSwapSize, props.locale) }}</span>
             <input
               name="diskSwapSizeGiB"
               required
@@ -653,8 +686,8 @@ function goToStep(index: number) {
             </option>
           </select>
           <small>{{ pick(ui.systemLocaleHint, props.locale) }}</small>
-          <p v-if="isCjkSystemLocale" class="locale-warning" role="alert">
-            {{ pick(ui.cjkTtyWarning, props.locale) }}
+          <p v-if="ttyCannotDisplay" class="locale-warning" role="alert">
+            {{ pick(ui.ttyFontWarning, props.locale) }}
           </p>
         </label>
       </fieldset>
@@ -721,8 +754,10 @@ function goToStep(index: number) {
               <input
                 name="mirrorCountries"
                 required
+                autocapitalize="characters"
                 placeholder="CA,US"
                 :value="model.reflector?.countries.join(',') ?? ''"
+                @input="uppercaseInput"
                 @change="commitReflectorCountries"
               />
               <small>{{ pick(ui.mirrorCountryHint, props.locale) }}</small>
@@ -829,6 +864,18 @@ function goToStep(index: number) {
 
 .progress {
   margin: 1.5rem 0 0.2rem;
+}
+
+.top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pickers {
+  display: flex;
+  gap: 0.5rem;
 }
 
 h1 {
