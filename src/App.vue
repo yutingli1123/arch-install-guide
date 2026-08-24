@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import GithubLink from './components/GithubLink.vue'
 import GuideDoc from './components/GuideDoc.vue'
 import LanguagePicker from './components/LanguagePicker.vue'
 import SetupWizard from './components/SetupWizard.vue'
@@ -219,6 +220,7 @@ const summary = computed(() => {
       <div class="header-actions">
         <LanguagePicker v-model="locale" />
         <ThemePicker :locale="locale" />
+        <GithubLink />
       </div>
     </div>
     <h2>{{ pick(ui.welcomeTitle, locale) }}</h2>
@@ -252,6 +254,7 @@ const summary = computed(() => {
           <button type="button" @click="printPage">
             {{ pick(ui.print, locale) }}
           </button>
+          <GithubLink />
         </div>
       </div>
       <div class="config-summary">

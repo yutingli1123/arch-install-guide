@@ -211,6 +211,9 @@ export const prose: ProseCatalog = {
   'storage.zram.write': '寫入：',
   'storage.zram.result':
     '重新開機後 systemd 會建立容量為實體記憶體一半的壓縮交換裝置 `/dev/zram0`。',
+  'storage.zram.sysctl': '新增針對 zram 交換的 sysctl 設定檔：',
+  'storage.zram.sysctl-notes':
+    '換頁到 zram 的開銷接近記憶體存取，這組參數讓核心更積極地換頁，並關閉只對磁碟 swap 有意義的預讀。參數在下次開機時隨 zram 裝置一同生效。',
   'storage.swapfile.create': ({ cfg }: Context) =>
     `在獨立的 \`@swap\` 子卷中建立 ${cfg.diskSwapSizeGiB} GiB swapfile：`,
   'storage.swapfile.notes':
@@ -272,6 +275,9 @@ export const prose: ProseCatalog = {
   'boot.kernel-cmdline.notes': ({ cfg, rootSubvolume }: Context) =>
     `- \`$(blkid ...)\` 會在執行指令時展開為${cfg.encryption.mode === 'luks2' ? ' LUKS2 容器' : ' btrfs'} UUID，不需手動輸入。\n` +
     `- \`rootflags=subvol=${rootSubvolume.name}\` 不可省略。btrfs 預設掛載頂層；缺少該參數時，核心無法定位根子卷。\n` +
+    (cfg.zram
+      ? '- `zswap.enabled=0` 關閉 Arch 核心預設開啟的 zswap。不關閉時，頁面在到達 zram 前會先被 zswap 快取，被壓縮兩次。\n'
+      : '') +
     '- 參數內嵌在映像檔中；之後修改後必須重新執行 `mkinitcpio -P` 才會生效。',
   'boot.kernel-cmdline.verify': '核對展開結果：',
   'boot.uki.preset': '編輯核心的 mkinitcpio preset，將輸出形式從分離映像檔改為 UKI：',

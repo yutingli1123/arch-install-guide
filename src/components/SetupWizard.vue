@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ChoicePicker from '@/components/ChoicePicker.vue'
+import GithubLink from '@/components/GithubLink.vue'
 import LanguagePicker from '@/components/LanguagePicker.vue'
 import ThemePicker from '@/components/ThemePicker.vue'
 import {
@@ -464,6 +465,7 @@ function goToStep(index: number) {
             @update:model-value="emit('update:locale', $event)"
           />
           <ThemePicker :locale="props.locale" />
+          <GithubLink />
         </div>
       </div>
       <p class="progress">

@@ -180,8 +180,14 @@ describe('derive', () => {
   it('adds zram-generator and renders its configuration only for zram', () => {
     const zram = { ...stageOneConfig, zram: true }
     expect(derive(zram).packages).toContain('zram-generator')
-    expect(renderHtml(zram)).toContain('zram-size = ram / 2')
-    expect(renderHtml(stageOneConfig)).not.toContain('/etc/systemd/zram-generator.conf')
+    const rendered = renderHtml(zram)
+    expect(rendered).toContain('zram-size = ram / 2')
+    expect(rendered).toContain('vm.swappiness = 180')
+    expect(rendered).toContain('rw zswap.enabled=0')
+    const base = renderHtml(stageOneConfig)
+    expect(base).not.toContain('/etc/systemd/zram-generator.conf')
+    expect(base).not.toContain('/etc/sysctl.d/99-vm-zram-parameters.conf')
+    expect(base).not.toContain('zswap.enabled=0')
   })
 
   it('creates a dedicated uncompressed subvolume for a btrfs swapfile', () => {
