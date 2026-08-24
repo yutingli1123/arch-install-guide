@@ -210,6 +210,9 @@ export const prose: ProseCatalog = {
   'storage.zram.create': '新建 zram-generator 配置：',
   'storage.zram.write': '写入：',
   'storage.zram.result': '重启后 systemd 会创建容量为物理内存一半的压缩交换设备 `/dev/zram0`。',
+  'storage.zram.sysctl': '新建针对 zram 交换的 sysctl 配置：',
+  'storage.zram.sysctl-notes':
+    '换页到 zram 的开销接近内存访问，这组参数让内核更积极地换页，并关闭只对磁盘 swap 有意义的预读。参数在下次启动时随 zram 设备一同生效。',
   'storage.swapfile.create': ({ cfg }: Context) =>
     `在独立的 \`@swap\` 子卷中创建 ${cfg.diskSwapSizeGiB} GiB swapfile：`,
   'storage.swapfile.notes':
@@ -272,6 +275,9 @@ export const prose: ProseCatalog = {
   'boot.kernel-cmdline.notes': ({ cfg, rootSubvolume }: Context) =>
     `- \`$(blkid ...)\` 会在执行命令时展开为${cfg.encryption.mode === 'luks2' ? ' LUKS2 容器' : ' btrfs'} UUID，无需手动录入。\n` +
     `- \`rootflags=subvol=${rootSubvolume.name}\` 不可省略。btrfs 默认挂载顶层；缺少该参数时，内核无法定位根子卷。\n` +
+    (cfg.zram
+      ? '- `zswap.enabled=0` 关闭 Arch 内核默认开启的 zswap。不关闭时，页面在到达 zram 前会先被 zswap 缓存，被压缩两次。\n'
+      : '') +
     '- 参数内嵌在镜像中；后续修改后必须重新执行 `mkinitcpio -P` 才能生效。',
   'boot.kernel-cmdline.verify': '核对展开结果：',
   'boot.uki.preset': '编辑内核预设，将输出形式从分离镜像改为 UKI：',

@@ -13,6 +13,16 @@ export const storageSteps: Step[] = [
       text('storage.zram.write'),
       cmd('[zram0]\nzram-size = ram / 2\ncompression-algorithm = zstd\nswap-priority = 100'),
       text('storage.zram.result'),
+      text('storage.zram.sysctl'),
+      cmd('vim /etc/sysctl.d/99-vm-zram-parameters.conf'),
+      text('storage.zram.write'),
+      cmd(
+        'vm.swappiness = 180\n' +
+          'vm.watermark_boost_factor = 0\n' +
+          'vm.watermark_scale_factor = 125\n' +
+          'vm.page-cluster = 0',
+      ),
+      text('storage.zram.sysctl-notes'),
     ],
   },
   {

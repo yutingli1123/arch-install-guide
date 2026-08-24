@@ -22,7 +22,7 @@ export const bootSteps: Step[] = [
           cfg.encryption.mode === 'luks2'
             ? `rd.luks.name=$(blkid -s UUID -o value ${rootDevice})=${luksName} root=${rootFsDevice}`
             : `root=UUID=$(blkid -s UUID -o value ${rootDevice})`
-        } rootflags=subvol=${rootSubvolume.name} rw" > /etc/kernel/cmdline`,
+        } rootflags=subvol=${rootSubvolume.name} rw${cfg.zram ? ' zswap.enabled=0' : ''}" > /etc/kernel/cmdline`,
       ),
       text('boot.kernel-cmdline.notes'),
       text('boot.kernel-cmdline.verify'),

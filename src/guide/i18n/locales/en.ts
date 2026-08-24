@@ -217,6 +217,9 @@ export const prose = {
   'storage.zram.write': 'Write:',
   'storage.zram.result':
     'After a reboot, systemd creates `/dev/zram0`, a compressed swap device half the size of physical memory.',
+  'storage.zram.sysctl': 'Create the sysctl configuration tuned for swap on zram:',
+  'storage.zram.sysctl-notes':
+    'Swapping to zram costs close to a memory access, so these values make the kernel swap more readily and drop the readahead that only pays off on disk swap. They take effect on the next boot, together with the zram device.',
   'storage.swapfile.create': ({ cfg }: Context) =>
     `Create a ${cfg.diskSwapSizeGiB} GiB swapfile on the separate \`@swap\` subvolume:`,
   'storage.swapfile.notes':
@@ -284,6 +287,9 @@ export const prose = {
   'boot.kernel-cmdline.notes': ({ cfg, rootSubvolume }: Context) =>
     `- \`$(blkid ...)\` expands to the${cfg.encryption.mode === 'luks2' ? ' LUKS2 container' : ' btrfs'} UUID when the command runs, so nothing has to be typed by hand.\n` +
     `- \`rootflags=subvol=${rootSubvolume.name}\` cannot be omitted. btrfs mounts the top level by default, and without this parameter the kernel cannot locate the root subvolume.\n` +
+    (cfg.zram
+      ? '- `zswap.enabled=0` turns off zswap, which the Arch kernel enables by default. Left on, it caches pages ahead of zram and compresses them a second time.\n'
+      : '') +
     '- The parameters are embedded in the image; after changing them, `mkinitcpio -P` has to run again before they take effect.',
   'boot.kernel-cmdline.verify': 'Check the expanded result:',
   'boot.uki.preset': 'Edit the kernel preset to switch the output from separate images to a UKI:',
